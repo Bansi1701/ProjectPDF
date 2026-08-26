@@ -11,6 +11,7 @@ import { compose } from './pageplan';
 import { crop } from './crop';
 import { extractImages } from './extractimages';
 import { flattenPdf } from './flatten';
+import { grayscale } from './grayscale';
 import { headerFooter } from './headerfooter';
 import { impose } from './impose';
 import { readMetadata, writeMetadata } from './metadata';
@@ -151,6 +152,8 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return writeMetadata(request.files, request.metadataChanges ?? {});
     case 'header-footer':
       return headerFooter(request.files, request.headerFooterOptions ?? {});
+    case 'grayscale':
+      return grayscale(request.files, request.grayscaleOptions ?? {});
     case 'split-by':
       return splitBy(request.files, request.splitByOptions ?? { mode: 'every', every: 10 });
     case 'pdf-to-word':

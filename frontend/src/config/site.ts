@@ -56,6 +56,7 @@ export const TOOLS: Tool[] = [
   { slug: 'edit-pdf', name: 'Edit', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Text, shapes, highlights and images on the page.' },
   { slug: 'watermark-pdf', name: 'Watermark', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Stamp text or an image across every page.' },
   { slug: 'page-numbers', name: 'Page numbers', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Numbering that matches the page labels people cite.' },
+  { slug: 'grayscale-pdf', name: 'Greyscale', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Drop the colour without flattening the text into pixels.' },
   { slug: 'crop-pdf', name: 'Crop', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Trim the margins. Lossless — only the page box changes.' },
   { slug: 'flatten-pdf', name: 'Flatten', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Make forms and comments permanent so nothing stays editable.' },
   { slug: 'impose-pdf', name: 'N-up & booklet', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Several pages to a sheet, a foldable booklet, or a poster.' },

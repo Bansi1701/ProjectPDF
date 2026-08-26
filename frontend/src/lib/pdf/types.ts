@@ -13,6 +13,7 @@ import type { TextDocOptions } from './textdoc';
 import type { MetadataChanges, MetadataReport } from './metadata';
 import type { HeaderFooterOptions } from './headerfooter';
 import type { SplitByOptions } from './splitby';
+import type { GrayscaleOptions } from './grayscale';
 
 /** Every tool the worker can run. */
 export type Operation =
@@ -269,6 +270,7 @@ export interface WorkerRequest {
   metadataChanges?: MetadataChanges;
   headerFooterOptions?: HeaderFooterOptions;
   splitByOptions?: SplitByOptions;
+  grayscaleOptions?: GrayscaleOptions;
   /** Reorder only: zero-based page indexes in their new order. */
   pageOrder?: number[];
   /** Text tools only. */

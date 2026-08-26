@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+
+const description =
+  'Converts a PDF to greyscale by rewriting the colour where the file writes it down — so the text stays text, selectable and searchable, rather than being flattened into pictures.';
+---
+
+<BaseLayout title="PDF to greyscale — ProjectPDF" description={description}>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="grayscale"
+      eyebrow="Runs entirely in your browser"
+      title="Convert a PDF to greyscale"
+      description={description}
+    />
+  </main>
+</BaseLayout>

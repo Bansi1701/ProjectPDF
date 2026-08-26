@@ -52,6 +52,7 @@ const ACTIONS: Record<Operation, string> = {
   'pdf-to-word': 'Convert to Word',
   'pdf-to-excel': 'Extract the tables',
   crop: 'Crop the pages',
+  grayscale: 'Convert to greyscale',
   scan: 'Build the PDF',
   compose: 'Save the changes',
 };
@@ -440,6 +441,21 @@ const dropTitle = takesExcel
             </small>
           </fieldset>
         </Fragment>
+      )
+    }
+
+    {
+      mode === 'grayscale' && (
+        <label class="field">
+          <span>JPEG quality, where a photo has to be re-encoded</span>
+          <input data-gs-q type="number" min="0.3" max="1" step="0.02" value="0.82" />
+          <small>
+            Only photographs are re-encoded; everything else converts without a second lossy
+            pass. Greyscale usually shrinks a file because three channels become one — but on a
+            scan that was already packed hard it can come out larger, and you will be told which
+            happened rather than left to guess.
+          </small>
+        </label>
       )
     }
 
@@ -1781,7 +1797,9 @@ const dropTitle = takesExcel
       };
       const sel = (s2: string) => root.querySelector<HTMLSelectElement>(s2)?.value ?? '';
 
-      if (mode === 'crop') {
+      if (mode === 'grayscale') {
+        request.grayscaleOptions = { jpegQuality: num('[data-gs-q]', 0.82) };
+      } else if (mode === 'crop') {
         const top = Math.min(Math.max(num('[data-crop-top]', 0), 0), 45) / 100;
         const side = Math.min(Math.max(num('[data-crop-side]', 0), 0), 45) / 100;
         const bottom = Math.min(Math.max(num('[data-crop-bottom]', 0), 0), 45) / 100;
