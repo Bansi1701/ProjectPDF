@@ -33,7 +33,15 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 <BaseLayout title={`${SITE.name} — ${SITE.tagline}`} description={SITE.description}>
   <Masthead />
 
-  <main id="main">
+  <main id="main" class="home-main">
+    <div class="page-watermarks" aria-hidden="true">
+      <span class="page-watermark page-watermark--a"><img src={brandMark} alt="" /></span>
+      <span class="page-watermark page-watermark--b"><img src={brandMark} alt="" /></span>
+      <span class="page-watermark page-watermark--c"><img src={brandMark} alt="" /></span>
+      <span class="page-watermark page-watermark--d"><img src={brandMark} alt="" /></span>
+      <span class="page-watermark page-watermark--e"><img src={brandMark} alt="" /></span>
+      <span class="page-watermark page-watermark--f"><img src={brandMark} alt="" /></span>
+    </div>
     <!-- ── Hero: the desk ─────────────────────────────────────────────── -->
     <section class="hero wrap">
       <div class="brand-cascade" aria-hidden="true">
@@ -291,6 +299,54 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 </script>
 
 <style>
+  /* Home-only brand field: this stops before a visitor opens a real tool.
+     It sits above the page's broad surfaces but remains too faint to interfere
+     with controls, text, or document previews. */
+  .home-main {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+  }
+
+  .page-watermarks {
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .page-watermark {
+    position: absolute;
+    display: block;
+    width: 10rem;
+    opacity: 0.038;
+    filter: grayscale(0.25) drop-shadow(0 10px 12px rgb(15 23 42 / 0.14));
+  }
+
+  .page-watermark::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    width: 1px;
+    height: 3.5rem;
+    background: linear-gradient(transparent, color-mix(in srgb, var(--accent) 36%, var(--line)));
+  }
+
+  .page-watermark img { display: block; width: 100%; height: auto; }
+  .page-watermark--a { top: 3%; left: -3%; width: 12rem; transform: rotate(-18deg); }
+  .page-watermark--b { top: 18%; right: 4%; width: 8.5rem; transform: rotate(12deg); }
+  .page-watermark--c { top: 34%; left: 6%; width: 10rem; transform: rotate(9deg); }
+  .page-watermark--d { top: 51%; right: -2%; width: 13rem; transform: rotate(-14deg); }
+  .page-watermark--e { top: 69%; left: 13%; width: 8rem; transform: rotate(-10deg); }
+  .page-watermark--f { top: 84%; right: 10%; width: 11rem; transform: rotate(15deg); }
+
+  :global(:root[data-theme='dark']) .page-watermark {
+    opacity: 0.075;
+    filter: grayscale(0.2) brightness(2.4) contrast(0.65) drop-shadow(0 10px 16px rgb(0 0 0 / 0.46));
+    mix-blend-mode: screen;
+  }
+
   /* ── Hero ─────────────────────────────────────────────────────────── */
   .hero {
     position: relative;
@@ -330,8 +386,8 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   .brand-cascade {
     position: absolute;
     z-index: -1;
-    inset: -3.1rem 0 auto;
-    height: 10rem;
+    inset: -5rem 0 auto;
+    height: 23rem;
     overflow: hidden;
     pointer-events: none;
   }
@@ -357,24 +413,24 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   .brand-watermark img { display: block; width: 100%; height: auto; }
 
   .brand-watermark--one {
-    top: 0;
-    left: 14%;
-    width: 5.25rem;
+    top: 0.75rem;
+    left: 7%;
+    width: 15.75rem;
     transform: rotate(-7deg);
   }
 
   .brand-watermark--two {
-    top: 1.7rem;
-    left: 53%;
-    width: 3.1rem;
+    top: 6rem;
+    left: 56%;
+    width: 4.5rem;
     opacity: 0.07;
     transform: rotate(11deg);
   }
 
   .brand-watermark--three {
-    top: -0.75rem;
-    right: 8%;
-    width: 4rem;
+    top: 1.5rem;
+    right: 5%;
+    width: 5.25rem;
     opacity: 0.08;
     transform: rotate(-14deg);
   }
