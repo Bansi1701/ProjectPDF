@@ -48,7 +48,7 @@ Check the database is connected:
 curl localhost:8010/api/v1/health/db
 ```
 
-Without Docker, see [frontend/README.md](frontend/README.md) and
-[backend/README.md](backend/README.md).
+New here? [CONTRIBUTING.md](CONTRIBUTING.md) has full setup instructions,
+including how to get your own Neon database and what to do when something breaks.
 
 The frontend does not call the backend yet — it is a static page.

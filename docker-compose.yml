@@ -34,6 +34,8 @@ services:
     volumes:
       - ./backend/app:/app/app
       - ./backend/tests:/app/tests
+      # Live so `ruff`/`pytest` config edits apply without a rebuild.
+      - ./backend/pyproject.toml:/app/pyproject.toml
     env_file:
       # Real secrets live here and are git-ignored. Copy .env.example first.
       - path: ./backend/.env
