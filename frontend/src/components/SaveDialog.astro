@@ -1,0 +1,300 @@
+---
+/**
+ * Name the file before it lands in your downloads folder.
+ *
+ * Everything here produces a file named after whatever was dropped in, which
+ * is almost never what it should be called afterwards — "Scan_20240817 (3)"
+ * is not a name you want on a contract. Renaming after the fact means finding
+ * it again in a folder of near-identical names.
+ *
+ * It is a native <dialog>, so focus trapping, Escape, the backdrop and the
+ * top layer all come from the platform rather than from a library and a
+ * handful of listeners that miss a case.
+ */
+---
+
+<save-dialog>
+  <dialog class="save" data-save-dialog aria-labelledby="save-title">
+    <form method="dialog" class="save__form" data-save-form>
+      <h2 class="save__title" id="save-title">Save as</h2>
+      <p class="save__sub" data-save-sub></p>
+
+      <label class="save__field">
+        <span class="save__label">File name</span>
+        <span class="save__input">
+          <input
+            data-save-name
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            enterkeyhint="done"
+          />
+          <span class="save__ext" data-save-ext aria-hidden="true"></span>
+        </span>
+      </label>
+
+      <p class="save__preview" data-save-preview aria-live="polite"></p>
+
+      <label class="save__all" data-save-all-wrap hidden>
+        <input type="checkbox" data-save-all />
+        <span data-save-all-label></span>
+      </label>
+
+      <div class="save__actions">
+        <button type="button" class="btn btn--quiet" data-save-cancel>Cancel</button>
+        <button type="submit" class="btn btn--primary" data-save-confirm>Save</button>
+      </div>
+    </form>
+  </dialog>
+</save-dialog>
+
+<style is:global>
+  .save {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0;
+    max-width: min(28rem, calc(100vw - 2rem));
+    width: 100%;
+    color: var(--ink);
+    background: var(--paper, #fff);
+  }
+
+  .save::backdrop {
+    background: rgb(0 0 0 / 0.32);
+    backdrop-filter: blur(2px);
+  }
+
+  .save__form {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1.25rem;
+  }
+
+  .save__title {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .save__sub {
+    margin: 0;
+    font-size: 0.84rem;
+    color: var(--muted);
+  }
+
+  .save__field { display: block; }
+
+  .save__label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 0.3rem;
+  }
+
+  .save__input {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 0.5);
+    overflow: hidden;
+  }
+
+  .save__input:focus-within {
+    border-color: var(--accent);
+  }
+
+  .save__input input {
+    font: inherit;
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.6rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+  }
+
+  .save__input input:focus { outline: none; }
+
+  /* The extension is shown but not editable: the bytes are what they are. */
+  .save__ext {
+    display: grid;
+    place-items: center;
+    padding: 0 0.6rem;
+    font-size: 0.85rem;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--ink) 5%, transparent);
+    border-left: 1px solid var(--line);
+  }
+
+  .save__preview {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--muted);
+    min-height: 1.1em;
+    overflow-wrap: anywhere;
+  }
+
+  .save__all {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.84rem;
+    color: var(--muted);
+  }
+
+  .save__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.25rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .save[open] { animation: save-in 140ms ease-out; }
+    @keyframes save-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+  }
+</style>
+
+<script>
+  import { extensionOf, nameSeries, safeFilename, stemOf } from '../lib/filename';
+
+  export interface SaveRequest {
+    /** The name the tool produced, used to pre-fill and to keep the extension. */
+    name: string;
+    /** Every file in this result, so "apply to all" can be offered honestly. */
+    siblings: string[];
+    /** Which of the siblings is being saved, zero-based. */
+    index: number;
+  }
+
+  export interface SaveAnswer {
+    /** The chosen name for the file that was clicked. */
+    name: string;
+    /** Names for every sibling, when the box was ticked. Otherwise null. */
+    all: string[] | null;
+  }
+
+  class SaveDialogElement extends HTMLElement {
+    private dialog!: HTMLDialogElement;
+    private input!: HTMLInputElement;
+    private extEl!: HTMLElement;
+    private subEl!: HTMLElement;
+    private previewEl!: HTMLElement;
+    private allWrap!: HTMLElement;
+    private allBox!: HTMLInputElement;
+    private allLabel!: HTMLElement;
+
+    private settle: ((answer: SaveAnswer | null) => void) | null = null;
+    private request: SaveRequest | null = null;
+
+    connectedCallback(): void {
+      this.dialog = this.querySelector('[data-save-dialog]') as HTMLDialogElement;
+      this.input = this.querySelector('[data-save-name]') as HTMLInputElement;
+      this.extEl = this.querySelector('[data-save-ext]') as HTMLElement;
+      this.subEl = this.querySelector('[data-save-sub]') as HTMLElement;
+      this.previewEl = this.querySelector('[data-save-preview]') as HTMLElement;
+      this.allWrap = this.querySelector('[data-save-all-wrap]') as HTMLElement;
+      this.allBox = this.querySelector('[data-save-all]') as HTMLInputElement;
+      this.allLabel = this.querySelector('[data-save-all-label]') as HTMLElement;
+
+      this.input.addEventListener('input', () => this.showPreview());
+      this.allBox.addEventListener('change', () => this.showPreview());
+
+      this.querySelector('[data-save-cancel]')?.addEventListener('click', () => {
+        this.finish(null);
+        this.dialog.close();
+      });
+
+      (this.querySelector('[data-save-form]') as HTMLFormElement).addEventListener(
+        'submit',
+        () => this.accept()
+      );
+
+      // Escape, and clicking the backdrop, both mean "not now".
+      this.dialog.addEventListener('cancel', () => this.finish(null));
+      this.dialog.addEventListener('close', () => this.finish(null));
+      this.dialog.addEventListener('click', (event) => {
+        if (event.target === this.dialog) {
+          this.finish(null);
+          this.dialog.close();
+        }
+      });
+    }
+
+    /** Opens the dialog and resolves with the chosen name, or null if cancelled. */
+    ask(request: SaveRequest): Promise<SaveAnswer | null> {
+      this.request = request;
+
+      const extension = extensionOf(request.name);
+      this.input.value = stemOf(request.name);
+      this.extEl.textContent = extension ? `.${extension}` : '';
+      this.extEl.hidden = !extension;
+
+      const total = request.siblings.length;
+      this.subEl.textContent =
+        total > 1
+          ? `File ${request.index + 1} of ${total} from this result.`
+          : 'Nothing has left your device — this only names the download.';
+
+      this.allWrap.hidden = total <= 1;
+      this.allBox.checked = false;
+      this.allLabel.textContent = `Use this name for all ${total} files`;
+
+      this.showPreview();
+
+      return new Promise<SaveAnswer | null>((resolve) => {
+        this.settle = resolve;
+        this.dialog.showModal();
+        this.input.focus();
+        this.input.select();
+      });
+    }
+
+    /** Shows exactly what will be written, after cleaning, before committing. */
+    private showPreview(): void {
+      if (!this.request) return;
+
+      const typed = this.input.value;
+      const applyAll = this.allBox.checked && this.request.siblings.length > 1;
+
+      if (applyAll) {
+        const names = nameSeries(typed, this.request.siblings);
+        this.previewEl.textContent = `Saves as ${names.slice(0, 3).join(', ')}${names.length > 3 ? `, … (${names.length} files)` : ''}`;
+        return;
+      }
+
+      const final = safeFilename(typed, extensionOf(this.request.name), stemOf(this.request.name));
+      // Only worth showing when cleaning actually changed something.
+      this.previewEl.textContent =
+        final === `${typed}${this.extEl.textContent}` ? '' : `Saves as ${final}`;
+    }
+
+    private accept(): void {
+      if (!this.request) return;
+
+      const typed = this.input.value;
+      const extension = extensionOf(this.request.name);
+      const fallback = stemOf(this.request.name);
+
+      this.finish({
+        name: safeFilename(typed, extension, fallback),
+        all:
+          this.allBox.checked && this.request.siblings.length > 1
+            ? nameSeries(typed, this.request.siblings)
+            : null,
+      });
+    }
+
+    /** Resolves once, whichever way the dialog was dismissed. */
+    private finish(answer: SaveAnswer | null): void {
+      const settle = this.settle;
+      this.settle = null;
+      this.request = null;
+      settle?.(answer);
+    }
+  }
+
+  customElements.define('save-dialog', SaveDialogElement);
+</script>

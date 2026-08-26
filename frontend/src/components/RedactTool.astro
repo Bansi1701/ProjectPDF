@@ -1,4 +1,5 @@
 ---
+import SaveDialog from './SaveDialog.astro';
 import Lens from './Lens.astro';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -50,6 +51,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
   <p class="error" data-error hidden role="alert"></p>
 
+
+  <SaveDialog />
+
   <section class="explain">
     <h2>Why this one works differently</h2>
     <p>
@@ -86,6 +90,21 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     const sizes = q('[data-sizes]');
     const notes = q('[data-notes]');
     const downloads = q('[data-downloads]');
+
+    interface SaveDialogElement extends HTMLElement {
+      ask(request: { name: string; siblings: string[]; index: number }): Promise<{
+        name: string;
+        all: string[] | null;
+      } | null>;
+    }
+
+    const saveDialog = root.querySelector('save-dialog') as SaveDialogElement | null;
+
+    /** Naming is a convenience; never let its absence cost someone the file. */
+    async function saveAs(request: { name: string; siblings: string[]; index: number }) {
+      if (!saveDialog?.ask) return { name: request.name, all: null };
+      return saveDialog.ask(request);
+    }
     const receipt = q('[data-receipt]');
     const errorEl = q('[data-error]');
     const count = q('[data-count]');
@@ -281,8 +300,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       for (const url of urls) URL.revokeObjectURL(url);
       urls = [];
 
+      const produced = res.files.map((item) => item.name);
+
       downloads.replaceChildren(
-        ...res.files.map((item) => {
+        ...res.files.map((item, i) => {
           const url = URL.createObjectURL(new Blob([item.bytes as BlobPart], { type: 'application/pdf' }));
           urls.push(url);
           const a = document.createElement('a');
@@ -290,6 +311,22 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           a.href = url;
           a.download = item.name;
           a.textContent = 'Save the redacted file';
+
+          a.addEventListener('click', async (event) => {
+            if (a.dataset.confirmed === 'true') {
+              delete a.dataset.confirmed;
+              return;
+            }
+            event.preventDefault();
+
+            const answer = await saveAs({ name: a.download, siblings: produced, index: i });
+            if (!answer) return;
+
+            a.download = answer.all?.[i] ?? answer.name;
+            a.dataset.confirmed = 'true';
+            a.click();
+          });
+
           return a;
         })
       );

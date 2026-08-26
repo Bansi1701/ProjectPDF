@@ -1,5 +1,6 @@
 ---
 import PageGrid from './PageGrid.astro';
+import SaveDialog from './SaveDialog.astro';
 import Lens from './Lens.astro';
 import type { Operation } from '../lib/pdf/types';
 
@@ -450,6 +451,8 @@ const dropTitle = takesExcel
 
   <p class="error" data-error hidden role="alert"></p>
 
+  <SaveDialog />
+
   <aside class="privacy">
     <strong>Private by construction.</strong>
     <span>No upload starts when you choose a file. The work happens in this tab.</span>
@@ -518,6 +521,27 @@ const dropTitle = takesExcel
 
     /** Identifies the grid's open documents across messages, unlike a job id. */
     let gridSession = 0;
+
+    interface SaveDialogElement extends HTMLElement {
+      ask(request: { name: string; siblings: string[]; index: number }): Promise<{
+        name: string;
+        all: string[] | null;
+      } | null>;
+    }
+
+    const saveDialog = root.querySelector('save-dialog') as SaveDialogElement | null;
+
+    /**
+     * Asks what the file should be called before it is written.
+     *
+     * If the dialog is somehow not there, saving still works with the name the
+     * tool produced — naming is a convenience, and losing it should never cost
+     * someone the file they just waited for.
+     */
+    async function saveAs(request: { name: string; siblings: string[]; index: number }) {
+      if (!saveDialog?.ask) return { name: request.name, all: null };
+      return saveDialog.ask(request);
+    }
 
     // Nothing should outlive the tab: a session holds a parsed PDF.
     window.addEventListener('pagehide', () => {
@@ -994,6 +1018,12 @@ const dropTitle = takesExcel
 
       revoke();
       downloads.dataset.many = String(res.files.length > 6);
+
+      const produced = res.files.map((file) => file.name);
+      // Names chosen in the dialog, so a second click on the same result does
+      // not ask again for something already answered.
+      const chosen = new Map<number, string>();
+
       downloads.replaceChildren(
         ...res.files.map((file, i) => {
           const url = URL.createObjectURL(
@@ -1005,9 +1035,50 @@ const dropTitle = takesExcel
           a.href = url;
           a.download = file.name;
           a.textContent = res.files.length === 1 ? 'Save the file' : file.name;
+
+          a.addEventListener('click', async (event) => {
+            if (a.dataset.confirmed === 'true') {
+              // The second, synthetic click — let it through and reset.
+              delete a.dataset.confirmed;
+              return;
+            }
+
+            event.preventDefault();
+
+            const answer = await saveAs({
+              name: chosen.get(i) ?? file.name,
+              siblings: produced,
+              index: i,
+            });
+            if (!answer) return;
+
+            if (answer.all) {
+              answer.all.forEach((name, at) => chosen.set(at, name));
+              relabel(chosen);
+            } else {
+              chosen.set(i, answer.name);
+            }
+
+            a.download = answer.all ? (answer.all[i] ?? answer.name) : answer.name;
+            a.dataset.confirmed = 'true';
+            a.click();
+          });
+
           return a;
         })
       );
+
+      /** Keeps the visible list matching what each link will actually save. */
+      function relabel(names: Map<number, string>) {
+        if (res.files.length === 1) return;
+        [...downloads.children].forEach((node, at) => {
+          const link = node as HTMLAnchorElement;
+          const name = names.get(at);
+          if (!name) return;
+          link.download = name;
+          link.textContent = name;
+        });
+      }
 
       receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
       result.hidden = false;
