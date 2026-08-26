@@ -1,0 +1,45 @@
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- Editors ---
+.vscode/
+.idea/
+*.swp
+
+# --- Node / Astro ---
+node_modules/
+dist/
+.astro/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Docker ---
+# compose overrides are per-developer
+docker-compose.override.yml
+
+# --- Build / test artifacts ---
+/tmp/
+*.log
+
+# --- Project ---
+# Never commit test PDFs that came from a real user.
+/corpus/

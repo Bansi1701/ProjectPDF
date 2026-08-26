@@ -1,0 +1,9 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ComingSoon from '../components/ComingSoon.astro';
+import { SITE } from '../config/site';
+---
+
+<BaseLayout title={`${SITE.name} — Coming soon`} description={SITE.description}>
+  <ComingSoon brand={SITE.name} tools={SITE.tools} />
+</BaseLayout>

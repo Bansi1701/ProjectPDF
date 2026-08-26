@@ -1,0 +1,65 @@
+# Development stack. `docker compose up` and both services reload on save.
+#
+# The database is Neon (managed Postgres). Put its connection string in
+# backend/.env as DATABASE_URL — see backend/.env.example.
+#
+# To run a throwaway local Postgres instead of Neon (offline work, or to avoid
+# spending Neon compute hours):
+#
+#     docker compose --profile local-db up
+#
+# ...and set DATABASE_URL=postgresql://projectpdf:projectpdf@db:5432/projectpdf
+name: projectpdf
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      target: development
+    ports:
+      - "4321:4321"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/astro.config.mjs:/app/astro.config.mjs
+    environment:
+      PUBLIC_API_URL: http://localhost:8010
+
+  backend:
+    build:
+      context: ./backend
+      target: development
+    ports:
+      - "8010:8000"   # 8000 is taken on this machine
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/tests:/app/tests
+    env_file:
+      # Real secrets live here and are git-ignored. Copy .env.example first.
+      - path: ./backend/.env
+        required: false
+    environment:
+      ENVIRONMENT: development
+      DEBUG: "true"
+      CORS_ORIGINS: '["http://localhost:4321","http://127.0.0.1:4321"]'
+
+  # Optional. Only starts with `--profile local-db`.
+  db:
+    profiles: ["local-db"]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: projectpdf
+      POSTGRES_PASSWORD: projectpdf
+      POSTGRES_DB: projectpdf
+    ports:
+      - "5433:5432"   # 5432 is taken on this machine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U projectpdf -d projectpdf"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
