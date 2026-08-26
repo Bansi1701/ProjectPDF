@@ -51,7 +51,7 @@ export const TOOLS: Tool[] = [
   { slug: 'page-numbers', name: 'Page numbers', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Numbering that matches the page labels people cite.' },
   { slug: 'compare-pdf', name: 'Compare', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'What changed between two drafts, in words not pixels.' },
   { slug: 'ocr-pdf', name: 'OCR', category: 'Edit', runsWhere: 'local', status: 'planned', blurb: 'Make a scan searchable. Small jobs stay on your machine.' },
-  { slug: 'pdf-forms', name: 'Forms', category: 'Edit', runsWhere: 'local', status: 'planned', blurb: 'Fill a form, or build the fields yourself.' },
+  { slug: 'pdf-forms', name: 'Forms', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Fill a form, or build the fields yourself.' },
 
   // --- Secure ---
   { slug: 'protect-pdf', name: 'Protect', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'AES-256 password and permissions, set in your browser.' },

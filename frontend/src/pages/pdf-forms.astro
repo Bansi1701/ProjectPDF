@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+---
+
+<BaseLayout
+  title="Fill a PDF form — ProjectPDF"
+  description="Fill in a PDF's form fields and save it, without uploading the document."
+>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="forms"
+      title="Fill a PDF form"
+      description="Reads the document's fields, lets you answer them, and writes the answers back. Optionally flattens so they can no longer be changed."
+    />
+  </main>
+</BaseLayout>

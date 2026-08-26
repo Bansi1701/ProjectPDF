@@ -15,7 +15,8 @@ export type Operation =
   | 'pdf-to-images'
   | 'protect'
   | 'unlock'
-  | 'pdf-to-markdown';
+  | 'pdf-to-markdown'
+  | 'forms';
 
 /** Images → PDF: the shape each page takes. */
 export type PageSize = 'fit' | 'a4' | 'letter';
@@ -77,12 +78,24 @@ export interface OpFailure {
  * and pdf-lib is already in the worker bundle — so the DPI selector can be
  * limited without downloading the renderer first.
  */
+/** One fillable field, as the UI needs to render it. */
+export interface FormField {
+  name: string;
+  type: 'text' | 'checkbox' | 'dropdown' | 'radio' | 'unsupported';
+  value: string;
+  options?: string[];
+  readOnly?: boolean;
+  multiline?: boolean;
+}
+
 export interface ProbeSuccess {
   ok: true;
   probe: true;
   pages: number;
   /** Highest whole DPI at which no page exceeds the canvas budget. */
   maxDpi: number;
+  /** Forms only. */
+  fields?: FormField[];
 }
 
 export type OpResult = OpSuccess | OpFailure | ProbeSuccess;
@@ -112,6 +125,9 @@ export interface WorkerRequest {
   /** Page-number tool only. */
   startNumber?: number;
   prefix?: string;
+  /** Forms only: field name → value, and whether to bake them in. */
+  fieldValues?: Record<string, string>;
+  flatten?: boolean;
   /** Protect / unlock. */
   userPassword?: string;
   ownerPassword?: string;

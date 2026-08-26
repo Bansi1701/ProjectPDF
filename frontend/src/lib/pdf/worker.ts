@@ -9,6 +9,7 @@ import { compress } from './compress';
 import { imagesToPdf, pdfToImages, probePdf } from './images';
 import { addText, compare, pageNumbers, watermark } from './edit';
 import { deletePages, extract, merge, reorder, rotate, split } from './organise';
+import { fillForm, probeForm } from './forms';
 import { pdfToMarkdown } from './markdown';
 import { protect, unlock } from './security';
 import type { WorkerRequest, WorkerResponse, OpResult } from './types';
@@ -21,7 +22,11 @@ import type { WorkerRequest, WorkerResponse, OpResult } from './types';
    `images.ts` reaches for it with a dynamic import, and `worker.format: 'es'`
    in astro.config.mjs keeps that a separate chunk. */
 async function run(request: WorkerRequest): Promise<OpResult> {
-  if (request.probe) return probePdf(request.files);
+  // A probe inspects the document and renders nothing, so each tool that needs
+  // one answers for itself.
+  if (request.probe) {
+    return request.op === 'forms' ? probeForm(request.files) : probePdf(request.files);
+  }
 
   switch (request.op) {
     case 'compress':
@@ -66,6 +71,8 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return unlock(request.files, request.userPassword ?? '');
     case 'pdf-to-markdown':
       return pdfToMarkdown(request.files);
+    case 'forms':
+      return fillForm(request.files, request.fieldValues ?? {}, request.flatten ?? false);
     default:
       return { ok: false, error: `Unknown operation: ${String(request.op)}` };
   }

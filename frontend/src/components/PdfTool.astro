@@ -38,6 +38,7 @@ const ACTIONS: Record<Operation, string> = {
   protect: 'Protect',
   unlock: 'Unlock',
   'pdf-to-markdown': 'Convert to Markdown',
+  forms: 'Fill the form',
 };
 
 /** Modes whose ranges field means "pages to act on", not "groups". */
@@ -171,6 +172,26 @@ const dropTitle = takesImages
             <span>Prefix</span>
             <input data-prefix placeholder="Page " />
             <small>Optional. Numbers are drawn in the bottom-right corner.</small>
+          </label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'forms' && (
+        <Fragment>
+          <div class="fields" data-fields>
+            <p class="fields__empty">Reading the form…</p>
+          </div>
+          <label class="check">
+            <input type="checkbox" data-flatten />
+            <span>
+              Flatten when saving
+              <small>
+                Bakes the answers into the page. Nobody can change them afterwards — including
+                you, so keep the original.
+              </small>
+            </span>
           </label>
         </Fragment>
       )
@@ -345,6 +366,82 @@ const dropTitle = takesImages
     const perm = (name: string): boolean =>
       root.querySelector<HTMLInputElement>(`[data-perm="${name}"]`)?.checked ?? false;
 
+    /**
+     * Builds an input per field the document actually has. A form is different
+     * in every PDF, so this markup cannot be written ahead of time.
+     */
+    function renderFields(fields: import('../lib/pdf/types').FormField[]) {
+      const host = root.querySelector<HTMLElement>('[data-fields]');
+      if (!host) return;
+
+      if (fields.length === 0) {
+        host.innerHTML = '<p class="fields__empty">This PDF has no fillable fields.</p>';
+        runBtn.disabled = true;
+        return;
+      }
+
+      runBtn.disabled = false;
+      const frag = document.createDocumentFragment();
+
+      for (const field of fields) {
+        const row = document.createElement('label');
+        row.className = 'field';
+
+        const label = document.createElement('span');
+        label.textContent = field.name + (field.readOnly ? ' (read-only)' : '');
+        row.append(label);
+
+        let control: HTMLElement;
+
+        if (field.type === 'checkbox') {
+          const box = document.createElement('input');
+          box.type = 'checkbox';
+          box.checked = field.value === 'on';
+          control = box;
+        } else if ((field.type === 'dropdown' || field.type === 'radio') && field.options?.length) {
+          const select = document.createElement('select');
+          for (const option of ['', ...field.options]) {
+            const item = document.createElement('option');
+            item.value = option;
+            item.textContent = option || '—';
+            if (option === field.value) item.selected = true;
+            select.append(item);
+          }
+          control = select;
+        } else if (field.type === 'unsupported') {
+          const note = document.createElement('small');
+          note.textContent = 'Not a fillable field — left as it is.';
+          row.append(note);
+          frag.append(row);
+          continue;
+        } else {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = field.value;
+          control = input;
+        }
+
+        (control as HTMLInputElement).disabled = Boolean(field.readOnly);
+        control.setAttribute('data-field', field.name);
+        control.setAttribute('data-field-type', field.type);
+        row.append(control);
+        frag.append(row);
+      }
+
+      host.replaceChildren(frag);
+    }
+
+    function readFields(): Record<string, string> {
+      const out: Record<string, string> = {};
+      for (const el of root.querySelectorAll<HTMLInputElement>('[data-field]')) {
+        if (el.disabled) continue;
+        const name = el.getAttribute('data-field');
+        if (!name) continue;
+        out[name] = el.type === 'checkbox' ? (el.checked ? 'on' : '') : el.value;
+      }
+      return out;
+    }
+
     /** "3, 1, 2" → [2, 0, 1]. Empty means "leave the order alone". */
     function readOrder(): number[] {
       const raw = root.querySelector<HTMLInputElement>('[data-order]')?.value ?? '';
@@ -443,7 +540,7 @@ const dropTitle = takesImages
       status.textContent = '';
       revoke();
 
-      if (mode === 'pdf-to-images' && files[0]) void probe(files[0]);
+      if ((mode === 'pdf-to-images' || mode === 'forms') && files[0]) void probe(files[0]);
     }
 
     function onDone({ id, result: res }: WorkerResponse) {
@@ -451,7 +548,12 @@ const dropTitle = takesImages
       // file turns out to be unreadable, the real run will say so properly.
       if (id === probeId) {
         probeId = -1;
-        if (res.ok && 'probe' in res) limitDpi(res.maxDpi);
+        if (res.ok && 'probe' in res) {
+          if (mode === 'forms') renderFields(res.fields ?? []);
+          else limitDpi(res.maxDpi);
+        } else if (!res.ok && mode === 'forms') {
+          fail(res.error);
+        }
         return;
       }
 
@@ -584,6 +686,8 @@ const dropTitle = takesImages
         targetPage: Number(root.querySelector<HTMLInputElement>('[data-target-page]')?.value ?? 1),
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
         prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
+        fieldValues: readFields(),
+        flatten: root.querySelector<HTMLInputElement>('[data-flatten]')?.checked ?? false,
         userPassword: root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '',
         permissions: {
           printing: perm('printing'),
@@ -688,6 +792,55 @@ const dropTitle = takesImages
   .workspace__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
   .status { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); }
   .status:empty { display: none; }
+
+  .fields {
+    display: grid;
+    gap: 0.75rem;
+    max-height: 22rem;
+    overflow-y: auto;
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper-sunk);
+  }
+
+  .fields__empty {
+    margin: 0;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+
+  .fields :global(input[type='text']),
+  .fields :global(select) {
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-size: var(--step--1);
+    width: 100%;
+  }
+
+  .fields :global(.field) {
+    display: grid;
+    gap: 0.3rem;
+    font-size: var(--step--2);
+    color: var(--muted);
+  }
+
+  .check {
+    display: flex;
+    gap: 0.6rem;
+    align-items: start;
+    font-size: var(--step--1);
+  }
+
+  .check small {
+    display: block;
+    color: var(--muted);
+    font-size: var(--step--2);
+    margin-top: 0.15rem;
+  }
 
   .result {
     background: var(--paper-sunk); border: 1px solid var(--line);
