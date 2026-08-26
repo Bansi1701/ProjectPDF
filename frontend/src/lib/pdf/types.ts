@@ -20,7 +20,17 @@ export type Operation =
   | 'sign'
   | 'pdf-a'
   | 'repair'
-  | 'ocr';
+  | 'ocr'
+  | 'redact';
+
+/** A rectangle to remove, in fractions of the page so scale never matters. */
+export interface RedactionBox {
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 /** Images → PDF: the shape each page takes. */
 export type PageSize = 'fit' | 'a4' | 'letter';
@@ -129,6 +139,8 @@ export interface WorkerRequest {
   /** Page-number tool only. */
   startNumber?: number;
   prefix?: string;
+  /** Redact only. */
+  boxes?: RedactionBox[];
   /** OCR only: also produce a searchable PDF, not just text. */
   searchable?: boolean;
   /** Sign only: PNG of the drawn or typed mark, plus where it goes. */

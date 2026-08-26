@@ -56,7 +56,7 @@ export const TOOLS: Tool[] = [
   // --- Secure ---
   { slug: 'protect-pdf', name: 'Protect', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'AES-256 password and permissions, set in your browser.' },
   { slug: 'unlock-pdf', name: 'Unlock', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'Remove protection you are authorised to remove.' },
-  { slug: 'redact-pdf', name: 'Redact', category: 'Secure', runsWhere: 'local', status: 'planned', blurb: 'Deletes the content underneath, not just a black box over it.' },
+  { slug: 'redact-pdf', name: 'Redact', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'Deletes the content underneath, not just a black box over it.' },
   { slug: 'repair-pdf', name: 'Repair', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'Rebuild a file that will not open.' },
   { slug: 'sign-pdf', name: 'Sign', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'Draw, type or place a signature on the page.' },
   { slug: 'pdf-a', name: 'PDF/A', category: 'Secure', runsWhere: 'server', status: 'live', blurb: 'Archival conversion and validation.' },

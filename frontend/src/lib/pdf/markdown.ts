@@ -213,6 +213,9 @@ export async function pdfToMarkdown(files: InputFile[]): Promise<OpResult> {
   if (!file) return { ok: false, error: 'Choose a PDF to convert.' };
 
   const started = performance.now();
+  // Captured before pdf.js sees it: getDocument takes ownership of the buffer
+  // it is given and detaches it, so byteLength reads 0 afterwards.
+  const bytesIn = file.bytes.byteLength;
 
   const api = await loadPdfjs();
 
@@ -285,7 +288,7 @@ export async function pdfToMarkdown(files: InputFile[]): Promise<OpResult> {
   return {
     ok: true,
     files: [{ name: `${baseName(file.name)}.md`, bytes, type: 'text/markdown' }],
-    bytesIn: file.bytes.byteLength,
+    bytesIn,
     bytesOut: bytes.length,
     pages: doc.numPages,
     durationMs: performance.now() - started,

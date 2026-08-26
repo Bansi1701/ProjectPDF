@@ -44,6 +44,9 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
   if (!file) return { ok: false, error: 'Choose a PDF to read.' };
 
   const started = performance.now();
+  // Captured before pdf.js sees it: getDocument takes ownership of the buffer
+  // it is given and detaches it, so byteLength reads 0 afterwards.
+  const bytesIn = file.bytes.byteLength;
 
   // Absolute, same-origin. A root-relative path cannot be resolved by
   // importScripts inside a Worker — there is no document to resolve against.
@@ -187,7 +190,7 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
   return {
     ok: true,
     files: outputs,
-    bytesIn: file.bytes.byteLength,
+    bytesIn,
     bytesOut: outputs.reduce((sum, item) => sum + item.bytes.length, 0),
     pages: source.numPages,
     durationMs: performance.now() - started,

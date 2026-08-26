@@ -1,0 +1,412 @@
+---
+import Lens from './Lens.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<section class="tool wrap" data-redact>
+  <a class="back" href={`${base}/#tools`}>← All tools</a>
+
+  <header class="tool__head">
+    <p class="eyebrow"><span class="dot"></span>Removes the content, not just the view</p>
+    <h1>Redact a PDF</h1>
+    <p class="lede">
+      Drag a box over anything that has to go. The page is then rebuilt from pixels, so what
+      was underneath is not covered up — it stops existing.
+    </p>
+  </header>
+
+  <Lens variant="loupe" class="drop">
+    <label class="drop__zone" data-drop>
+      <input class="sr-only" data-input type="file" accept="application/pdf,.pdf" />
+      <span class="drop__title">Choose a PDF, or drop one here</span>
+      <span class="drop__meta">Stays on this device · no account</span>
+    </label>
+  </Lens>
+
+  <div class="stage" data-stage hidden>
+    <p class="stage__hint">
+      Drag across the page to mark an area. Click a mark to remove it.
+    </p>
+    <div class="pages" data-pages></div>
+
+    <div class="stage__actions">
+      <button class="btn btn--primary" data-run type="button" disabled>Redact and save</button>
+      <button class="btn btn--quiet" data-clear type="button">Start over</button>
+      <span class="stage__count" data-count></span>
+    </div>
+    <p class="status" data-status role="status" aria-live="polite"></p>
+  </div>
+
+  <section class="result" data-result hidden aria-live="polite">
+    <div class="result__headline">
+      <span class="result__pct" data-pct></span>
+      <span class="result__sizes" data-sizes></span>
+    </div>
+    <ul class="result__notes" data-notes></ul>
+    <div class="result__actions" data-downloads></div>
+    <p class="result__receipt" data-receipt></p>
+  </section>
+
+  <p class="error" data-error hidden role="alert"></p>
+
+  <section class="explain">
+    <h2>Why this one works differently</h2>
+    <p>
+      Most redaction tools draw a black rectangle on top of the page. The words underneath are
+      still in the file — selectable, copyable, and readable by anyone who opens it in a text
+      editor. People have lost cases that way.
+    </p>
+    <p>
+      This rebuilds every page from pixels instead. There is no text layer left to leak,
+      because there is no text layer at all. The cost is that the result is images: not
+      searchable, and a larger file. That is the price of the guarantee, and the result is
+      checked before you get it — if any text can still be extracted, you get an error rather
+      than a file.
+    </p>
+  </section>
+</section>
+
+<script>
+  import type { RedactionBox, WorkerResponse } from '../lib/pdf/types';
+
+  const root = document.querySelector<HTMLElement>('[data-redact]');
+
+  if (root) {
+    const q = <T extends HTMLElement>(s: string) => root.querySelector<T>(s)!;
+    const input = q<HTMLInputElement>('[data-input]');
+    const drop = q('[data-drop]');
+    const stage = q('[data-stage]');
+    const pagesHost = q('[data-pages]');
+    const runBtn = q<HTMLButtonElement>('[data-run]');
+    const clearBtn = q<HTMLButtonElement>('[data-clear]');
+    const status = q('[data-status]');
+    const result = q('[data-result]');
+    const pct = q('[data-pct]');
+    const sizes = q('[data-sizes]');
+    const notes = q('[data-notes]');
+    const downloads = q('[data-downloads]');
+    const receipt = q('[data-receipt]');
+    const errorEl = q('[data-error]');
+    const count = q('[data-count]');
+
+    let file: File | null = null;
+    let worker: Worker | null = null;
+    let jobId = 0;
+    let urls: string[] = [];
+    /** Fractions of the page, so they survive any rendering scale. */
+    let boxes: RedactionBox[] = [];
+
+    const size = (n: number) =>
+      n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : `${(n / 1024).toFixed(1)} KB`;
+
+    function ensureWorker(): Worker {
+      if (!worker) {
+        worker = new Worker(new URL('../lib/pdf/worker.ts', import.meta.url), { type: 'module' });
+        worker.onmessage = (e: MessageEvent<WorkerResponse>) => onDone(e.data);
+        worker.onerror = () => fail('The engine failed to start.');
+      }
+      return worker;
+    }
+
+    function fail(message: string) {
+      errorEl.textContent = message;
+      errorEl.hidden = false;
+      runBtn.disabled = boxes.length === 0;
+      status.textContent = '';
+    }
+
+    function refresh() {
+      count.textContent = boxes.length
+        ? `${boxes.length} area${boxes.length === 1 ? '' : 's'} marked`
+        : 'Nothing marked yet';
+      runBtn.disabled = boxes.length === 0;
+    }
+
+    /**
+     * Renders every page as a still image to draw on.
+     *
+     * pdf.js runs on the main thread here on purpose: this is a preview, the
+     * pages are small, and the alternative is shuttling bitmaps back out of a
+     * worker for no benefit. The redaction itself still runs in the worker.
+     */
+    async function showPages(chosen: File) {
+      file = chosen;
+      boxes = [];
+      errorEl.hidden = true;
+      result.hidden = true;
+      stage.hidden = false;
+      pagesHost.replaceChildren();
+      status.textContent = 'Opening…';
+
+      const api = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      const worker = await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+      (globalThis as Record<string, unknown>).pdfjsWorker = worker;
+
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const asset = (folder: string) => new URL(`${base}/pdfjs/${folder}/`, location.href).href;
+
+      const doc = await api.getDocument({
+        data: new Uint8Array(await chosen.arrayBuffer()),
+        cMapUrl: asset('cmaps'),
+        cMapPacked: true,
+        standardFontDataUrl: asset('standard_fonts'),
+        wasmUrl: asset('wasm'),
+        iccUrl: asset('iccs'),
+        isEvalSupported: false,
+      }).promise;
+
+      for (let n = 1; n <= doc.numPages; n += 1) {
+        const page = await doc.getPage(n);
+        const viewport = page.getViewport({ scale: 1.4 });
+
+        const wrap = document.createElement('div');
+        wrap.className = 'page';
+        wrap.dataset.page = String(n);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        const ctx = canvas.getContext('2d');
+        if (ctx) await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+
+        const marks = document.createElement('div');
+        marks.className = 'page__marks';
+
+        wrap.append(canvas, marks);
+        pagesHost.append(wrap);
+        attach(wrap, marks, n);
+        page.cleanup();
+      }
+
+      await doc.destroy();
+      status.textContent = '';
+      refresh();
+    }
+
+    /** Drag to mark, click a mark to remove it. */
+    function attach(wrap: HTMLElement, marks: HTMLElement, pageNumber: number) {
+      let start: { x: number; y: number } | null = null;
+      let preview: HTMLElement | null = null;
+
+      const at = (event: PointerEvent) => {
+        const box = wrap.getBoundingClientRect();
+        return {
+          x: Math.min(1, Math.max(0, (event.clientX - box.left) / box.width)),
+          y: Math.min(1, Math.max(0, (event.clientY - box.top) / box.height)),
+        };
+      };
+
+      wrap.addEventListener('pointerdown', (event) => {
+        if ((event.target as HTMLElement).classList.contains('mark')) return;
+        start = at(event);
+        wrap.setPointerCapture(event.pointerId);
+        preview = document.createElement('div');
+        preview.className = 'mark mark--drawing';
+        marks.append(preview);
+      });
+
+      wrap.addEventListener('pointermove', (event) => {
+        if (!start || !preview) return;
+        const now = at(event);
+        Object.assign(preview.style, {
+          left: `${Math.min(start.x, now.x) * 100}%`,
+          top: `${Math.min(start.y, now.y) * 100}%`,
+          width: `${Math.abs(now.x - start.x) * 100}%`,
+          height: `${Math.abs(now.y - start.y) * 100}%`,
+        });
+      });
+
+      wrap.addEventListener('pointerup', (event) => {
+        if (!start || !preview) return;
+        const now = at(event);
+        const box: RedactionBox = {
+          page: pageNumber,
+          x: Math.min(start.x, now.x),
+          y: Math.min(start.y, now.y),
+          width: Math.abs(now.x - start.x),
+          height: Math.abs(now.y - start.y),
+        };
+
+        preview.remove();
+        preview = null;
+        start = null;
+
+        // Ignore a stray click that marked nothing.
+        if (box.width < 0.004 || box.height < 0.004) return;
+
+        boxes.push(box);
+
+        const mark = document.createElement('div');
+        mark.className = 'mark';
+        Object.assign(mark.style, {
+          left: `${box.x * 100}%`,
+          top: `${box.y * 100}%`,
+          width: `${box.width * 100}%`,
+          height: `${box.height * 100}%`,
+        });
+        mark.title = 'Click to remove';
+        mark.addEventListener('click', () => {
+          boxes = boxes.filter((item) => item !== box);
+          mark.remove();
+          refresh();
+        });
+        marks.append(mark);
+        refresh();
+      });
+    }
+
+    function onDone({ id, result: res }: WorkerResponse) {
+      if (id !== jobId) return;
+      runBtn.disabled = false;
+      status.textContent = '';
+
+      if (!res.ok) {
+        fail(res.error);
+        return;
+      }
+      if ('probe' in res) return;
+
+      pct.textContent = res.summary;
+      sizes.textContent = `${size(res.bytesIn)} → ${size(res.bytesOut)}`;
+
+      notes.replaceChildren(
+        ...(res.notes ?? []).map((note) => {
+          const li = document.createElement('li');
+          li.textContent = note;
+          return li;
+        })
+      );
+
+      for (const url of urls) URL.revokeObjectURL(url);
+      urls = [];
+
+      downloads.replaceChildren(
+        ...res.files.map((item) => {
+          const url = URL.createObjectURL(new Blob([item.bytes as BlobPart], { type: 'application/pdf' }));
+          urls.push(url);
+          const a = document.createElement('a');
+          a.className = 'btn btn--primary';
+          a.href = url;
+          a.download = item.name;
+          a.textContent = 'Save the redacted file';
+          return a;
+        })
+      );
+
+      receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
+      result.hidden = false;
+    }
+
+    input.addEventListener('change', () => {
+      const chosen = input.files?.[0];
+      if (chosen) void showPages(chosen);
+    });
+
+    for (const event of ['dragenter', 'dragover'] as const) {
+      drop.addEventListener(event, (e) => {
+        e.preventDefault();
+        drop.dataset.over = 'true';
+      });
+    }
+    for (const event of ['dragleave', 'drop'] as const) {
+      drop.addEventListener(event, (e) => {
+        e.preventDefault();
+        delete drop.dataset.over;
+      });
+    }
+    drop.addEventListener('drop', (e) => {
+      const chosen = e.dataTransfer?.files?.[0];
+      if (chosen) void showPages(chosen);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if (file) void showPages(file);
+    });
+
+    runBtn.addEventListener('click', async () => {
+      if (!file || boxes.length === 0) return;
+      runBtn.disabled = true;
+      errorEl.hidden = true;
+      result.hidden = true;
+      status.textContent = 'Rebuilding the pages on this device…';
+
+      const bytes = await file.arrayBuffer();
+      jobId += 1;
+      ensureWorker().postMessage(
+        { id: jobId, op: 'redact', files: [{ name: file.name, bytes }], boxes },
+        [bytes]
+      );
+    });
+  }
+</script>
+
+<style>
+  .tool {
+    padding-block: clamp(2rem, 1.5rem + 2vw, 3rem) clamp(3.5rem, 3rem + 4vw, 6rem);
+    display: grid;
+    gap: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+    max-width: 52rem;
+  }
+
+  .back { font-size: var(--step--1); color: var(--muted); text-decoration: none; justify-self: start; }
+  .back:hover { color: var(--ink); }
+  .tool__head h1 { font-size: var(--step-4); margin-block: 1rem 1.25rem; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; }
+  .dot { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--seal); }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
+
+  .tool :global(.drop) { --lens-radius: 20px; }
+
+  .drop__zone {
+    display: grid; justify-items: center; gap: 0.4rem;
+    padding: clamp(1.5rem, 1rem + 2vw, 2.25rem) 1.5rem; text-align: center;
+    cursor: pointer; border-radius: inherit; border: 1.5px dashed var(--line-strong); margin: 0.5rem;
+  }
+  .drop__zone:hover, .drop__zone[data-over] { border-color: var(--accent); }
+  .drop__title { font-size: var(--step-1); font-weight: 500; }
+  .drop__meta { font-size: var(--step--2); color: var(--muted); }
+
+  .stage { display: grid; gap: 1rem; }
+  .stage__hint { margin: 0; font-size: var(--step--1); color: var(--muted); }
+
+  .pages { display: grid; gap: 1rem; max-height: 34rem; overflow-y: auto; padding: 0.75rem; background: var(--paper-sunk); border: 1px solid var(--line); border-radius: var(--radius); }
+
+  .page { position: relative; line-height: 0; touch-action: none; cursor: crosshair; box-shadow: var(--shadow-paper); }
+  .page canvas { width: 100%; height: auto; display: block; }
+  .page__marks { position: absolute; inset: 0; }
+
+  .mark {
+    position: absolute; background: #000;
+    outline: 1.5px solid var(--seal); outline-offset: 1px; cursor: pointer;
+  }
+  .mark--drawing { background: rgb(0 0 0 / 0.55); pointer-events: none; }
+
+  .stage__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+  .stage__count { font-size: var(--step--1); color: var(--muted); }
+  .status { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); }
+  .status:empty { display: none; }
+
+  .result {
+    background: var(--paper-sunk); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: clamp(1.25rem, 1rem + 1vw, 1.75rem); display: grid; gap: 1rem;
+  }
+  .result__headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem; }
+  .result__pct { font-size: var(--step-2); font-weight: 600; letter-spacing: -0.03em; color: var(--ok); }
+  .result__sizes { font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-2); }
+  .result__notes { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.35rem; font-size: var(--step--1); color: var(--ink-2); }
+  .result__actions { display: flex; gap: 0.6rem; }
+  .result__receipt { font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted); padding-top: 0.75rem; border-top: 1px solid var(--line); }
+
+  .error {
+    margin: 0; padding: 0.9rem 1.1rem; border-radius: var(--radius);
+    border: 1px solid var(--seal); color: var(--seal); font-size: var(--step--1);
+  }
+
+  .explain h2 { font-size: var(--step-2); margin-bottom: 1rem; }
+  .explain p { color: var(--ink-2); font-size: var(--step--1); margin-bottom: 0.9rem; max-width: var(--measure); }
+</style>
