@@ -1,0 +1,214 @@
+---
+/**
+ * The glass. Three stacked surfaces make it read as a thick physical lens
+ * rather than a blurred rectangle:
+ *
+ *   .lens          body tint + backdrop blur
+ *   ::before       a 14px perimeter band at a DIFFERENT blur and saturation,
+ *                  so the edge bends what is underneath
+ *   ::after        a 1.25px conic rim — white where light hits, cool and warm
+ *                  at the shoulders, dark at the shaded edge
+ *
+ * Used sparingly on purpose: at most two lens surfaces on screen at once.
+ */
+interface Props {
+  variant?: 'rail' | 'hero';
+  as?: 'div' | 'header' | 'figure' | 'section';
+  class?: string;
+}
+
+const { variant = 'hero', as: Tag = 'div', class: className = '' } = Astro.props;
+---
+
+<Tag class:list={['lens', className]} data-lens={variant}>
+  <slot />
+</Tag>
+
+<style>
+  .lens {
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--lens-radius);
+    color: var(--ink);
+    background-image: var(--lens-sheen), var(--lens-fill);
+    box-shadow: var(--lens-shadow);
+    -webkit-backdrop-filter: blur(var(--lens-blur)) saturate(var(--lens-sat))
+      brightness(var(--lens-bright));
+    backdrop-filter: blur(var(--lens-blur)) saturate(var(--lens-sat)) brightness(var(--lens-bright));
+    /* keeps the blur from being recomputed against the whole page on scroll */
+    contain: paint;
+  }
+
+  .lens > :global(*) {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* edge refraction */
+  .lens::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    padding: 14px;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(calc(var(--lens-blur) * 0.45)) saturate(2.1) contrast(1.06);
+    backdrop-filter: blur(calc(var(--lens-blur) * 0.45)) saturate(2.1) contrast(1.06);
+    -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    -webkit-mask-clip: content-box, border-box;
+    -webkit-mask-composite: xor;
+    mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    mask-clip: content-box, border-box;
+    mask-composite: exclude;
+  }
+
+  /* specular rim — the detail that separates this from 2015 frosted glass */
+  .lens::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    border-radius: inherit;
+    padding: 1.25px;
+    pointer-events: none;
+    background: conic-gradient(
+      from var(--lens-rim-angle),
+      var(--lens-rim-lo) 0deg,
+      var(--lens-rim-cool) 42deg,
+      var(--lens-rim-hi) 96deg,
+      var(--lens-rim-warm) 158deg,
+      var(--lens-rim-lo) 214deg,
+      var(--lens-rim-hi) 292deg,
+      var(--lens-rim-lo) 360deg
+    );
+    -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    -webkit-mask-clip: content-box, border-box;
+    -webkit-mask-composite: xor;
+    mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    mask-clip: content-box, border-box;
+    mask-composite: exclude;
+  }
+
+  .lens[data-lens='rail'] {
+    --lens-radius: 999px;
+    --lens-blur: 14px;
+  }
+
+  .lens[data-lens='rail']::before {
+    display: none;
+  }
+
+  .lens[data-lens='hero'] {
+    --lens-radius: 24px;
+  }
+
+  .lens[data-lens='hero']::before {
+    padding: 18px;
+  }
+
+  /* one slow specular drift, desktop only */
+  @media (prefers-reduced-motion: no-preference) {
+    @media (min-width: 48em) {
+      .lens[data-lens='hero']::after {
+        animation: lens-drift 18s linear infinite;
+      }
+    }
+  }
+
+  @keyframes lens-drift {
+    from {
+      --lens-rim-angle: 208deg;
+    }
+    to {
+      --lens-rim-angle: 568deg;
+    }
+  }
+
+  .lens:hover,
+  .lens:focus-within {
+    --lens-sheen-x: 34%;
+    transition: --lens-sheen-x 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  @media (max-width: 40em) {
+    .lens {
+      --lens-blur: 12px;
+    }
+    .lens::before {
+      padding: 10px;
+    }
+  }
+
+  /* ---- degraded paths: the page stays legible in every one ------------- */
+
+  @supports not ((backdrop-filter: blur(2px)) or (-webkit-backdrop-filter: blur(2px))) {
+    .lens {
+      background-image: var(--lens-sheen);
+      background-color: color-mix(in oklab, var(--lens-solid) 94%, transparent);
+    }
+    .lens::before {
+      display: none;
+    }
+  }
+
+  @supports not ((mask-composite: exclude) or (-webkit-mask-composite: xor)) {
+    .lens::before,
+    .lens::after {
+      display: none;
+    }
+    .lens {
+      outline: 1px solid var(--line);
+      outline-offset: -1px;
+    }
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    .lens {
+      background-image: none;
+      background-color: var(--lens-solid);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      box-shadow:
+        0 1px 2px -1px rgb(58 48 32 / 0.12),
+        0 20px 40px -24px rgb(58 48 32 / 0.24);
+    }
+    .lens::before {
+      display: none;
+    }
+    .lens::after {
+      background: var(--line-strong);
+      animation: none;
+    }
+  }
+
+  @media (prefers-contrast: more) {
+    .lens {
+      background-image: none;
+      background-color: var(--lens-solid);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      outline: 1.5px solid var(--ink);
+      outline-offset: -1.5px;
+    }
+    .lens::before,
+    .lens::after {
+      display: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .lens {
+      background: Canvas;
+      background-image: none;
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+      border: 1px solid CanvasText;
+      box-shadow: none;
+    }
+    .lens::before,
+    .lens::after {
+      display: none;
+    }
+  }
+</style>

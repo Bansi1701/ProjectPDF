@@ -1,0 +1,95 @@
+---
+import Lens from './Lens.astro';
+import Logo from './Logo.astro';
+import { CATEGORIES, SITE } from '../config/site';
+---
+
+<div class="masthead-slot">
+  <Lens variant="rail" as="header" class="rail">
+    <a class="brand" href="/">
+      <Logo size="1.375rem" />
+      <span>{SITE.name}</span>
+    </a>
+
+    <nav class="nav" aria-label="Tool categories">
+      {CATEGORIES.map((category) => <a href={`#${category.toLowerCase()}`}>{category}</a>)}
+    </nav>
+
+    <a class="rail-cta" href="#tools">Browse tools</a>
+  </Lens>
+</div>
+
+<style>
+  .masthead-slot {
+    position: sticky;
+    top: 0.75rem;
+    z-index: 20;
+    width: min(100% - (var(--gutter) * 2), var(--content));
+    margin-inline: auto;
+    padding-top: 0.75rem;
+  }
+
+  /* The element is rendered by <Lens>, so the parent's scoped selector never
+     lands on it. Constrain :global() under .masthead-slot instead. */
+  .masthead-slot :global(.rail) {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0.5rem 0.5rem 1.125rem;
+    min-height: 3.5rem;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-right: auto;
+  }
+
+  .nav {
+    display: none;
+    gap: 1.5rem;
+  }
+
+  .nav a {
+    color: var(--ink-2);
+    text-decoration: none;
+    font-size: var(--step--1);
+    font-weight: 500;
+  }
+
+  .nav a:hover {
+    color: var(--ink);
+  }
+
+  .rail-cta {
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    color: var(--ink);
+    text-decoration: none;
+    font-size: var(--step--1);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .rail-cta:hover {
+    color: var(--ink);
+    border-color: var(--ink-2);
+  }
+
+  @media (min-width: 48em) {
+    .nav {
+      display: flex;
+      margin-inline: auto;
+    }
+
+    .brand {
+      margin-right: 0;
+    }
+  }
+</style>

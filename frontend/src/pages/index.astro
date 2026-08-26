@@ -1,9 +1,668 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ComingSoon from '../components/ComingSoon.astro';
-import { SITE } from '../config/site';
+import Masthead from '../components/Masthead.astro';
+import Lens from '../components/Lens.astro';
+import { CATEGORIES, SERVER_ONLY_REASONS, SITE, toolsByCategory } from '../config/site';
+
+const steps = [
+  { n: '1', title: 'You pick a file', body: 'The browser hands the tool a copy in memory. No request is made.' },
+  { n: '2', title: 'Your CPU does the work', body: 'A Web Worker runs the operation off the main thread, so the page stays responsive.' },
+  { n: '3', title: 'You save the result', body: 'Close the tab and every trace of it is gone. There was never a second copy.' },
+];
+
+const promises = [
+  { figure: '0', label: 'bytes uploaded' },
+  { figure: '0', label: 'files stored' },
+  { figure: '0', label: 'accounts required' },
+  { figure: '0', label: 'reasons to trust us' },
+];
 ---
 
-<BaseLayout title={`${SITE.name} — Coming soon`} description={SITE.description}>
-  <ComingSoon brand={SITE.name} tools={SITE.tools} />
+<BaseLayout title={`${SITE.name} — ${SITE.tagline}`} description={SITE.description}>
+  <Masthead />
+
+  <main id="main">
+    <!-- ── Hero: the desk ─────────────────────────────────────────────── -->
+    <section class="hero wrap">
+      <div class="hero__copy">
+        <p class="eyebrow"><span class="dot"></span>In development — first tools ship soon</p>
+
+        <h1>Your file never<br />leaves this page.</h1>
+
+        <p class="lede">
+          Merging, splitting, compressing and signing a PDF are things a browser can do by
+          itself. So we do them there. Nothing is uploaded, which means there is nothing
+          for us to store, leak, or promise to delete later.
+        </p>
+
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="#tools">See what's coming</a>
+          <a class="btn btn--quiet" href="#how">How it works</a>
+        </div>
+
+        <p class="hero__meta">Free · No account · Works offline once loaded</p>
+      </div>
+
+      <!-- The metaphor: a sheet of paper with a glass lens laid across it -->
+      <figure class="hero__desk" aria-hidden="true">
+        <div class="sheet page">
+          <div class="page__rule page__rule--title"></div>
+          <div class="page__rule" style="width: 92%"></div>
+          <div class="page__rule" style="width: 86%"></div>
+          <div class="page__rule" style="width: 94%"></div>
+          <div class="page__rule" style="width: 61%"></div>
+          <div class="page__gap"></div>
+          <div class="page__rule" style="width: 88%"></div>
+          <div class="page__rule" style="width: 95%"></div>
+          <div class="page__rule" style="width: 72%"></div>
+        </div>
+
+        <Lens variant="hero" class="loupe">
+          <p class="loupe__label">Network activity</p>
+          <p class="loupe__figure">0 <span>bytes</span></p>
+          <p class="loupe__note">Nothing sent. Nothing received.</p>
+        </Lens>
+      </figure>
+    </section>
+
+    <!-- ── The receipt ────────────────────────────────────────────────── -->
+    <section class="receipt">
+      <div class="wrap">
+        <ul class="receipt__row">
+          {
+            promises.map((item) => (
+              <li>
+                <span class="receipt__figure">{item.figure}</span>
+                <span class="receipt__label">{item.label}</span>
+              </li>
+            ))
+          }
+        </ul>
+        <p class="receipt__note">
+          Not a badge we award ourselves. When a tool ships, open your browser's Network
+          tab and use it — you will watch nothing happen.
+        </p>
+      </div>
+    </section>
+
+    <!-- ── Tools ──────────────────────────────────────────────────────── -->
+    <section class="tools wrap reveal" id="tools">
+      <header class="section-head">
+        <h2>The tools</h2>
+        <p class="section-head__deck">
+          Every one marked <em>in your browser</em> runs on your machine. The handful that
+          cannot are labelled, here and everywhere else on the site.
+        </p>
+      </header>
+
+      {
+        CATEGORIES.map((category) => (
+          <div class="cluster" id={category.toLowerCase()}>
+            <h3 class="cluster__name">{category}</h3>
+            <ul class="grid">
+              {toolsByCategory(category).map((tool) => (
+                <li class="sheet card">
+                  <h4 class="card__name">{tool.name}</h4>
+                  <p class="card__blurb">{tool.blurb}</p>
+                  <p class:list={['card__where', tool.runsWhere === 'server' && 'is-server']}>
+                    {tool.runsWhere === 'local' ? 'in your browser' : 'needs our server'}
+                    {tool.status === 'building' && <span class="card__soon">· building now</span>}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </section>
+
+    <!-- ── How it works ───────────────────────────────────────────────── -->
+    <section class="how reveal" id="how">
+      <div class="wrap">
+        <header class="section-head">
+          <h2>How it works</h2>
+          <p class="section-head__deck">
+            The mechanism is the trust. If you can follow these three steps, you do not have
+            to take our word for anything.
+          </p>
+        </header>
+
+        <ol class="steps">
+          {
+            steps.map((step) => (
+              <li class="sheet step">
+                <span class="step__n">{step.n}</span>
+                <h3 class="step__title">{step.title}</h3>
+                <p class="step__body">{step.body}</p>
+              </li>
+            ))
+          }
+        </ol>
+
+        <p class="how__never">
+          <span class="how__strike">Your file → our server → back to you</span>
+          <span class="how__seal">never happens</span>
+        </p>
+      </div>
+    </section>
+
+    <!-- ── Honest limits ──────────────────────────────────────────────── -->
+    <section class="limits wrap reveal">
+      <div class="limits__intro">
+        <h2>What we can't do in your browser</h2>
+        <p class="lede">
+          Six things genuinely need a server. We would rather name them than quietly route
+          your file somewhere and hope you don't check.
+        </p>
+        <p class="limits__closing">
+          These are labelled wherever they appear. The file is deleted the moment the job
+          finishes — and it is the only time a file of yours leaves your machine at all.
+        </p>
+      </div>
+
+      <dl class="limits__list">
+        {
+          SERVER_ONLY_REASONS.map((item) => (
+            <div class="limits__item">
+              <dt>{item.what}</dt>
+              <dd>{item.why}</dd>
+            </div>
+          ))
+        }
+      </dl>
+    </section>
+
+    <!-- ── Close ──────────────────────────────────────────────────────── -->
+    <section class="close reveal">
+      <div class="wrap">
+        <h2 class="close__line">Pick a file. Watch the network tab.<br />Nothing happens.</h2>
+        <p class="close__note">
+          That is the entire product. The first tools — merge, split and rotate — are being
+          built now.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <div class="footer__cols">
+        {
+          CATEGORIES.map((category) => (
+            <div>
+              <h4>{category}</h4>
+              <ul>
+                {toolsByCategory(category).map((tool) => (
+                  <li>{tool.name}</li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </div>
+
+      <div class="footer__base">
+        <span class="footer__brand">{SITE.name}</span>
+        <span class="footer__colophon">
+          Built so that we couldn't read your documents even if we wanted to.
+        </span>
+      </div>
+    </div>
+  </footer>
 </BaseLayout>
+
+<style>
+  /* ── Hero ─────────────────────────────────────────────────────────── */
+  .hero {
+    display: grid;
+    gap: clamp(3rem, 2rem + 5vw, 5rem);
+    padding-block: clamp(3.5rem, 2.5rem + 6vw, 7rem) clamp(4rem, 3rem + 5vw, 7rem);
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .dot {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: var(--ok);
+  }
+
+  h1 {
+    font-size: var(--step-5);
+    margin-block: 1.25rem 1.5rem;
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+
+  .hero__meta {
+    margin-top: 1.25rem;
+    font-size: var(--step--2);
+    color: var(--muted);
+  }
+
+  /* the desk: a sheet with a lens lying across its lower edge */
+  .hero__desk {
+    position: relative;
+    isolation: isolate;
+    margin: 0;
+    padding-bottom: 3rem;
+  }
+
+  /* Light falling across the desk. Without something varied behind it, the
+     lens has nothing to refract and reads as a flat card. */
+  .hero__desk::before {
+    content: '';
+    position: absolute;
+    inset: -14% -10% -8%;
+    z-index: -1;
+    background:
+      radial-gradient(58% 52% at 74% 14%, var(--desk-warm), transparent 68%),
+      radial-gradient(52% 48% at 16% 84%, var(--desk-cool), transparent 70%),
+      radial-gradient(44% 40% at 92% 76%, var(--desk-blush), transparent 72%);
+    filter: blur(10px);
+    pointer-events: none;
+  }
+
+  .page {
+    padding: clamp(1.5rem, 1rem + 2vw, 2.25rem);
+    display: grid;
+    gap: 0.75rem;
+    transform: rotate(-1.1deg);
+  }
+
+  .page__rule {
+    height: 0.5rem;
+    border-radius: 2px;
+    background: var(--line);
+    width: 100%;
+  }
+
+  .page__rule--title {
+    height: 0.875rem;
+    width: 54%;
+    background: var(--line-strong);
+    margin-bottom: 0.5rem;
+  }
+
+  .page__gap {
+    height: 0.75rem;
+  }
+
+  /* Rendered by <Lens>, so it needs :global() constrained to this section. */
+  .hero__desk :global(.loupe) {
+    position: absolute;
+    right: clamp(-1.5rem, -3vw, 0rem);
+    bottom: 0.5rem;
+    width: min(16rem, 70%);
+    padding: 1.125rem 1.25rem;
+  }
+
+  .loupe__label {
+    font-size: var(--step--2);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .loupe__figure {
+    font-family: var(--font-mono);
+    font-size: var(--step-3);
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.03em;
+    margin-block: 0.25rem;
+  }
+
+  .loupe__figure span {
+    font-size: var(--step-1);
+    color: var(--muted);
+  }
+
+  .loupe__note {
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+
+  @media (min-width: 62em) {
+    .hero {
+      grid-template-columns: 1.05fr 0.95fr;
+      align-items: center;
+    }
+  }
+
+  /* ── Receipt ──────────────────────────────────────────────────────── */
+  .receipt {
+    background: var(--paper-sunk);
+    border-block: 1px solid var(--line);
+    padding-block: clamp(2.5rem, 2rem + 2vw, 3.5rem);
+  }
+
+  .receipt__row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+
+  .receipt__row li {
+    background: var(--paper-sunk);
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .receipt__figure {
+    font-family: var(--font-mono);
+    font-size: var(--step-3);
+    color: var(--ok);
+    line-height: 1;
+  }
+
+  .receipt__label {
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+
+  .receipt__note {
+    margin-top: 1.5rem;
+    max-width: var(--measure);
+    color: var(--ink-2);
+  }
+
+  @media (min-width: 48em) {
+    .receipt__row {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /* ── Sections ─────────────────────────────────────────────────────── */
+  .section-head {
+    margin-bottom: clamp(2rem, 1.5rem + 2vw, 3rem);
+  }
+
+  .section-head h2 {
+    font-size: var(--step-3);
+  }
+
+  .section-head__deck {
+    margin-top: 0.875rem;
+    max-width: var(--measure);
+    color: var(--ink-2);
+  }
+
+  .section-head__deck em {
+    font-style: normal;
+    color: var(--ok);
+  }
+
+  .tools,
+  .limits {
+    padding-block: clamp(3.5rem, 2.5rem + 4vw, 6rem);
+  }
+
+  .how,
+  .close {
+    background: var(--paper-sunk);
+    border-block: 1px solid var(--line);
+    padding-block: clamp(3.5rem, 2.5rem + 4vw, 6rem);
+  }
+
+  /* ── Tool grid ────────────────────────────────────────────────────── */
+  .cluster {
+    margin-bottom: 2.5rem;
+    scroll-margin-top: 6rem;
+  }
+
+  .cluster__name {
+    font-size: var(--step--2);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1.25rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
+    gap: 0.875rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .card {
+    padding: 1.125rem 1.25rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    transition:
+      box-shadow 180ms ease-out,
+      transform 180ms ease-out;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 2px 3px -1px rgb(58 48 32 / 0.12),
+      0 12px 22px -12px rgb(58 48 32 / 0.26),
+      0 28px 48px -30px rgb(58 48 32 / 0.3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card:hover {
+      transform: none;
+    }
+  }
+
+  .card__name {
+    margin: 0;
+    font-size: var(--step-1);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .card__blurb {
+    font-size: var(--step--1);
+    color: var(--ink-2);
+    flex: 1;
+  }
+
+  .card__where {
+    font-size: var(--step--2);
+    color: var(--ok);
+    letter-spacing: 0.04em;
+    margin-top: 0.375rem;
+  }
+
+  .card__where.is-server {
+    color: var(--muted);
+  }
+
+  .card__soon {
+    color: var(--muted);
+  }
+
+  /* ── Steps ────────────────────────────────────────────────────────── */
+  .steps {
+    display: grid;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  }
+
+  .step {
+    padding: 1.5rem;
+  }
+
+  .step__n {
+    font-family: var(--font-mono);
+    font-size: var(--step--1);
+    color: var(--accent);
+  }
+
+  .step__title {
+    font-size: var(--step-1);
+    margin-block: 0.5rem 0.5rem;
+  }
+
+  .step__body {
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+
+  .how__never {
+    margin-top: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.75rem;
+    font-size: var(--step--1);
+  }
+
+  .how__strike {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--seal);
+    text-decoration-thickness: 1.5px;
+    font-family: var(--font-mono);
+  }
+
+  .how__seal {
+    color: var(--seal);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-size: var(--step--2);
+    font-weight: 600;
+  }
+
+  /* ── Limits ───────────────────────────────────────────────────────── */
+  .limits {
+    display: grid;
+    gap: clamp(2rem, 1.5rem + 3vw, 4rem);
+  }
+
+  .limits__intro h2 {
+    font-size: var(--step-3);
+    margin-bottom: 0.875rem;
+  }
+
+  .limits__closing {
+    margin-top: 1.25rem;
+    font-size: var(--step--1);
+    color: var(--muted);
+    max-width: 46ch;
+  }
+
+  .limits__list {
+    margin: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .limits__item {
+    padding-block: 1rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .limits__item dt {
+    font-weight: 600;
+    font-size: var(--step-0);
+  }
+
+  .limits__item dd {
+    margin: 0.25rem 0 0;
+    font-size: var(--step--1);
+    color: var(--ink-2);
+    max-width: 54ch;
+  }
+
+  @media (min-width: 62em) {
+    .limits {
+      grid-template-columns: 0.85fr 1.15fr;
+    }
+  }
+
+  /* ── Close ────────────────────────────────────────────────────────── */
+  .close__line {
+    font-size: var(--step-4);
+  }
+
+  .close__note {
+    margin-top: 1.25rem;
+    color: var(--ink-2);
+    max-width: var(--measure);
+  }
+
+  /* ── Footer ───────────────────────────────────────────────────────── */
+  .footer {
+    padding-block: clamp(3rem, 2rem + 3vw, 4.5rem) 2rem;
+  }
+
+  .footer__cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 2rem;
+  }
+
+  .footer__cols h4 {
+    font-size: var(--step--2);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    margin: 0 0 0.875rem;
+  }
+
+  .footer__cols ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .footer__cols li {
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+
+  .footer__base {
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  .footer__brand {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .footer__colophon {
+    font-size: var(--step--2);
+    color: var(--muted);
+  }
+</style>

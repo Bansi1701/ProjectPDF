@@ -1,13 +1,179 @@
-:root {
-  --bg: #ffffff;
-  --ink: #111111;
-  --muted: #6b7280;
-  --line: #e5e7eb;
-  --accent: #16a34a;
-  --radius: 0.5rem;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
+/* ============================================================================
+   Design tokens. "Paper & Light": the page is a desk in daylight — warm paper,
+   real shadows, and exactly one piece of glass laid across it.
+
+   Glass is budgeted. At most two lens surfaces are visible at once, which is
+   what makes the edge refraction read as a physical object rather than
+   decoration. Everything else is paper.
+   ============================================================================ */
+
+/* Registered so the rim angle and sheen position can be animated. Must live at
+   document scope — a scoped <style> would re-register per component instance. */
+@property --lens-rim-angle {
+  syntax: '<angle>';
+  initial-value: 208deg;
+  inherits: false;
 }
+
+@property --lens-sheen-x {
+  syntax: '<percentage>';
+  initial-value: 22%;
+  inherits: false;
+}
+
+:root {
+  /* ---- paper -------------------------------------------------------- */
+  --paper: #fbf8f2;         /* the desk */
+  --paper-raised: #fffdf8;  /* the sheet */
+  --paper-sunk: #f2ece0;    /* wells and insets */
+
+  /* ---- ink ---------------------------------------------------------- */
+  --ink: #1e1b16;           /* 15.3:1 on --paper */
+  --ink-2: #4a443a;         /* 8.9:1 */
+  --muted: #786f60;         /* 4.9:1 — captions only, never body */
+
+  --line: #e4dccc;
+  --line-strong: #d2c7b2;
+
+  /* ---- accent: fountain-pen blue-black, not a SaaS gradient ---------- */
+  --accent: #23478f;        /* 7.9:1 on --paper */
+  --accent-bright: #3c63b8;
+  --ok: #2f6b45;            /* status only, never a button */
+  --seal: #9c3324;          /* used twice: the "never" mark and warnings */
+
+  /* ---- paper shadow: contact line, near diffusion, far diffusion ----- */
+  --shadow-paper:
+    0 1px 1px -0.5px rgb(58 48 32 / 0.1),
+    0 6px 12px -8px rgb(58 48 32 / 0.2),
+    0 22px 40px -26px rgb(58 48 32 / 0.24);
+
+  /* ---- paper tooth: pure CSS texture, no image request --------------- */
+  --tooth-a: rgb(120 111 96 / 0.02);
+  --tooth-b: rgb(120 111 96 / 0.03);
+
+  /* ---- type --------------------------------------------------------- */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'SF Pro Text',
+    'Segoe UI Variable Text', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-doc: ui-serif, 'New York', Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+
+  --step--2: clamp(0.6875rem, 0.665rem + 0.11vw, 0.75rem);
+  --step--1: clamp(0.8125rem, 0.782rem + 0.15vw, 0.875rem);
+  --step-0: clamp(1rem, 0.965rem + 0.17vw, 1.0625rem);
+  --step-1: clamp(1.125rem, 1.06rem + 0.33vw, 1.3125rem);
+  --step-2: clamp(1.375rem, 1.24rem + 0.68vw, 1.75rem);
+  --step-3: clamp(1.75rem, 1.5rem + 1.25vw, 2.5rem);
+  --step-4: clamp(2.125rem, 1.7rem + 2.1vw, 3.375rem);
+  --step-5: clamp(2.625rem, 1.9rem + 3.6vw, 4.75rem);
+
+  /* ---- space -------------------------------------------------------- */
+  --gutter: clamp(1.25rem, 0.9rem + 1.7vw, 2.5rem);
+  --measure: 62ch;
+  --content: 71.25rem; /* 1140px */
+  --radius: 14px;
+
+  /* ---- lens: light -------------------------------------------------- */
+  --lens-radius: 20px;
+  --lens-fill: linear-gradient(
+    168deg,
+    rgb(255 253 248 / 0.7) 0%,
+    rgb(255 253 248 / 0.4) 44%,
+    rgb(244 238 227 / 0.52) 100%
+  );
+  --lens-sheen:
+    radial-gradient(
+      120% 84% at var(--lens-sheen-x) -18%,
+      rgb(255 255 255 / 0.85) 0%,
+      rgb(255 255 255 / 0.22) 34%,
+      rgb(255 255 255 / 0) 62%
+    ),
+    linear-gradient(196deg, rgb(255 255 255 / 0) 58%, rgb(255 255 255 / 0.3) 92%);
+  --lens-blur: 18px;
+  --lens-sat: 1.7;
+  --lens-bright: 1.04;
+  --lens-rim-hi: rgb(255 255 255 / 0.96);
+  --lens-rim-lo: rgb(124 113 95 / 0.3);
+  --lens-rim-cool: rgb(150 205 226 / 0.62);
+  --lens-rim-warm: rgb(240 199 137 / 0.66);
+  --lens-shadow:
+    0 1px 0 0 rgb(255 255 255 / 0.85) inset,
+    0 -1px 0 0 rgb(124 113 95 / 0.1) inset,
+    0 1px 2px -1px rgb(58 48 32 / 0.1),
+    0 10px 18px -12px rgb(58 48 32 / 0.2),
+    0 30px 56px -28px rgb(58 48 32 / 0.26);
+  --lens-solid: #fffdf8;
+
+  --desk-warm: rgb(255 226 168 / 0.6);
+  --desk-cool: rgb(168 196 235 / 0.42);
+  --desk-blush: rgb(232 186 205 / 0.3);
+
+  color-scheme: light dark;
+}
+
+/* ---- dark: the same desk at night, not an inverted palette ------------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #14120f;
+    --paper-raised: #1c1916;
+    --paper-sunk: #0e0c0a;
+
+    --ink: #f2ece1;
+    --ink-2: #c6bcac;
+    --muted: #948a79;
+
+    --line: #302b25;
+    --line-strong: #443d34;
+
+    --accent: #9cb8f2;
+    --accent-bright: #bdcef7;
+    --ok: #7cc79b;
+    --seal: #e0846f;
+
+    --shadow-paper:
+      0 1px 0 0 rgb(255 250 240 / 0.06) inset,
+      0 1px 1px -0.5px rgb(0 0 0 / 0.6),
+      0 8px 16px -10px rgb(0 0 0 / 0.7),
+      0 26px 46px -28px rgb(0 0 0 / 0.8);
+
+    --tooth-a: rgb(255 250 240 / 0.02);
+    --tooth-b: rgb(255 250 240 / 0.028);
+
+    --lens-fill: linear-gradient(
+      168deg,
+      rgb(246 240 230 / 0.1) 0%,
+      rgb(246 240 230 / 0.05) 46%,
+      rgb(20 18 15 / 0.34) 100%
+    );
+    --lens-sheen:
+      radial-gradient(
+        120% 84% at var(--lens-sheen-x) -18%,
+        rgb(255 250 240 / 0.24) 0%,
+        rgb(255 250 240 / 0.07) 36%,
+        rgb(255 250 240 / 0) 64%
+      ),
+      linear-gradient(196deg, rgb(255 250 240 / 0) 60%, rgb(255 250 240 / 0.08) 94%);
+    --lens-blur: 22px;
+    --lens-sat: 1.5;
+    --lens-bright: 1.12;
+    --lens-rim-hi: rgb(255 250 240 / 0.42);
+    --lens-rim-lo: rgb(255 250 240 / 0.06);
+    --lens-rim-cool: rgb(126 186 214 / 0.42);
+    --lens-rim-warm: rgb(214 166 104 / 0.44);
+    --lens-shadow:
+      0 1px 0 0 rgb(255 250 240 / 0.14) inset,
+      0 -1px 0 0 rgb(0 0 0 / 0.4) inset,
+      0 2px 4px -2px rgb(0 0 0 / 0.55),
+      0 26px 52px -26px rgb(0 0 0 / 0.72);
+    --lens-solid: #1c1916;
+    --desk-warm: rgb(255 206 128 / 0.16);
+    --desk-cool: rgb(120 158 214 / 0.16);
+    --desk-blush: rgb(198 138 164 / 0.12);
+  }
+}
+
+/* ============================================================================
+   Base
+   ============================================================================ */
 
 *,
 *::before,
@@ -15,16 +181,170 @@
   box-sizing: border-box;
 }
 
-html,
-body {
-  height: 100%;
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 body {
   margin: 0;
-  background: var(--bg);
+  background-color: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
+  font-size: var(--step-0);
+  line-height: 1.62;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  font-synthesis-weight: none;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.06;
+  letter-spacing: -0.028em;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+p {
+  margin: 0;
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  color: var(--accent-bright);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ---- shared primitives ------------------------------------------------- */
+
+.wrap {
+  width: min(100% - (var(--gutter) * 2), var(--content));
+  margin-inline: auto;
+}
+
+/* A sheet of paper: raised, warm, with tooth. Not glass. */
+.sheet {
+  background-color: var(--paper-raised);
+  background-image:
+    repeating-linear-gradient(122deg, var(--tooth-a) 0 2px, transparent 2px 5px),
+    radial-gradient(var(--tooth-b) 0.5px, transparent 0.6px);
+  background-size:
+    6px 6px,
+    3px 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-paper);
+}
+
+.eyebrow {
+  font-size: var(--step--2);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 500;
+  margin: 0;
+}
+
+.lede {
+  font-size: var(--step-1);
+  line-height: 1.55;
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+
+/* ---- buttons ----------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.4rem;
+  border-radius: 999px;
+  font-size: var(--step-0);
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition:
+    box-shadow 180ms ease-out,
+    transform 180ms ease-out,
+    background-color 180ms ease-out;
+}
+
+.btn--primary {
+  background-color: var(--accent);
+  color: var(--paper-raised);
+  box-shadow: 0 1px 2px rgb(58 48 32 / 0.18);
+}
+
+.btn--primary:hover {
+  background-color: var(--accent-bright);
+  color: var(--paper-raised);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px -6px rgb(35 71 143 / 0.5);
+}
+
+.btn--quiet {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background-color: transparent;
+}
+
+.btn--quiet:hover {
+  color: var(--ink);
+  border-color: var(--ink-2);
+  transform: translateY(-1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn:hover {
+    transform: none;
+  }
+}
+
+/* ---- scroll-driven reveals: no JS, and no blank page without support --- */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal-rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 22%;
+    }
+  }
+}
+
+@keyframes reveal-rise {
+  from {
+    opacity: 0.001;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
