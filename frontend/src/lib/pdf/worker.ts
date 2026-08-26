@@ -9,6 +9,7 @@ import { compress } from './compress';
 import { imagesToPdf, pdfToImages, probePdf } from './images';
 import { addText, compare, pageNumbers, watermark } from './edit';
 import { deletePages, extract, merge, reorder, rotate, split } from './organise';
+import { protect, unlock } from './security';
 import type { WorkerRequest, WorkerResponse, OpResult } from './types';
 
 /* Static imports: Vite cannot code-split a worker bundle, and the laziness
@@ -48,6 +49,20 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return pageNumbers(request.files, request.startNumber ?? 1, request.prefix ?? '');
     case 'compare':
       return compare(request.files);
+    case 'protect':
+      return protect(
+        request.files,
+        request.userPassword ?? '',
+        request.ownerPassword ?? '',
+        request.permissions ?? {
+          printing: true,
+          copying: false,
+          modifying: false,
+          annotating: false,
+        }
+      );
+    case 'unlock':
+      return unlock(request.files, request.userPassword ?? '');
     default:
       return { ok: false, error: `Unknown operation: ${String(request.op)}` };
   }

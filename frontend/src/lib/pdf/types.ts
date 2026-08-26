@@ -12,7 +12,9 @@ export type Operation =
   | 'page-numbers'
   | 'compare'
   | 'images-to-pdf'
-  | 'pdf-to-images';
+  | 'pdf-to-images'
+  | 'protect'
+  | 'unlock';
 
 /** Images → PDF: the shape each page takes. */
 export type PageSize = 'fit' | 'a4' | 'letter';
@@ -109,6 +111,15 @@ export interface WorkerRequest {
   /** Page-number tool only. */
   startNumber?: number;
   prefix?: string;
+  /** Protect / unlock. */
+  userPassword?: string;
+  ownerPassword?: string;
+  permissions?: {
+    printing: boolean;
+    copying: boolean;
+    modifying: boolean;
+    annotating: boolean;
+  };
 }
 
 export interface WorkerResponse {

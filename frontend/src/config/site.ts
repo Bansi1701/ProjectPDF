@@ -54,8 +54,8 @@ export const TOOLS: Tool[] = [
   { slug: 'pdf-forms', name: 'Forms', category: 'Edit', runsWhere: 'local', status: 'planned', blurb: 'Fill a form, or build the fields yourself.' },
 
   // --- Secure ---
-  { slug: 'protect-pdf', name: 'Protect', category: 'Secure', runsWhere: 'local', status: 'planned', blurb: 'AES-256 password and permissions, set in your browser.' },
-  { slug: 'unlock-pdf', name: 'Unlock', category: 'Secure', runsWhere: 'local', status: 'planned', blurb: 'Remove protection you are authorised to remove.' },
+  { slug: 'protect-pdf', name: 'Protect', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'AES-256 password and permissions, set in your browser.' },
+  { slug: 'unlock-pdf', name: 'Unlock', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'Remove protection you are authorised to remove.' },
   { slug: 'redact-pdf', name: 'Redact', category: 'Secure', runsWhere: 'local', status: 'planned', blurb: 'Deletes the content underneath, not just a black box over it.' },
   { slug: 'repair-pdf', name: 'Repair', category: 'Secure', runsWhere: 'local', status: 'planned', blurb: 'Rebuild a file that will not open.' },
   { slug: 'sign-pdf', name: 'Sign', category: 'Secure', runsWhere: 'local', status: 'planned', blurb: 'Draw, type or place a signature on the page.' },

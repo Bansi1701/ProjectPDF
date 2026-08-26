@@ -35,6 +35,8 @@ const ACTIONS: Record<Operation, string> = {
   watermark: 'Add watermark',
   'page-numbers': 'Add numbers',
   compare: 'Compare',
+  protect: 'Protect',
+  unlock: 'Unlock',
 };
 
 /** Modes whose ranges field means "pages to act on", not "groups". */
@@ -174,6 +176,46 @@ const dropTitle = takesImages
     }
 
     {
+      mode === 'protect' && (
+        <Fragment>
+          <label class="field">
+            <span>Password to open the document</span>
+            <input data-user-password type="password" autocomplete="new-password" />
+            <small data-strength>
+              This is the one that encrypts. Leave it empty to set permissions only.
+            </small>
+          </label>
+
+          <fieldset class="field field--turns">
+            <legend>Allow</legend>
+            <label><input type="checkbox" data-perm="printing" checked /> Printing</label>
+            <label><input type="checkbox" data-perm="copying" /> Copying text</label>
+            <label><input type="checkbox" data-perm="modifying" /> Editing</label>
+            <label><input type="checkbox" data-perm="annotating" /> Commenting</label>
+            <small>
+              These are flags a reader is asked to honour, not enforced limits. Anything that
+              can open the file can ignore them. Only the password above actually protects
+              the contents.
+            </small>
+          </fieldset>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'unlock' && (
+        <label class="field">
+          <span>Password</span>
+          <input data-user-password type="password" autocomplete="current-password" />
+          <small>
+            Only removes protection from a document you can already open. Leave empty if the
+            file opens without a password but restricts printing or copying.
+          </small>
+        </label>
+      )
+    }
+
+    {
       mode === 'images-to-pdf' && (
         <label class="field">
           <span>Page size</span>
@@ -298,6 +340,9 @@ const dropTitle = takesImages
 
     const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
     const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : kb(n));
+
+    const perm = (name: string): boolean =>
+      root.querySelector<HTMLInputElement>(`[data-perm="${name}"]`)?.checked ?? false;
 
     /** "3, 1, 2" → [2, 0, 1]. Empty means "leave the order alone". */
     function readOrder(): number[] {
@@ -477,6 +522,22 @@ const dropTitle = takesImages
       result.hidden = false;
     }
 
+    // Real crypto makes the password the weak link, so say so as it is typed.
+    const pw = root.querySelector<HTMLInputElement>('[data-user-password]');
+    const strength = root.querySelector<HTMLElement>('[data-strength]');
+    if (pw && strength && mode === 'protect') {
+      const baseline = strength.textContent ?? '';
+      pw.addEventListener('input', async () => {
+        if (!pw.value) {
+          strength.textContent = baseline;
+          return;
+        }
+        const { passwordBits, describeStrength } = await import('../lib/pdf/security');
+        const bits = passwordBits(pw.value);
+        strength.textContent = `About ${bits} bits of entropy. ${describeStrength(bits)}`;
+      });
+    }
+
     input.addEventListener('change', () => showFiles(Array.from(input.files ?? [])));
     clearBtn.addEventListener('click', () => {
       input.value = '';
@@ -522,6 +583,13 @@ const dropTitle = takesImages
         targetPage: Number(root.querySelector<HTMLInputElement>('[data-target-page]')?.value ?? 1),
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
         prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
+        userPassword: root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '',
+        permissions: {
+          printing: perm('printing'),
+          copying: perm('copying'),
+          modifying: perm('modifying'),
+          annotating: perm('annotating'),
+        },
         turn: Number(picked('turn') ?? 90),
         pageSize: root.querySelector<HTMLSelectElement>('[data-page-size]')
           ?.value as WorkerRequest['pageSize'],
