@@ -30,9 +30,9 @@ export const CATEGORIES: ToolCategory[] = ['Organise', 'Convert', 'Edit', 'Secur
  */
 export const TOOLS: Tool[] = [
   // --- Organise ---
-  { slug: 'merge-pdf', name: 'Merge', category: 'Organise', runsWhere: 'local', status: 'building', blurb: 'Combine files and reorder pages before you export.' },
-  { slug: 'split-pdf', name: 'Split', category: 'Organise', runsWhere: 'local', status: 'building', blurb: 'Cut one document into many, at the pages you choose.' },
-  { slug: 'rotate-pdf', name: 'Rotate', category: 'Organise', runsWhere: 'local', status: 'building', blurb: 'Fix sideways scans. Lossless — only the page dictionary changes.' },
+  { slug: 'merge-pdf', name: 'Merge', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Combine files and reorder pages before you export.' },
+  { slug: 'split-pdf', name: 'Split', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Cut one document into many, at the pages you choose.' },
+  { slug: 'rotate-pdf', name: 'Rotate', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Fix sideways scans. Lossless — only the page dictionary changes.' },
   { slug: 'organise-pdf', name: 'Reorder', category: 'Organise', runsWhere: 'local', status: 'planned', blurb: 'Drag pages into the order you actually wanted.' },
   { slug: 'extract-pages', name: 'Extract pages', category: 'Organise', runsWhere: 'local', status: 'planned', blurb: 'Pull a range out into its own file.' },
   { slug: 'delete-pages', name: 'Delete pages', category: 'Organise', runsWhere: 'local', status: 'planned', blurb: 'Remove pages and save what is left.' },
