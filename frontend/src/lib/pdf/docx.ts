@@ -20,6 +20,7 @@
 import { PDFDocument, PDFFont, StandardFonts, rgb } from '@cantoo/pdf-lib';
 import { unzipSync } from 'fflate';
 
+import { TextPainter } from './text';
 import type { InputFile, OpResult } from './types';
 
 const baseName = (name: string): string => name.replace(/\.(docx?|odt)$/i, '');
@@ -188,6 +189,8 @@ interface Piece {
   text: string;
   font: PDFFont;
   width: number;
+  bold: boolean;
+  italic: boolean;
 }
 
 /**
@@ -203,6 +206,7 @@ interface Piece {
 function wrap(
   runs: Run[],
   fonts: Fonts,
+  painter: TextPainter,
   size: number,
   maxWidth: number
 ): (Piece[] | null)[] {
@@ -232,41 +236,41 @@ function wrap(
         continue;
       }
 
+      const style = { size, bold: run.bold, italic: run.italic };
+      const measure = (value: string) => painter.width(value, font, style);
+
       for (const word of chunk.split(/(\s+)/)) {
         if (!word) continue;
-        // pdf-lib's standard fonts cannot encode every codepoint; drop what
-        // they cannot rather than throwing halfway through a document.
-        const safe = word.replace(/[^\x00-\xFF]/g, '');
-        if (!safe) continue;
 
-        const width = font.widthOfTextAtSize(safe, size);
+        const width = measure(word);
 
         if (used + width > maxWidth && line.length > 0) {
           endLine();
           // A space that caused the break should not start the next line.
-          if (/^\s+$/.test(safe)) continue;
+          if (/^\s+$/.test(word)) continue;
         }
 
         // A single word longer than the column would loop forever otherwise.
         if (width > maxWidth && line.length === 0) {
           let piece = '';
-          for (const character of safe) {
+          // Split by code point so a surrogate pair is never cut in half.
+          for (const character of word) {
             const next = piece + character;
-            if (font.widthOfTextAtSize(next, size) > maxWidth && piece) {
-              lines.push([{ text: piece, font, width: font.widthOfTextAtSize(piece, size) }]);
+            if (measure(next) > maxWidth && piece) {
+              lines.push([{ text: piece, font, width: measure(piece), bold: run.bold, italic: run.italic }]);
               piece = character;
             } else {
               piece = next;
             }
           }
           if (piece) {
-            line.push({ text: piece, font, width: font.widthOfTextAtSize(piece, size) });
-            used = font.widthOfTextAtSize(piece, size);
+            line.push({ text: piece, font, width: measure(piece), bold: run.bold, italic: run.italic });
+            used = measure(piece);
           }
           continue;
         }
 
-        line.push({ text: safe, font, width });
+        line.push({ text: word, font, width, bold: run.bold, italic: run.italic });
         used += width;
       }
     }
@@ -316,6 +320,7 @@ export async function docxToPdf(files: InputFile[]): Promise<OpResult> {
   const geometry = readGeometry(documentXml);
 
   const doc = await PDFDocument.create();
+  const painter = new TextPainter(doc);
   const fonts: Fonts = {
     regular: await doc.embedFont(StandardFonts.Helvetica),
     bold: await doc.embedFont(StandardFonts.HelveticaBold),
@@ -347,7 +352,7 @@ export async function docxToPdf(files: InputFile[]): Promise<OpResult> {
     const size = para.heading > 0 ? (HEADING_SIZE[para.heading] ?? BODY_SIZE) : BODY_SIZE;
     const indent = para.list ? 18 : 0;
     const runs = para.heading > 0 ? para.runs.map((r) => ({ ...r, bold: true })) : para.runs;
-    const lines = wrap(runs, fonts, size, usable - indent);
+    const lines = wrap(runs, fonts, painter, size, usable - indent);
     const height = size * LEADING;
 
     const spaceAbove = para.heading > 0 ? size * 0.55 : 0;
@@ -388,13 +393,14 @@ export async function docxToPdf(files: InputFile[]): Promise<OpResult> {
       }
 
       for (const piece of line) {
-        page.drawText(piece.text, {
-          x,
-          y: y - size,
-          size,
-          font: piece.font,
-          color: rgb(0.1, 0.1, 0.12),
-        });
+        if (piece.text.trim().length > 0) {
+          await painter.draw(page, piece.text, x, y - size, piece.font, {
+            size,
+            bold: piece.bold,
+            italic: piece.italic,
+            color: rgb(0.1, 0.1, 0.12),
+          });
+        }
         x += piece.width;
       }
 
@@ -419,6 +425,9 @@ export async function docxToPdf(files: InputFile[]): Promise<OpResult> {
       `Not carried over: ${dropped.join(' and ')}. This reads the text, headings, lists and emphasis — it is not a layout engine, and pretending otherwise would just lose your content quietly.`
     );
   }
+
+  const fallback = painter.note();
+  if (fallback) notes.push(fallback);
 
   notes.push(
     `Page size and margins were read from the document (${Math.round(geometry.width)}\u00d7${Math.round(geometry.height)}pt), and its own page breaks are kept. Text is re-typeset in Helvetica, so line breaks will not match Word exactly.`
