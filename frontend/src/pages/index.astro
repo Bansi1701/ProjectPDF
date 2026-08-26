@@ -25,6 +25,8 @@ const promises = [
   { figure: '0', label: 'accounts required' },
   { figure: '0', label: 'reasons to trust us' },
 ];
+
+const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 ---
 
 <BaseLayout title={`${SITE.name} — ${SITE.tagline}`} description={SITE.description}>
@@ -128,6 +130,7 @@ const promises = [
             <ul class="grid">
               {toolsByCategory(category).map((tool) => (
                 <li class="sheet card">
+                  {tool.status === 'live' && <a class="card__link" href={`${baseUrl}${tool.slug}/`} aria-label={`Open ${tool.name}`}></a>}
                   <h4 class="card__name">{tool.name}</h4>
                   <p class="card__blurb">{tool.blurb}</p>
                   <p class:list={['card__where', tool.runsWhere === 'server' && 'is-server']}>
@@ -549,6 +552,7 @@ const promises = [
   }
 
   .card {
+    position: relative;
     padding: 1.125rem 1.25rem 1rem;
     display: flex;
     flex-direction: column;
@@ -557,6 +561,8 @@ const promises = [
       box-shadow 180ms ease-out,
       transform 180ms ease-out;
   }
+
+  .card__link { position: absolute; inset: 0; border-radius: inherit; }
 
   .card:hover {
     transform: translateY(-2px);
