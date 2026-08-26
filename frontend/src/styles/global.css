@@ -187,6 +187,7 @@
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -197,6 +198,7 @@ html {
 
 body {
   margin: 0;
+  overflow-x: clip;
   background-color: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);

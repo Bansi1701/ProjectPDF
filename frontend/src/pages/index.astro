@@ -45,6 +45,12 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
           browser, and every result is ready to inspect before you save it.
         </p>
 
+        <ul class="hero__proof" aria-label="PDFCraft benefits">
+          <li><span>01</span> Browser-side processing</li>
+          <li><span>02</span> Visible page controls</li>
+          <li><span>03</span> Ready-to-save results</li>
+        </ul>
+
         <div class="hero__actions">
           <a class="btn btn--primary" href="#tools">Explore tools</a>
           <a class="btn btn--quiet" href="#how">How privacy works</a>
@@ -56,6 +62,7 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
       <!-- The metaphor: a sheet of paper with a glass lens laid across it -->
       <figure class="hero__desk" aria-hidden="true">
         <div class="sheet page">
+          <div class="page__topline"><span>PDFCRAFT / DOCUMENT STUDIO</span><i></i></div>
           <div class="page__rule page__rule--title"></div>
           <div class="page__rule" style="width: 92%"></div>
           <div class="page__rule" style="width: 86%"></div>
@@ -65,6 +72,7 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
           <div class="page__rule" style="width: 88%"></div>
           <div class="page__rule" style="width: 95%"></div>
           <div class="page__rule" style="width: 72%"></div>
+          <div class="page__footer"><span></span><span></span><span></span></div>
         </div>
 
         <Lens variant="loupe" class="loupe">
@@ -72,6 +80,12 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
           <p class="loupe__figure">Ready <span>to work</span></p>
           <p class="loupe__status"><i class="led"></i>processing: on device</p>
         </Lens>
+
+        <ul class="hero__tool-orbit">
+          <li class="orbit-card orbit-card--merge"><b>↗</b><span>Merge</span></li>
+          <li class="orbit-card orbit-card--split"><b>✦</b><span>Split</span></li>
+          <li class="orbit-card orbit-card--secure"><b>⌁</b><span>Protect</span></li>
+        </ul>
       </figure>
     </section>
 
@@ -273,9 +287,35 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
 <style>
   /* ── Hero ─────────────────────────────────────────────────────────── */
   .hero {
+    position: relative;
+    isolation: isolate;
     display: grid;
     gap: clamp(3rem, 2rem + 5vw, 5rem);
-    padding-block: clamp(3.5rem, 2.5rem + 6vw, 7rem) clamp(4rem, 3rem + 5vw, 7rem);
+    padding-block: clamp(4.5rem, 3rem + 6vw, 7.75rem) clamp(4rem, 3rem + 5vw, 7rem);
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    z-index: -2;
+    width: min(43vw, 39rem);
+    aspect-ratio: 1;
+    right: -16rem;
+    top: 6%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 32% 36%, rgb(251 113 133 / 0.45), transparent 25%),
+      radial-gradient(circle at 65% 57%, rgb(125 211 252 / 0.38), transparent 36%),
+      radial-gradient(circle at 48% 47%, rgb(196 181 253 / 0.34), transparent 67%);
+    filter: blur(6px);
+  }
+
+  .hero::after {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    inset: auto 0 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line), transparent);
   }
 
   .eyebrow {
@@ -314,7 +354,11 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     position: relative;
     isolation: isolate;
     margin: 0;
-    padding-bottom: 3rem;
+    padding: 1.5rem 1.5rem 4.5rem;
+    border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+    border-radius: 28px;
+    background: linear-gradient(145deg, color-mix(in srgb, var(--paper-raised) 88%, transparent), color-mix(in srgb, var(--paper-sunk) 76%, transparent));
+    box-shadow: 0 32px 60px -46px rgb(15 23 42 / 0.5);
   }
 
   /* Light falling across the desk. Without something varied behind it, the
@@ -330,6 +374,31 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
       radial-gradient(44% 40% at 92% 76%, var(--desk-blush), transparent 72%);
     filter: blur(10px);
     pointer-events: none;
+  }
+
+  .hero__proof {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem 1.1rem;
+    margin: 1.75rem 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--ink-2);
+    font-size: var(--step--2);
+    font-weight: 600;
+  }
+
+  .hero__proof li { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .hero__proof span {
+    display: grid;
+    place-items: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    font-family: var(--font-mono);
+    font-size: 0.56rem;
   }
 
   .hero__desk::after {
@@ -350,7 +419,27 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     padding: clamp(1.5rem, 1rem + 2vw, 2.25rem);
     display: grid;
     gap: 0.75rem;
-    transform: rotate(-1.1deg);
+    transform: rotate(-1.1deg) translateX(-0.35rem);
+    box-shadow: 0 20px 45px -32px rgb(15 23 42 / 0.45);
+  }
+
+  .page__topline {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.12em;
+  }
+
+  .page__topline i {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 10%, transparent);
   }
 
   .page__rule {
@@ -371,11 +460,27 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     height: 0.75rem;
   }
 
+  .page__footer {
+    display: flex;
+    gap: 0.3rem;
+    margin-top: 0.55rem;
+  }
+
+  .page__footer span {
+    display: block;
+    width: 1.25rem;
+    height: 0.25rem;
+    border-radius: 99px;
+    background: var(--line);
+  }
+
+  .page__footer span:first-child { background: var(--accent); width: 2.1rem; }
+
   /* Rendered by <Lens>, so it needs :global() constrained to this section. */
   .hero__desk :global(.loupe) {
     position: absolute;
-    right: clamp(-1.5rem, -3vw, 0rem);
-    bottom: 0.5rem;
+    right: clamp(-1.75rem, -3vw, 0.75rem);
+    bottom: -0.35rem;
     width: min(16rem, 70%);
     padding: 1.125rem 1.25rem;
   }
@@ -419,6 +524,46 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     background: var(--ok);
     box-shadow: 0 0 8px color-mix(in oklab, var(--ok) 60%, transparent);
   }
+
+  .hero__tool-orbit {
+    position: absolute;
+    left: -1rem;
+    bottom: 1.1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .orbit-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--line-strong) 78%, transparent);
+    border-radius: 10px;
+    color: var(--ink);
+    background: color-mix(in srgb, var(--paper-raised) 92%, transparent);
+    box-shadow: 0 9px 20px -16px rgb(15 23 42 / 0.48);
+    font-size: var(--step--2);
+    font-weight: 600;
+  }
+
+  .orbit-card b {
+    display: grid;
+    place-items: center;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 5px;
+    color: white;
+    background: var(--accent);
+    font-size: 0.7rem;
+  }
+
+  .orbit-card--split b { background: #7c3aed; }
+  .orbit-card--secure b { background: #0f766e; }
 
   @media (min-width: 62em) {
     .hero {
@@ -547,6 +692,13 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
   .section-head__deck em {
     font-style: normal;
     color: var(--ok);
+  }
+
+  @media (max-width: 30em) {
+    .hero__desk { padding: 1rem 1rem 4rem; }
+    .hero__tool-orbit { left: 0.25rem; bottom: 0.65rem; }
+    .orbit-card { padding: 0.35rem 0.45rem; }
+    .orbit-card span { display: none; }
   }
 
   .tool-search {

@@ -4,14 +4,12 @@ interface Props {
 }
 
 const { size = '2.5rem' } = Astro.props;
+const base = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const mark = `${base}brand/pdfcraft-fold-mark.png`;
 ---
 
 <span class="logo" style={`--size: ${size}`} aria-hidden="true">
-  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M9 4.5h14.4l7.1 7.2v22.1a1.7 1.7 0 0 1-1.7 1.7H10.7A1.7 1.7 0 0 1 9 33.8V6.2A1.7 1.7 0 0 1 10.7 4.5Z" fill="currentColor" />
-    <path d="M23.4 4.5v7.2h7.1L23.4 4.5Z" fill="var(--paper-raised)" opacity=".94" />
-    <path d="M14 19.4h12M14 24h9M14 28.6h6" stroke="var(--paper-raised)" stroke-width="2.2" stroke-linecap="round" opacity=".94" />
-  </svg>
+  <img src={mark} alt="" />
 </span>
 
 <style>
@@ -19,12 +17,15 @@ const { size = '2.5rem' } = Astro.props;
     display: block;
     width: var(--size);
     height: var(--size);
-    color: var(--accent);
+    overflow: hidden;
+    border-radius: 27%;
+    box-shadow: 0 6px 14px -9px rgb(225 29 72 / 0.85);
   }
 
-  .logo svg {
+  .logo img {
     display: block;
     width: 100%;
     height: 100%;
+    object-fit: cover;
   }
 </style>
