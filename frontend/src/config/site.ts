@@ -38,7 +38,7 @@ export const TOOLS: Tool[] = [
   { slug: 'delete-pages', name: 'Delete pages', category: 'Organise', runsWhere: 'local', status: 'planned', blurb: 'Remove pages and save what is left.' },
 
   // --- Convert ---
-  { slug: 'compress-pdf', name: 'Compress', category: 'Convert', runsWhere: 'local', status: 'planned', blurb: 'Smaller file, checked against the original before you get it.' },
+  { slug: 'compress-pdf', name: 'Compress', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Smaller file, checked against the original before you get it.' },
   { slug: 'jpg-to-pdf', name: 'Images to PDF', category: 'Convert', runsWhere: 'local', status: 'planned', blurb: 'JPG, PNG or WebP into one document.' },
   { slug: 'pdf-to-jpg', name: 'PDF to image', category: 'Convert', runsWhere: 'local', status: 'planned', blurb: 'Export pages as JPG or PNG at the DPI you pick.' },
   { slug: 'pdf-to-markdown', name: 'PDF to Markdown', category: 'Convert', runsWhere: 'local', status: 'planned', blurb: 'For documents that already have a text layer.' },
