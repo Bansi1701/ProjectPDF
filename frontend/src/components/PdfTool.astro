@@ -1,0 +1,176 @@
+---
+type Mode = 'merge' | 'split' | 'rotate';
+interface Props { mode: Mode; title: string; description: string; multiple?: boolean; }
+const { mode, title, description, multiple = false } = Astro.props;
+const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+---
+
+<section class="tool wrap" data-pdf-tool data-mode={mode}>
+  <a class="back" href={`${baseUrl}#organise`}>← Organise tools</a>
+  <header>
+    <p class="eyebrow">Runs entirely in your browser</p>
+    <h1>{title}</h1>
+    <p class="lede">{description}</p>
+  </header>
+
+  <label class="drop" data-drop>
+    <input data-input type="file" accept="application/pdf,.pdf" multiple={multiple} />
+    <strong>{multiple ? 'Choose PDF files' : 'Choose a PDF file'}</strong>
+    <span>or drop {multiple ? 'PDFs' : 'a PDF'} here</span>
+  </label>
+
+  <div class="workspace" data-workspace hidden>
+    <div>
+      <h2>Selected</h2>
+      <ol class="files" data-files></ol>
+    </div>
+
+    {mode === 'split' && (
+      <label class="ranges">
+        Page groups
+        <input data-ranges value="1" placeholder="1-3, 4-6, 9" />
+        <small>Each comma-separated group becomes a separate PDF.</small>
+      </label>
+    )}
+
+    <button class="run" data-run type="button">
+      {mode === 'merge' ? 'Merge PDFs' : mode === 'split' ? 'Split PDF' : 'Rotate PDF'}
+    </button>
+    <p class="status" data-status role="status" aria-live="polite"></p>
+  </div>
+
+  <aside class="privacy">
+    <strong>Private by construction.</strong>
+    <span>No upload starts when you choose a file. Processing happens in this tab.</span>
+  </aside>
+</section>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-pdf-tool]');
+  if (root) {
+    const mode = root.dataset.mode as 'merge' | 'split' | 'rotate';
+    const input = root.querySelector<HTMLInputElement>('[data-input]')!;
+    const drop = root.querySelector<HTMLElement>('[data-drop]')!;
+    const workspace = root.querySelector<HTMLElement>('[data-workspace]')!;
+    const list = root.querySelector<HTMLOListElement>('[data-files]')!;
+    const run = root.querySelector<HTMLButtonElement>('[data-run]')!;
+    const status = root.querySelector<HTMLElement>('[data-status]')!;
+    let files: File[] = [];
+
+    const showFiles = (next: File[]) => {
+      files = mode === 'split' ? next.slice(0, 1) : next;
+      list.replaceChildren(...files.map((file) => {
+        const item = document.createElement('li');
+        item.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
+        return item;
+      }));
+      workspace.hidden = files.length === 0;
+      status.textContent = '';
+    };
+
+    input.addEventListener('change', () => showFiles(Array.from(input.files ?? [])));
+    for (const event of ['dragenter', 'dragover']) {
+      drop.addEventListener(event, (e) => { e.preventDefault(); drop.classList.add('is-over'); });
+    }
+    for (const event of ['dragleave', 'drop']) {
+      drop.addEventListener(event, (e) => { e.preventDefault(); drop.classList.remove('is-over'); });
+    }
+    drop.addEventListener('drop', (e) => {
+      const pdfs = Array.from(e.dataTransfer?.files ?? []).filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
+      showFiles(pdfs);
+    });
+
+    const download = (bytes: Uint8Array, name: string) => {
+      const blob = new Blob([bytes.slice().buffer], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1_000);
+    };
+
+    const parseGroup = (group: string, count: number): number[] => {
+      const pages = new Set<number>();
+      for (const token of group.trim().split(/\s+/)) {
+        if (!token) continue;
+        const [startText, endText] = token.split('-');
+        const start = Number(startText);
+        const end = endText ? Number(endText) : start;
+        if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start || end > count) {
+          throw new Error(`Invalid range “${token}”. This PDF has ${count} pages.`);
+        }
+        for (let page = start; page <= end; page += 1) pages.add(page - 1);
+      }
+      return [...pages];
+    };
+
+    run.addEventListener('click', async () => {
+      if (!files.length) return;
+      run.disabled = true;
+      status.textContent = 'Working locally…';
+      try {
+        const { PDFDocument, degrees } = await import('@cantoo/pdf-lib');
+        if (mode === 'merge') {
+          const output = await PDFDocument.create();
+          for (const file of files) {
+            const source = await PDFDocument.load(await file.arrayBuffer());
+            const pages = await output.copyPages(source, source.getPageIndices());
+            pages.forEach((page) => output.addPage(page));
+          }
+          download(await output.save(), 'ProjectPDF-merged.pdf');
+          status.textContent = `Done — merged ${files.length} files.`;
+        } else if (mode === 'rotate') {
+          for (const file of files) {
+            const pdf = await PDFDocument.load(await file.arrayBuffer());
+            pdf.getPages().forEach((page) => page.setRotation(degrees((page.getRotation().angle + 90) % 360)));
+            download(await pdf.save(), file.name.replace(/\.pdf$/i, '') + '-rotated.pdf');
+          }
+          status.textContent = `Done — rotated ${files.length} file${files.length === 1 ? '' : 's'}.`;
+        } else {
+          const source = await PDFDocument.load(await files[0].arrayBuffer());
+          const value = root.querySelector<HTMLInputElement>('[data-ranges]')!.value;
+          const groups = value.split(',').map((group) => group.trim()).filter(Boolean);
+          if (!groups.length) throw new Error('Enter at least one page group.');
+          for (const [index, group] of groups.entries()) {
+            const output = await PDFDocument.create();
+            const pages = await output.copyPages(source, parseGroup(group, source.getPageCount()));
+            pages.forEach((page) => output.addPage(page));
+            download(await output.save(), `ProjectPDF-split-${index + 1}.pdf`);
+          }
+          status.textContent = `Done — created ${groups.length} PDF${groups.length === 1 ? '' : 's'}.`;
+        }
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : 'This PDF could not be processed.';
+      } finally {
+        run.disabled = false;
+      }
+    });
+  }
+</script>
+
+<style>
+  .tool { padding-block: clamp(2rem, 4vw, 5rem); max-width: 58rem; }
+  .back { display: inline-block; margin-bottom: 2rem; color: var(--muted); font-size: var(--step--1); }
+  header { max-width: 46rem; }
+  h1 { font-size: var(--step-5); margin-block: .4rem .8rem; }
+  .eyebrow { color: var(--ok); font-family: var(--font-mono); font-size: var(--step--2); text-transform: uppercase; letter-spacing: .12em; }
+  .lede { color: var(--ink-2); font-size: var(--step-1); }
+  .drop { margin-top: 2.5rem; min-height: 15rem; border: 1.5px dashed var(--line-strong); border-radius: var(--radius); background: var(--paper-sunk); display: grid; place-content: center; text-align: center; cursor: pointer; transition: border-color 160ms, background 160ms; }
+  .drop:hover, .drop.is-over { border-color: var(--accent); background: var(--paper); }
+  .drop input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }
+  .drop strong { font-size: var(--step-2); }
+  .drop span { color: var(--muted); margin-top: .35rem; }
+  .workspace { margin-top: 1rem; padding: 1.5rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+  .workspace h2 { font-size: var(--step-1); }
+  .files { margin-block: .75rem 1.25rem; padding-left: 1.25rem; color: var(--ink-2); font-size: var(--step--1); }
+  .files li + li { margin-top: .35rem; }
+  .ranges { display: grid; gap: .4rem; margin-block: 1.25rem; font-weight: 600; }
+  .ranges input { padding: .8rem .9rem; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--paper-sunk); color: var(--ink); font: inherit; }
+  .ranges small { color: var(--muted); font-weight: 400; }
+  .run { border: 0; border-radius: var(--radius); background: var(--accent); color: white; padding: .85rem 1.2rem; font: inherit; font-weight: 700; cursor: pointer; }
+  .run:disabled { opacity: .55; cursor: wait; }
+  .status { min-height: 1.5rem; margin-top: .8rem; color: var(--ok); }
+  .privacy { margin-top: 1rem; display: flex; gap: .5rem; flex-wrap: wrap; color: var(--muted); font-size: var(--step--1); }
+  .privacy strong { color: var(--ink-2); }
+</style>
