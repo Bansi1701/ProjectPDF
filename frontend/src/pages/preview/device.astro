@@ -1,0 +1,240 @@
+---
+import PreviewLayout from '../../layouts/PreviewLayout.astro';
+
+const tools = ['Merge', 'Split', 'Rotate', 'Compress', 'Redact', 'Sign'];
+const pages = Array.from({ length: 8 }, (_, i) => i + 1);
+const specs = [
+  ['Runtime', 'WebAssembly, in a Worker'],
+  ['Bytes sent per operation', '0'],
+  ['Account required', 'none'],
+];
+---
+
+<PreviewLayout title="Device-Local">
+  <div class="wallpaper" aria-hidden="true"></div>
+
+  <div class="shell">
+    <section class="hero">
+      <div class="copy">
+        <p class="eyebrow"><span class="dot"></span>Local-first · in development</p>
+        <h1>PDF software that runs on your machine, in a tab.</h1>
+        <p class="lede">
+          The whole toolchain compiles into the browser — your pages, your text, your
+          signatures, handled by your own hardware. There is no upload step to opt out of,
+          because there is no upload step.
+        </p>
+        <div class="cta">
+          <a class="btn btn--primary" href="#">See what we're building</a>
+          <a class="btn btn--quiet" href="#">Read the architecture</a>
+        </div>
+        <dl class="specs">
+          {specs.map(([k, v]) => <div><dt>{k}</dt><dd>{v}</dd></div>)}
+        </dl>
+      </div>
+
+      <figure class="stage">
+        <div class="win">
+          <header class="titlebar">
+            <span class="lights"><i></i><i></i><i></i></span>
+            <span class="doc">contract-final.pdf — 24 pages</span>
+          </header>
+
+          <div class="workspace">
+            <aside class="sidebar">
+              {tools.map((t, i) => <span class:list={['tool', i === 0 && 'is-active']}>{t}</span>)}
+            </aside>
+
+            <div class="canvas">
+              <div class="thumbs">
+                {pages.map((n) => (
+                  <div class:list={['thumb', [2, 3, 4].includes(n) && 'is-sel']}>
+                    <span class="thumb__n">{n}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div class="dock">
+                <span class="dock__btn is-on">Reorder</span>
+                <span class="dock__btn">Rotate</span>
+                <span class="dock__btn">Delete</span>
+                <span class="dock__sep"></span>
+                <span class="dock__count">3 selected</span>
+              </div>
+            </div>
+          </div>
+
+          <footer class="statusbar">
+            <span><i class="led"></i>processing: on device</span>
+            <span class="statusbar__net">network out 0.00 KB</span>
+          </footer>
+        </div>
+      </figure>
+    </section>
+  </div>
+</PreviewLayout>
+
+<style is:global>
+  :root {
+    --desktop: #0a0c11;
+    --surface: #14181f;
+    --surface-sunk: #0d1015;
+    --ink: #eef1f7;
+    --ink-2: #b6bfd1;
+    --muted: #828b9e;
+    --line: rgb(233 240 255 / 0.1);
+    --line-strong: rgb(233 240 255 / 0.2);
+    --accent: #5fe0c6;
+    --accent-bright: #8bf0dc;
+    --accent-ink: #04241f;
+    --radius: 12px;
+    --font-d: ui-sans-serif, system-ui, -apple-system, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    --font-m: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--desktop);
+    color: var(--ink);
+    font-family: var(--font-d);
+    min-height: 100vh;
+  }
+
+  /* desktop wallpaper — bloom over graphite, crossed by a hairline lattice */
+  .wallpaper {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(rgb(233 240 255 / 0.022) 1px, transparent 1px) 0 0 / 100% 32px,
+      linear-gradient(90deg, rgb(233 240 255 / 0.022) 1px, transparent 1px) 0 0 / 32px 100%,
+      radial-gradient(70% 55% at 78% 8%, rgb(126 104 255 / 0.34), transparent 66%),
+      radial-gradient(60% 50% at 12% 42%, rgb(52 200 224 / 0.24), transparent 70%),
+      radial-gradient(52% 46% at 62% 96%, rgb(255 122 168 / 0.16), transparent 72%),
+      linear-gradient(#05060a, #0a0c11);
+  }
+
+  .shell { width: min(100% - 4rem, 78rem); margin-inline: auto; }
+
+  .hero {
+    display: grid;
+    gap: 3.5rem;
+    align-items: center;
+    padding-block: clamp(3.5rem, 7vw, 6rem);
+  }
+
+  @media (min-width: 68em) { .hero { grid-template-columns: 0.86fr 1.14fr; } }
+
+  .eyebrow {
+    margin: 0 0 1.25rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+  }
+
+  .dot { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+
+  h1 { margin: 0; font-size: clamp(2.25rem, 1.5rem + 2.9vw, 3.5rem); line-height: 1.04; letter-spacing: -0.034em; font-weight: 600; }
+  .lede { margin: 1.5rem 0 0; max-width: 46ch; color: var(--ink-2); line-height: 1.6; font-size: 1rem; }
+
+  .cta { display: flex; gap: 0.7rem; margin-top: 2rem; flex-wrap: wrap; }
+  .btn { display: inline-flex; padding: 0.7rem 1.3rem; border-radius: 10px; text-decoration: none; font-size: 0.9375rem; font-weight: 500; }
+  .btn--primary { background: var(--accent); color: var(--accent-ink); }
+  .btn--quiet { color: var(--ink); border: 1px solid var(--line-strong); }
+
+  .specs { margin: 2.25rem 0 0; display: grid; gap: 0; border-top: 1px solid var(--line); }
+  .specs > div { display: flex; justify-content: space-between; gap: 1rem; padding: 0.7rem 0; border-bottom: 1px solid var(--line); }
+  .specs dt { font-size: 0.8125rem; color: var(--muted); margin: 0; }
+  .specs dd { margin: 0; font-family: var(--font-m); font-size: 0.8125rem; color: var(--accent); }
+
+  /* ── the app window ─────────────────────────────────────────────────── */
+  .stage { margin: 0; }
+
+  .win {
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--line-strong);
+    background: rgb(20 24 31 / 0.72);
+    -webkit-backdrop-filter: blur(28px) saturate(1.6);
+    backdrop-filter: blur(28px) saturate(1.6);
+    box-shadow:
+      inset 0 1px 0 rgb(233 240 255 / 0.1),
+      0 2px 6px -2px rgb(0 0 0 / 0.6),
+      0 40px 80px -36px rgb(0 0 0 / 0.9);
+  }
+
+  .titlebar {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    background: rgb(233 240 255 / 0.03);
+  }
+
+  .lights { display: flex; gap: 0.4rem; }
+  .lights i { width: 0.68rem; height: 0.68rem; border-radius: 50%; background: var(--line-strong); }
+  .lights i:first-child { background: #ff6058; }
+  .lights i:nth-child(2) { background: #ffbd2e; }
+  .lights i:last-child { background: #28c840; }
+  .doc { font-size: 0.8125rem; color: var(--muted); }
+
+  .workspace { display: grid; grid-template-columns: 8.5rem 1fr; min-height: 22rem; }
+
+  .sidebar { border-right: 1px solid var(--line); padding: 0.75rem 0.6rem; display: grid; gap: 0.2rem; align-content: start; }
+  .tool { padding: 0.45rem 0.6rem; border-radius: 7px; font-size: 0.8125rem; color: var(--ink-2); }
+  .tool.is-active { background: rgb(95 224 198 / 0.14); color: var(--accent); }
+
+  .canvas { position: relative; background: var(--surface-sunk); padding: 1rem 1rem 4.5rem; }
+
+  .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+  .thumb {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    border-radius: 5px;
+    background: linear-gradient(#20252e, #1a1f27);
+    border: 1px solid var(--line);
+  }
+  .thumb.is-sel { border-color: var(--accent); box-shadow: 0 0 0 2px rgb(95 224 198 / 0.28); }
+  .thumb__n { position: absolute; bottom: 0.3rem; right: 0.4rem; font-family: var(--font-m); font-size: 0.625rem; color: var(--muted); }
+
+  /* the floating glass action dock — second glass surface */
+  .dock {
+    position: absolute;
+    left: 50%;
+    bottom: 1rem;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid rgb(233 240 255 / 0.16);
+    background: rgb(30 36 46 / 0.7);
+    -webkit-backdrop-filter: blur(20px) saturate(1.8);
+    backdrop-filter: blur(20px) saturate(1.8);
+    box-shadow: inset 0 1px 0 rgb(233 240 255 / 0.14), 0 12px 28px -12px rgb(0 0 0 / 0.8);
+    white-space: nowrap;
+  }
+  .dock__btn { padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.75rem; color: var(--ink-2); }
+  .dock__btn.is-on { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+  .dock__sep { width: 1px; height: 1rem; background: var(--line-strong); margin-inline: 0.25rem; }
+  .dock__count { font-family: var(--font-m); font-size: 0.6875rem; color: var(--muted); padding-right: 0.5rem; }
+
+  .statusbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.55rem 0.9rem;
+    border-top: 1px solid var(--line);
+    font-family: var(--font-m);
+    font-size: 0.6875rem;
+    color: var(--muted);
+    background: rgb(233 240 255 / 0.03);
+  }
+  .statusbar span { display: inline-flex; align-items: center; gap: 0.45rem; }
+  .led { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .statusbar__net { color: var(--accent); }
+</style>

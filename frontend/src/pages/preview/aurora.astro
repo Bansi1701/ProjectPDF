@@ -1,0 +1,244 @@
+---
+import PreviewLayout from '../../layouts/PreviewLayout.astro';
+
+const telemetry = [
+  ['job', 'a3f9c1'],
+  ['tool', 'merge'],
+  ['duration', '412ms'],
+  ['bytes out', '0'],
+];
+---
+
+<PreviewLayout title="Aurora Depth">
+  <div class="aurora" aria-hidden="true">
+    <span class="ribbon ribbon--jade"></span>
+    <span class="ribbon ribbon--iris"></span>
+    <span class="ribbon ribbon--ember"></span>
+    <span class="veil"></span>
+  </div>
+
+  <div class="shell">
+    <header class="rail lens">
+      <span class="lens__frost"></span><span class="lens__rim"></span>
+      <div class="lens__body">
+        <span class="brand">ProjectPDF</span>
+        <nav><a href="#">Organise</a><a href="#">Convert</a><a href="#">Edit</a><a href="#">Secure</a></nav>
+        <span class="rail__cta">Tool index</span>
+      </div>
+    </header>
+
+    <main class="hero">
+      <div>
+        <p class="eyebrow"><span class="dot"></span>Pre-launch — built in the open</p>
+        <h1>Everything happens on <em>your side</em> of the glass.</h1>
+        <p class="lede">
+          A set of PDF tools being built to run entirely inside your browser. The document is
+          opened, changed and saved in this tab, and never crosses to us.
+        </p>
+        <div class="cta">
+          <a class="btn btn--primary" href="#">See the tool index</a>
+          <a class="btn btn--quiet" href="#">Why nothing uploads</a>
+        </div>
+      </div>
+
+      <figure class="stage">
+        <div class="pane lens">
+          <span class="lens__frost"></span><span class="lens__rim"></span>
+          <div class="lens__body">
+            <p class="pane__label">This device</p>
+            <p class="pane__doc">contract-final.pdf</p>
+            <div class="bars"><i style="width:92%"></i><i style="width:78%"></i><i style="width:88%"></i><i style="width:54%"></i></div>
+          </div>
+        </div>
+
+        <div class="boundary"><span>device boundary</span></div>
+
+        <ul class="telemetry">
+          {telemetry.map(([k, v]) => <li><span>{k}</span><b>{v}</b></li>)}
+        </ul>
+        <p class="telemetry__note">The only things that ever cross the line.</p>
+      </figure>
+    </main>
+  </div>
+</PreviewLayout>
+
+<style is:global>
+  :root {
+    --void: #05070e;
+    --ink: #eaeefb;
+    --ink-2: #b3bdd8;
+    --muted: #7f8bab;
+    --line: rgb(150 175 255 / 0.12);
+    --line-strong: rgb(160 185 255 / 0.26);
+    --jade: #3fe6bd;
+    --jade-lit: #8ffbe0;
+    --iris: #9d8bff;
+    --ember: #ff9ec4;
+    --aur-jade: rgb(52 224 186 / 0.42);
+    --aur-iris: rgb(126 104 255 / 0.36);
+    --aur-ember: rgb(255 122 168 / 0.18);
+    --lens-radius: 22px;
+    --font-d: ui-sans-serif, system-ui, -apple-system, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    --font-m: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+    color-scheme: dark;
+  }
+
+  @property --rim-angle { syntax: '<angle>'; initial-value: 196deg; inherits: false; }
+
+  body {
+    background: var(--void);
+    color: var(--ink);
+    font-family: var(--font-d);
+    min-height: 100vh;
+  }
+
+  /* ── the aurora, far behind everything ─────────────────────────────── */
+  .aurora {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    background:
+      radial-gradient(120% 80% at 50% 108%, rgb(63 230 189 / 0.1), transparent 60%),
+      linear-gradient(#02040a, #05070e 40%, #0a1020);
+  }
+
+  .ribbon {
+    position: absolute;
+    border-radius: 50%;
+    mix-blend-mode: screen;
+  }
+
+  .ribbon--jade {
+    inset: -22% 34% 30% -18%;
+    background: radial-gradient(closest-side, var(--aur-jade), transparent 72%);
+    transform: rotate(-24deg);
+  }
+
+  .ribbon--iris {
+    inset: -30% -20% 22% 30%;
+    background: radial-gradient(closest-side, var(--aur-iris), transparent 74%);
+    transform: rotate(18deg);
+  }
+
+  .ribbon--ember {
+    inset: 52% -10% -28% 8%;
+    background: radial-gradient(closest-side, var(--aur-ember), transparent 76%);
+    transform: rotate(-8deg);
+  }
+
+  .veil {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(rgb(5 7 14 / 0.55), transparent 34%, rgb(5 7 14 / 0.72));
+  }
+
+  /* ── glass: smoked body, lit lip ───────────────────────────────────── */
+  .lens {
+    position: relative;
+    isolation: isolate;
+    border-radius: var(--lens-radius);
+    box-shadow: 0 2px 6px -2px rgb(0 0 0 / 0.6), 0 30px 60px -30px rgb(0 0 0 / 0.85);
+  }
+
+  .lens__frost {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background-image:
+      radial-gradient(120% 84% at 22% -18%, rgb(180 220 255 / 0.16), transparent 58%),
+      linear-gradient(163deg, rgb(158 190 255 / 0.1) 0%, rgb(120 150 220 / 0.045) 42%, rgb(3 6 14 / 0.44) 100%);
+    /* smoked in the middle */
+    -webkit-backdrop-filter: blur(26px) saturate(1.85) brightness(0.86);
+    backdrop-filter: blur(26px) saturate(1.85) brightness(0.86);
+    box-shadow: inset 0 1px 0 rgb(200 225 255 / 0.16), inset 0 -1px 0 rgb(0 0 0 / 0.5);
+  }
+
+  /* lit at the lip — the inversion that makes it read as a sealed pane */
+  .lens__frost::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    -webkit-backdrop-filter: blur(7px) saturate(3.2) brightness(1.32);
+    backdrop-filter: blur(7px) saturate(3.2) brightness(1.32);
+    -webkit-mask-image: radial-gradient(120% 120% at 50% 45%, transparent 56%, #000 100%);
+    mask-image: radial-gradient(120% 120% at 50% 45%, transparent 56%, #000 100%);
+  }
+
+  .lens__rim {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    padding: 1.25px;
+    background: conic-gradient(
+      from var(--rim-angle),
+      rgb(255 250 240 / 0.05) 0deg,
+      var(--jade) 44deg,
+      var(--jade-lit) 96deg,
+      var(--iris) 172deg,
+      rgb(255 250 240 / 0.04) 232deg,
+      var(--ember) 300deg,
+      rgb(255 250 240 / 0.05) 360deg
+    );
+    -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    -webkit-mask-clip: content-box, border-box;
+    -webkit-mask-composite: xor;
+    mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+    mask-clip: content-box, border-box;
+    mask-composite: exclude;
+    animation: strike 1200ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+
+  @keyframes strike { from { --rim-angle: 96deg; } to { --rim-angle: 196deg; } }
+
+  .lens__body { position: relative; z-index: 2; }
+
+  /* ── layout ────────────────────────────────────────────────────────── */
+  .shell { width: min(100% - 4rem, 74rem); margin-inline: auto; padding-top: 1.25rem; }
+
+  .rail { --lens-radius: 999px; }
+  .rail .lens__frost { -webkit-backdrop-filter: blur(18px) saturate(1.7) brightness(0.9); backdrop-filter: blur(18px) saturate(1.7) brightness(0.9); }
+  .rail .lens__frost::after { display: none; }
+  .rail .lens__body { display: flex; align-items: center; gap: 1.25rem; padding: 0.8rem 0.8rem 0.8rem 1.4rem; }
+
+  .brand { font-weight: 600; letter-spacing: -0.02em; margin-right: auto; }
+  .rail nav { display: flex; gap: 1.5rem; margin-inline: auto; }
+  .rail a { color: var(--ink-2); text-decoration: none; font-size: 0.875rem; }
+  .rail__cta { border: 1px solid var(--line-strong); border-radius: 999px; padding: 0.45rem 1rem; font-size: 0.8125rem; color: var(--ink); }
+
+  .hero { display: grid; gap: 4rem; padding-block: clamp(4rem, 8vw, 7rem); align-items: center; }
+  @media (min-width: 62em) { .hero { grid-template-columns: 1.02fr 0.98fr; } }
+
+  .eyebrow { margin: 0 0 1.5rem; font-family: var(--font-m); font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); display: inline-flex; align-items: center; gap: 0.6rem; }
+  .dot { width: 0.42rem; height: 0.42rem; border-radius: 50%; background: var(--jade); box-shadow: 0 0 12px var(--jade); }
+
+  h1 { margin: 0; font-size: clamp(3.125rem, 1.94rem + 5.33vw, 6.25rem); line-height: 0.94; letter-spacing: -0.042em; font-weight: 600; }
+  h1 em { font-style: normal; color: var(--jade); }
+
+  .lede { margin: 1.75rem 0 0; max-width: 44ch; color: var(--ink-2); font-size: 1.0625rem; line-height: 1.6; }
+  .cta { display: flex; gap: 0.75rem; margin-top: 2.25rem; flex-wrap: wrap; }
+  .btn { display: inline-flex; padding: 0.8rem 1.5rem; border-radius: 999px; text-decoration: none; font-size: 0.9375rem; font-weight: 500; }
+  .btn--primary { background: var(--jade); color: #04241f; }
+  .btn--quiet { color: var(--ink); border: 1px solid var(--line-strong); }
+
+  .stage { margin: 0; }
+  .pane .lens__body { padding: 1.75rem; }
+  .pane__label { margin: 0; font-family: var(--font-m); font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--jade); }
+  .pane__doc { margin: 0.6rem 0 1.5rem; font-size: 1.375rem; font-weight: 500; letter-spacing: -0.02em; }
+  .bars { display: grid; gap: 0.6rem; }
+  .bars i { height: 0.5rem; border-radius: 2px; background: rgb(200 220 255 / 0.14); }
+
+  .boundary { position: relative; margin: 2rem 0 1.25rem; border-top: 1px solid var(--jade); box-shadow: 0 0 24px rgb(63 230 189 / 0.35); }
+  .boundary span { position: absolute; top: -0.65rem; left: 0; background: var(--void); padding-right: 0.75rem; font-family: var(--font-m); font-size: 0.6875rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--jade); }
+
+  .telemetry { display: flex; flex-wrap: wrap; gap: 0 2rem; list-style: none; margin: 0; padding: 0; font-family: var(--font-m); font-size: 0.75rem; }
+  .telemetry li { display: flex; gap: 0.5rem; }
+  .telemetry span { color: var(--muted); }
+  .telemetry b { font-weight: 500; color: var(--ink-2); }
+  .telemetry__note { margin: 0.9rem 0 0; font-size: 0.75rem; color: var(--muted); }
+</style>
