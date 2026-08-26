@@ -249,6 +249,12 @@ svg {
   max-width: 100%;
 }
 
+/* Any `display` in a class rule outranks the UA's [hidden]{display:none},
+   so an element with the hidden attribute stays visible. Restate it. */
+[hidden] {
+  display: none !important;
+}
+
 /* ---- shared primitives ------------------------------------------------- */
 
 .wrap {
