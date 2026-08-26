@@ -27,6 +27,7 @@ const promises = [
 ];
 
 const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 ---
 
 <BaseLayout title={`${SITE.name} — ${SITE.tagline}`} description={SITE.description}>
@@ -35,6 +36,11 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
   <main id="main">
     <!-- ── Hero: the desk ─────────────────────────────────────────────── -->
     <section class="hero wrap">
+      <div class="brand-cascade" aria-hidden="true">
+        <span class="brand-watermark brand-watermark--one"><img src={brandMark} alt="" /></span>
+        <span class="brand-watermark brand-watermark--two"><img src={brandMark} alt="" /></span>
+        <span class="brand-watermark brand-watermark--three"><img src={brandMark} alt="" /></span>
+      </div>
       <div class="hero__copy">
         <p class="eyebrow"><span class="dot"></span>Private document workspace</p>
 
@@ -317,6 +323,71 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     height: 1px;
     background: linear-gradient(90deg, transparent, var(--line), transparent);
   }
+
+  /* The brand appears as a physical impression on the workspace, never as a
+     competing hero illustration. The primary mark is exactly 3× the header
+     mark (5.25rem vs. 1.75rem); the two small marks make the motif memorable. */
+  .brand-cascade {
+    position: absolute;
+    z-index: -1;
+    inset: -3.1rem 0 auto;
+    height: 10rem;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .brand-watermark {
+    position: absolute;
+    display: block;
+    padding-top: 1.6rem;
+    opacity: 0.11;
+    filter: drop-shadow(0 9px 9px rgb(15 23 42 / 0.18));
+  }
+
+  .brand-watermark::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 1px;
+    height: 1.6rem;
+    background: linear-gradient(transparent, color-mix(in srgb, var(--accent) 45%, var(--line)));
+  }
+
+  .brand-watermark img { display: block; width: 100%; height: auto; }
+
+  .brand-watermark--one {
+    top: 0;
+    left: 14%;
+    width: 5.25rem;
+    transform: rotate(-7deg);
+  }
+
+  .brand-watermark--two {
+    top: 1.7rem;
+    left: 53%;
+    width: 3.1rem;
+    opacity: 0.07;
+    transform: rotate(11deg);
+  }
+
+  .brand-watermark--three {
+    top: -0.75rem;
+    right: 8%;
+    width: 4rem;
+    opacity: 0.08;
+    transform: rotate(-14deg);
+  }
+
+  :global(:root[data-theme='dark']) .brand-watermark {
+    opacity: 0.23;
+    filter: grayscale(0.2) brightness(2.8) contrast(0.65) drop-shadow(0 10px 16px rgb(0 0 0 / 0.55));
+    mix-blend-mode: screen;
+  }
+
+  :global(:root[data-theme='dark']) .brand-watermark--one { opacity: 0.3; }
+  :global(:root[data-theme='dark']) .brand-watermark--two { opacity: 0.16; }
+  :global(:root[data-theme='dark']) .brand-watermark--three { opacity: 0.18; }
 
   .eyebrow {
     display: inline-flex;
