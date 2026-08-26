@@ -53,3 +53,5 @@ frontend/.tmp-test/
 
 # --- Agent worktrees ---
 .claude/worktrees/
+# Vendored out of node_modules at build time by the pdfjs-assets integration.
+frontend/public/pdfjs/
