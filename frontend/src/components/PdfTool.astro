@@ -21,14 +21,29 @@ const {
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
-const action =
-  mode === 'merge'
-    ? 'Merge PDFs'
-    : mode === 'split'
-      ? 'Split PDF'
-      : mode === 'rotate'
-        ? 'Rotate'
-        : 'Compress';
+const ACTIONS: Record<Operation, string> = {
+  compress: 'Compress',
+  merge: 'Merge PDFs',
+  split: 'Split PDF',
+  rotate: 'Rotate',
+  'images-to-pdf': 'Build the PDF',
+  'pdf-to-images': 'Export images',
+};
+
+const action = ACTIONS[mode];
+
+/** The only tool whose input is not a PDF. */
+const takesImages = mode === 'images-to-pdf';
+
+const accept = takesImages
+  ? 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
+  : 'application/pdf,.pdf';
+
+const dropTitle = takesImages
+  ? 'Choose images, or drop them here'
+  : multiple
+    ? 'Choose PDFs, or drop them here'
+    : 'Choose a PDF, or drop one here';
 ---
 
 <section class="tool wrap" data-pdf-tool data-mode={mode}>
@@ -42,13 +57,7 @@ const action =
 
   <Lens variant="loupe" class="drop">
     <label class="drop__zone" data-drop>
-      <input
-        class="sr-only"
-        data-input
-        type="file"
-        accept="application/pdf,.pdf"
-        multiple={multiple}
-      />
+      <input class="sr-only" data-input type="file" accept={accept} multiple={multiple} />
       <span class="drop__icon" aria-hidden="true">
         <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M8 3h11l6 6v20a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke-linejoin="round"></path>
@@ -56,9 +65,7 @@ const action =
           <path d="M16 22v-8m0 0-3.2 3.2M16 14l3.2 3.2" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg>
       </span>
-      <span class="drop__title">
-        {multiple ? 'Choose PDFs, or drop them here' : 'Choose a PDF, or drop one here'}
-      </span>
+      <span class="drop__title">{dropTitle}</span>
       <span class="drop__meta">Stays on this device · no account</span>
     </label>
   </Lens>
@@ -84,6 +91,58 @@ const action =
           <label><input type="radio" name="turn" value="180" /> 180°</label>
           <label><input type="radio" name="turn" value="270" /> 90° left</label>
         </fieldset>
+      )
+    }
+
+    {
+      mode === 'images-to-pdf' && (
+        <label class="field">
+          <span>Page size</span>
+          <select data-page-size>
+            <option value="fit">Fit each page to its image</option>
+            <option value="a4">A4</option>
+            <option value="letter">Letter</option>
+          </select>
+          <small>
+            JPG and PNG are embedded byte-for-byte — not decoded, not re-encoded, nothing lost.
+            WebP has no PDF equivalent, so those images alone are converted to JPEG at quality
+            0.92. On A4 or Letter the image is centred and scaled to fit.
+          </small>
+        </label>
+      )
+    }
+
+    {
+      mode === 'pdf-to-images' && (
+        <Fragment>
+          <fieldset class="field field--turns">
+            <legend>Format</legend>
+            <label>
+              <input type="radio" name="format" value="png" checked /> PNG · lossless
+            </label>
+            <label>
+              <input type="radio" name="format" value="jpeg" /> JPG · smaller
+            </label>
+          </fieldset>
+
+          <fieldset class="field field--turns">
+            <legend>Resolution</legend>
+            <label>
+              <input type="radio" name="dpi" value="72" /> 72 DPI
+            </label>
+            <label>
+              <input type="radio" name="dpi" value="150" checked /> 150 DPI
+            </label>
+            <label>
+              <input type="radio" name="dpi" value="300" /> 300 DPI
+            </label>
+            <small data-dpi-note hidden />
+            <small>
+              Capped at 12 million pixels a page. Above roughly 16.7 million, Safari on iOS
+              stops allocating the canvas and hands back a blank image instead of an error.
+            </small>
+          </fieldset>
+        </Fragment>
       )
     }
 
@@ -152,6 +211,11 @@ const action =
     let worker: Worker | null = null;
     let jobId = 0;
     let urls: string[] = [];
+    /** Id of the in-flight page-size probe, so its answer is never shown as a result. */
+    let probeId = -1;
+
+    const takesImages = mode === 'images-to-pdf';
+    const takesMany = mode === 'merge' || takesImages;
 
     const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
     const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : kb(n));
@@ -178,12 +242,57 @@ const action =
       status.textContent = '';
     }
 
-    function showFiles(next: File[]) {
-      const pdfs = next.filter(
-        (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
-      );
+    const usable = (file: File) =>
+      takesImages
+        ? /^image\/(jpeg|png|webp)$/.test(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name)
+        : file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 
-      files = mode === 'merge' ? pdfs : pdfs.slice(0, 1);
+    /**
+     * How much resolution a page can take depends on how big the page is, so
+     * the DPI choices are narrowed once there is a file to measure. This costs
+     * one pdf-lib parse and downloads no renderer.
+     */
+    function limitDpi(maxDpi: number) {
+      const radios = [...root!.querySelectorAll<HTMLInputElement>('input[name="dpi"]')];
+      const note = root!.querySelector<HTMLElement>('[data-dpi-note]');
+      let blocked = 0;
+
+      for (const radio of radios) {
+        const allowed = Number(radio.value) <= maxDpi;
+        radio.disabled = !allowed;
+        radio.parentElement?.toggleAttribute('data-off', !allowed);
+        if (!allowed) {
+          blocked += 1;
+          radio.checked = false;
+        }
+      }
+
+      const enabled = radios.filter((radio) => !radio.disabled);
+      if (enabled.length > 0 && !enabled.some((radio) => radio.checked)) {
+        enabled[enabled.length - 1]!.checked = true;
+      }
+
+      if (note) {
+        note.textContent = blocked
+          ? `This document's pages are large enough that anything above ${maxDpi} DPI would exceed the canvas limit, so the higher settings are off.`
+          : '';
+        note.hidden = blocked === 0;
+      }
+    }
+
+    async function probe(file: File) {
+      probeId = ++jobId;
+      const bytes = await file.arrayBuffer();
+      ensureWorker().postMessage(
+        { id: probeId, op: mode, files: [{ name: file.name, bytes }], probe: true },
+        [bytes]
+      );
+    }
+
+    function showFiles(next: File[]) {
+      const kept = next.filter(usable);
+
+      files = takesMany ? kept : kept.slice(0, 1);
 
       list.replaceChildren(
         ...files.map((file) => {
@@ -198,9 +307,19 @@ const action =
       errorEl.hidden = true;
       status.textContent = '';
       revoke();
+
+      if (mode === 'pdf-to-images' && files[0]) void probe(files[0]);
     }
 
     function onDone({ id, result: res }: WorkerResponse) {
+      // A probe answers a question the UI asked, not one the user did. If the
+      // file turns out to be unreadable, the real run will say so properly.
+      if (id === probeId) {
+        probeId = -1;
+        if (res.ok && 'probe' in res) limitDpi(res.maxDpi);
+        return;
+      }
+
       if (id !== jobId) return;
       runBtn.disabled = false;
       status.textContent = '';
@@ -209,6 +328,8 @@ const action =
         fail(res.error);
         return;
       }
+
+      if ('probe' in res) return;
 
       const isCompress = typeof res.ratio === 'number';
       const percent = Math.round((res.ratio ?? 0) * 100);
@@ -247,9 +368,12 @@ const action =
       );
 
       revoke();
+      downloads.dataset.many = String(res.files.length > 6);
       downloads.replaceChildren(
         ...res.files.map((file, i) => {
-          const url = URL.createObjectURL(new Blob([file.bytes as BlobPart], { type: 'application/pdf' }));
+          const url = URL.createObjectURL(
+            new Blob([file.bytes as BlobPart], { type: file.type ?? 'application/pdf' })
+          );
           urls.push(url);
           const a = document.createElement('a');
           a.className = i === 0 ? 'btn btn--primary' : 'btn btn--quiet';
@@ -296,16 +420,19 @@ const action =
         files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
       );
 
-      const turn = Number(
-        root.querySelector<HTMLInputElement>('input[name="turn"]:checked')?.value ?? 90
-      );
+      const picked = (name: string) =>
+        root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
 
       const request: WorkerRequest = {
         id: ++jobId,
         op: mode,
         files: payload,
         ranges: root.querySelector<HTMLInputElement>('[data-ranges]')?.value,
-        turn,
+        turn: Number(picked('turn') ?? 90),
+        pageSize: root.querySelector<HTMLSelectElement>('[data-page-size]')
+          ?.value as WorkerRequest['pageSize'],
+        format: picked('format') as WorkerRequest['format'],
+        dpi: Number(picked('dpi') ?? 150),
       };
 
       // Transfer, don't copy — a 50 MB file should not exist twice in memory.
@@ -378,12 +505,22 @@ const action =
   }
   .field small { color: var(--muted); font-size: var(--step--2); }
 
+  .field select {
+    padding: 0.6rem 0.75rem; border: 1px solid var(--line-strong);
+    border-radius: 8px; background: var(--paper-raised); color: var(--ink);
+    font: inherit; font-size: var(--step--1);
+  }
+
   .field--turns {
     border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 0.75rem 1rem; display: flex; flex-wrap: wrap; gap: 1rem;
+    padding: 0.75rem 1rem; display: flex; flex-wrap: wrap; gap: 0.6rem 1rem;
   }
   .field--turns legend { font-size: var(--step--2); color: var(--muted); padding-inline: 0.25rem; }
   .field--turns label { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .field--turns label[data-off] { color: var(--muted); cursor: not-allowed; }
+  /* A note about the whole fieldset, not one option: break it onto its own row. */
+  .field--turns small { flex-basis: 100%; }
+  .field--turns small[hidden] { display: none; }
 
   .workspace__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
   .status { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); }
@@ -424,6 +561,12 @@ const action =
   .result__notes:empty { display: none; }
 
   .result__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+  /* One file per page means a 40-page export is 40 buttons. Contain them. */
+  .result__actions[data-many='true'] {
+    max-height: 15rem; overflow-y: auto;
+    padding: 0.6rem; border: 1px solid var(--line); border-radius: var(--radius);
+  }
 
   .result__receipt {
     font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted);

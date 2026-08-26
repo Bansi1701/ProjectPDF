@@ -1,5 +1,17 @@
 /** Every tool the worker can run. */
-export type Operation = 'compress' | 'merge' | 'split' | 'rotate';
+export type Operation =
+  | 'compress'
+  | 'merge'
+  | 'split'
+  | 'rotate'
+  | 'images-to-pdf'
+  | 'pdf-to-images';
+
+/** Images → PDF: the shape each page takes. */
+export type PageSize = 'fit' | 'a4' | 'letter';
+
+/** PDF → image: the raster format written out. */
+export type ImageFormat = 'png' | 'jpeg';
 
 export interface InputFile {
   name: string;
@@ -9,6 +21,8 @@ export interface InputFile {
 export interface OutputFile {
   name: string;
   bytes: Uint8Array;
+  /** MIME type for the download. Defaults to application/pdf. */
+  type?: string;
 }
 
 /** Where the savings came from. Shown to the user — the honesty is the product. */
@@ -45,7 +59,22 @@ export interface OpFailure {
   error: string;
 }
 
-export type OpResult = OpSuccess | OpFailure;
+/**
+ * Answer to a `probe` request: page geometry only, no rendering.
+ *
+ * PDF → image needs to know how big the pages are before it can offer a DPI,
+ * and pdf-lib is already in the worker bundle — so the DPI selector can be
+ * limited without downloading the renderer first.
+ */
+export interface ProbeSuccess {
+  ok: true;
+  probe: true;
+  pages: number;
+  /** Highest whole DPI at which no page exceeds the canvas budget. */
+  maxDpi: number;
+}
+
+export type OpResult = OpSuccess | OpFailure | ProbeSuccess;
 
 export interface WorkerRequest {
   id: number;
@@ -55,6 +84,14 @@ export interface WorkerRequest {
   ranges?: string;
   /** Rotate only: degrees clockwise. */
   turn?: number;
+  /** Images → PDF only. */
+  pageSize?: PageSize;
+  /** PDF → image only. */
+  format?: ImageFormat;
+  /** PDF → image only: 72, 150 or 300. Clamped per page if a page is huge. */
+  dpi?: number;
+  /** PDF → image only: measure the pages and return DPI limits, render nothing. */
+  probe?: boolean;
 }
 
 export interface WorkerResponse {
