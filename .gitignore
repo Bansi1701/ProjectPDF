@@ -43,3 +43,6 @@ docker-compose.override.yml
 # --- Project ---
 # Never commit test PDFs that came from a real user.
 /corpus/
+
+# The business plan is not public. Keep strategy documents out of the repo.
+Docs/*.pdf

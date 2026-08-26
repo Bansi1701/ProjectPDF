@@ -7,6 +7,10 @@ interface Props {
 }
 
 const { title, description } = Astro.props;
+
+// Respects the deployment base path (a GitHub Pages project site is served
+// from /ProjectPDF/, not /).
+const favicon = `${import.meta.env.BASE_URL}/favicon.svg`.replace(/\/{2,}/g, '/');
 ---
 
 <!doctype html>
@@ -26,7 +30,7 @@ const { title, description } = Astro.props;
     <meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#14120f" media="(prefers-color-scheme: dark)" />
 
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href={favicon} type="image/svg+xml" />
   </head>
 
   <body>
