@@ -36,22 +36,21 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     <!-- ── Hero: the desk ─────────────────────────────────────────────── -->
     <section class="hero wrap">
       <div class="hero__copy">
-        <p class="eyebrow"><span class="dot"></span>In development — first tools ship soon</p>
+        <p class="eyebrow"><span class="dot"></span>Private document workspace</p>
 
-        <h1>Your file never<br />leaves this page.</h1>
+        <h1>Every PDF task,<br />shaped around your document.</h1>
 
         <p class="lede">
-          Merging, splitting, compressing and signing a PDF are things a browser can do by
-          itself. So we do them there. Nothing is uploaded, which means there is nothing
-          for us to store, leak, or promise to delete later.
+          A focused place to organise, convert, edit and protect PDFs. The work stays in your
+          browser, and every result is ready to inspect before you save it.
         </p>
 
         <div class="hero__actions">
-          <a class="btn btn--primary" href="#tools">See what's coming</a>
-          <a class="btn btn--quiet" href="#how">How it works</a>
+          <a class="btn btn--primary" href="#tools">Explore tools</a>
+          <a class="btn btn--quiet" href="#how">How privacy works</a>
         </div>
 
-        <p class="hero__meta">Free · No account · Works offline once loaded</p>
+        <p class="hero__meta">Free · No account · Your files stay on this device</p>
       </div>
 
       <!-- The metaphor: a sheet of paper with a glass lens laid across it -->
@@ -69,8 +68,8 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
         </div>
 
         <Lens variant="loupe" class="loupe">
-          <p class="loupe__label">Network out</p>
-          <p class="loupe__figure">0.00 <span>KB</span></p>
+          <p class="loupe__label">Document stage</p>
+          <p class="loupe__figure">Ready <span>to work</span></p>
           <p class="loupe__status"><i class="led"></i>processing: on device</p>
         </Lens>
       </figure>
@@ -116,11 +115,16 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     <!-- ── Tools ──────────────────────────────────────────────────────── -->
     <section class="tools wrap reveal" id="tools">
       <header class="section-head">
-        <h2>The tools</h2>
+        <h2>Choose your next step</h2>
         <p class="section-head__deck">
-          Every one marked <em>in your browser</em> runs on your machine. The handful that
-          cannot are labelled, here and everywhere else on the site.
+          Start with a clear outcome. Every tool labelled <em>in your browser</em> handles the
+          document on your machine.
         </p>
+        <label class="tool-search">
+          <span class="sr-only">Search tools</span>
+          <input type="search" data-tool-search placeholder="Search merge, watermark, protect…" autocomplete="off" />
+        </label>
+        <p class="tool-search__empty" data-tool-search-empty hidden>No tool matches that search yet.</p>
       </header>
 
       {
@@ -129,8 +133,9 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
             <h3 class="cluster__name">{category}</h3>
             <ul class="grid">
               {toolsByCategory(category).map((tool) => (
-                <li class="sheet card">
+                <li class="sheet card" data-tool-card data-search={`${tool.name} ${tool.blurb} ${category}`.toLowerCase()}>
                   {tool.status === 'live' && <a class="card__link" href={`${baseUrl}${tool.slug}/`} aria-label={`Open ${tool.name}`}></a>}
+                  <p class="card__category">{category}</p>
                   <h4 class="card__name">{tool.name}</h4>
                   <p class="card__blurb">{tool.blurb}</p>
                   <p class:list={['card__where', tool.runsWhere === 'server' && 'is-server']}>
@@ -211,10 +216,10 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     <!-- ── Close ──────────────────────────────────────────────────────── -->
     <section class="close reveal">
       <div class="wrap">
-        <h2 class="close__line">Pick a file. Watch the network tab.<br />Nothing happens.</h2>
+        <h2 class="close__line">Pick a file. Shape the result.<br />Keep it private.</h2>
         <p class="close__note">
-          That is the entire product. The first tools — merge, split and rotate — are being
-          built now.
+          Every local tool keeps the document in the browser tab. When you save, you take the
+          result with you — nothing is left behind.
         </p>
       </div>
     </section>
@@ -247,6 +252,23 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     </div>
   </footer>
 </BaseLayout>
+
+<script>
+  const search = document.querySelector<HTMLInputElement>('[data-tool-search]');
+  const cards = [...document.querySelectorAll<HTMLElement>('[data-tool-card]')];
+  const empty = document.querySelector<HTMLElement>('[data-tool-search-empty]');
+
+  search?.addEventListener('input', () => {
+    const query = search.value.trim().toLowerCase();
+    let visible = 0;
+    cards.forEach((card) => {
+      const match = !query || card.dataset.search?.includes(query);
+      card.hidden = !match;
+      if (match) visible += 1;
+    });
+    if (empty) empty.hidden = visible !== 0;
+  });
+</script>
 
 <style>
   /* ── Hero ─────────────────────────────────────────────────────────── */
@@ -307,6 +329,20 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
       radial-gradient(52% 48% at 16% 84%, var(--desk-cool), transparent 70%),
       radial-gradient(44% 40% at 92% 76%, var(--desk-blush), transparent 72%);
     filter: blur(10px);
+    pointer-events: none;
+  }
+
+  .hero__desk::after {
+    content: '';
+    position: absolute;
+    width: 11rem;
+    height: 4.5rem;
+    right: 18%;
+    top: -1.25rem;
+    border-top: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line));
+    border-radius: 50%;
+    transform: rotate(-18deg);
+    opacity: 0.55;
     pointer-events: none;
   }
 
@@ -513,6 +549,32 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     color: var(--ok);
   }
 
+  .tool-search {
+    display: block;
+    max-width: 36rem;
+    margin-top: 1.25rem;
+  }
+
+  .tool-search input {
+    width: 100%;
+    min-height: 3rem;
+    padding: 0.75rem 1rem;
+    color: var(--ink);
+    background: var(--paper-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+    font: inherit;
+  }
+
+  .tool-search input::placeholder { color: var(--muted); }
+
+  .tool-search__empty {
+    margin-top: 0.75rem;
+    color: var(--muted);
+    font-size: var(--step--1);
+  }
+
   .tools,
   .limits {
     padding-block: clamp(3.5rem, 2.5rem + 4vw, 6rem);
@@ -557,19 +619,33 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     display: flex;
     flex-direction: column;
     gap: 0.375rem;
+    overflow: hidden;
     transition:
+      border-color 180ms ease-out,
       box-shadow 180ms ease-out,
       transform 180ms ease-out;
+  }
+
+  .card::after {
+    content: '';
+    position: absolute;
+    width: 4.75rem;
+    height: 4.75rem;
+    right: -2.25rem;
+    bottom: -2.5rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-radius: 50%;
+    pointer-events: none;
   }
 
   .card__link { position: absolute; inset: 0; border-radius: inherit; }
 
   .card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-4px);
+    border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
     box-shadow:
-      0 2px 3px -1px rgb(58 48 32 / 0.12),
-      0 12px 22px -12px rgb(58 48 32 / 0.26),
-      0 28px 48px -30px rgb(58 48 32 / 0.3);
+      0 1px 3px rgb(15 23 42 / 0.05),
+      0 20px 40px -28px color-mix(in srgb, var(--accent) 45%, transparent);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -583,6 +659,15 @@ const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_UR
     font-size: var(--step-1);
     font-weight: 600;
     letter-spacing: -0.02em;
+  }
+
+  .card__category {
+    margin: 0 0 0.35rem;
+    color: var(--accent);
+    font-size: var(--step--2);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
 
   .card__blurb {

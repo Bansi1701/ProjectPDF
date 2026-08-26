@@ -73,10 +73,8 @@ const { variant = 'loupe', as: Tag = 'div', class: className = '' } = Astro.prop
     transition: --lens-sheen-x 420ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
 
-  @media (prefers-color-scheme: dark) {
-    :global(:root:not([data-theme='light'])) .lens__frost {
-      -webkit-backdrop-filter: blur(22px) saturate(1.5) brightness(1.12);
-    }
+  :global(:root[data-theme='dark']) .lens__frost {
+    -webkit-backdrop-filter: blur(22px) saturate(1.5) brightness(1.12);
   }
 
   /* Blur falloff at the rim. Nested on purpose — here the goal IS compounding

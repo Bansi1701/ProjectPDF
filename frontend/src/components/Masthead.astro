@@ -2,20 +2,26 @@
 import Lens from './Lens.astro';
 import Logo from './Logo.astro';
 import { CATEGORIES, SITE } from '../config/site';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
 <div class="masthead-slot">
   <Lens variant="rail" as="header" class="rail">
-    <a class="brand" href="/">
+    <a class="brand" href={`${base}/`}>
       <Logo size="1.375rem" />
       <span>{SITE.name}</span>
     </a>
 
     <nav class="nav" aria-label="Tool categories">
-      {CATEGORIES.map((category) => <a href={`#${category.toLowerCase()}`}>{category}</a>)}
+      {CATEGORIES.map((category) => <a href={`${base}/#${category.toLowerCase()}`}>{category}</a>)}
     </nav>
 
-    <a class="rail-cta" href="#tools">Browse tools</a>
+    <div class="rail__actions">
+      <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">
+        <span aria-hidden="true">◐</span>
+      </button>
+      <a class="rail-cta" href={`${base}/#tools`}>Browse tools</a>
+    </div>
   </Lens>
 </div>
 
@@ -71,15 +77,32 @@ import { CATEGORIES, SITE } from '../config/site';
     color: var(--ink);
   }
 
+  .rail__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .theme-toggle,
   .rail-cta {
     padding: 0.5rem 1rem;
-    border-radius: 999px;
+    border-radius: 12px;
     border: 1px solid var(--line-strong);
     color: var(--ink);
     text-decoration: none;
     font-size: var(--step--1);
     font-weight: 500;
     white-space: nowrap;
+  }
+
+  .theme-toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
   }
 
   .rail-cta:hover {
@@ -98,3 +121,22 @@ import { CATEGORIES, SITE } from '../config/site';
     }
   }
 </style>
+
+<script>
+  const toggle = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+
+  const paintToggle = () => {
+    if (!toggle) return;
+    const dark = document.documentElement.dataset.theme === 'dark';
+    toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    toggle.firstElementChild!.textContent = dark ? '☀' : '◐';
+  };
+
+  paintToggle();
+  toggle?.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('pdfcraft-theme', next); } catch {}
+    paintToggle();
+  });
+</script>
