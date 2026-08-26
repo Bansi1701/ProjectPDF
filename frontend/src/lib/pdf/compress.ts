@@ -8,6 +8,8 @@ import { PDFDocument } from '@cantoo/pdf-lib';
 
 import { analyse, explainSmallSaving } from './composition';
 import { rewrite, stripNonRendering } from './lossless';
+import { decodeAll, replaceStream } from './streams';
+import { subsetFonts } from './subset';
 import type { InputFile, OpResult } from './types';
 import { validate } from './validate';
 
@@ -42,6 +44,25 @@ export async function compress(files: InputFile[]): Promise<OpResult> {
 
   const composition = analyse(doc, bytesIn);
   const { savings, notes } = stripNonRendering(doc);
+
+  // Font re-subsetting. Every step inside proves itself or declines, so a
+  // failure here costs the extra saving and nothing else.
+  let fontsSubset = 0;
+  try {
+    const outcome = await subsetFonts(doc, decodeAll(doc), (ref, bytes) =>
+      replaceStream(doc, ref, bytes)
+    );
+    fontsSubset = outcome.fontsSubset;
+    if (outcome.fontsSubset > 0) {
+      const freed = outcome.bytesBefore - outcome.bytesAfter;
+      if (freed > 0) savings.fonts = freed;
+      notes.push(
+        `Rebuilt ${outcome.fontsSubset} embedded font${outcome.fontsSubset === 1 ? '' : 's'} around the characters actually used`
+      );
+    }
+  } catch {
+    // Subsetting is an optimisation, never a requirement.
+  }
 
   let candidate: Uint8Array;
   try {

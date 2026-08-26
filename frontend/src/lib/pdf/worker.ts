@@ -27,7 +27,9 @@ async function run(request: WorkerRequest): Promise<OpResult> {
   }
 }
 
-self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
+const ctx = self as unknown as DedicatedWorkerGlobalScope;
+
+ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;
 
   try {
@@ -39,9 +41,9 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       ? result.files.map((file) => file.bytes.buffer as ArrayBuffer)
       : [];
 
-    self.postMessage(response, transfer);
+    ctx.postMessage(response, transfer);
   } catch (error) {
-    self.postMessage({
+    ctx.postMessage({
       id: request.id,
       result: { ok: false, error: (error as Error).message },
     } satisfies WorkerResponse);

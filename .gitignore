@@ -46,3 +46,10 @@ docker-compose.override.yml
 
 # The business plan is not public. Keep strategy documents out of the repo.
 Docs/*.pdf
+
+# --- Build artifacts copied from node_modules (see frontend/scripts) ---
+frontend/public/wasm/
+frontend/.tmp-test/
+
+# --- Agent worktrees ---
+.claude/worktrees/

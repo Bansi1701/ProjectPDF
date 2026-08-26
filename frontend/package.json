@@ -4,13 +4,15 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview"
+    "dev": "npm run assets && astro dev",
+    "build": "npm run assets && astro build",
+    "preview": "astro preview",
+    "assets": "node scripts/copy-wasm.mjs"
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.4.0",
-    "astro": "^5.13.2"
+    "astro": "^5.13.2",
+    "harfbuzzjs": "^1.6.0"
   },
   "devDependencies": {
     "playwright": "^1.62.1"

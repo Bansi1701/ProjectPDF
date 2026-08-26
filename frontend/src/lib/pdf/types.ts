@@ -17,6 +17,7 @@ export interface Savings {
   pieceInfo: number;
   attachments: number;
   structural: number;
+  fonts?: number;
 }
 
 export interface OpSuccess {
