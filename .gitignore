@@ -48,12 +48,22 @@ docker-compose.override.yml
 Docs/*.pdf
 
 # --- Build artifacts copied from node_modules (see frontend/scripts) ---
-frontend/public/wasm/
-frontend/.tmp-test/
 
 # --- Agent worktrees ---
 .claude/worktrees/
 # Vendored out of node_modules at build time by the pdfjs-assets integration.
+
+# Vendored from node_modules by `npm run assets`; regenerated on every build.
+
+# Vendored from node_modules by `npm run assets`; rebuilt on every build.
+
+# Rebuilt from node_modules on every build by `npm run assets` and the
+# pdfjs-assets integration. Committing them would put ~30 MB of derived
+# binaries in the history for no benefit.
+frontend/public/tesseract/
 frontend/public/pdfjs/
-public/tessdata/
-public/tesseract/
+frontend/public/wasm/
+frontend/.tmp-test/
+
+# NOT ignored: frontend/public/tessdata/ — the OCR language data is fetched
+# once by hand, not produced by the build, so a clean checkout needs it.

@@ -43,7 +43,9 @@ export const TOOLS: Tool[] = [
   { slug: 'pdf-to-jpg', name: 'PDF to image', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Export pages as JPG or PNG at the DPI you pick.' },
   { slug: 'pdf-to-markdown', name: 'PDF to Markdown', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'For documents that already have a text layer.' },
   { slug: 'word-to-pdf', name: 'Word to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Text, headings and lists from a .docx — in your browser.' },
-  { slug: 'url-to-pdf', name: 'Web page to PDF', category: 'Convert', runsWhere: 'server', status: 'live', blurb: 'A public URL is not your private file, so we fetch it.' },
+  { slug: 'url-to-pdf', name: 'Web page to PDF', category: 'Convert', runsWhere: 'server', status: 'building', blurb: 'A public URL is not your private file, so we fetch it.' },
+  { slug: 'excel-to-pdf', name: 'Excel to PDF', category: 'Convert', runsWhere: 'server', status: 'planned', blurb: 'Spreadsheets need a real layout engine. This one needs our server.' },
+  { slug: 'powerpoint-to-pdf', name: 'PowerPoint to PDF', category: 'Convert', runsWhere: 'server', status: 'planned', blurb: 'Slides need a real layout engine. This one needs our server.' },
 
   // --- Edit ---
   { slug: 'edit-pdf', name: 'Edit', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Text, shapes, highlights and images on the page.' },
@@ -59,17 +61,39 @@ export const TOOLS: Tool[] = [
   { slug: 'redact-pdf', name: 'Redact', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'Deletes the content underneath, not just a black box over it.' },
   { slug: 'repair-pdf', name: 'Repair', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'Rebuild a file that will not open.' },
   { slug: 'sign-pdf', name: 'Sign', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'Draw, type or place a signature on the page.' },
-  { slug: 'pdf-a', name: 'PDF/A', category: 'Secure', runsWhere: 'server', status: 'live', blurb: 'Archival conversion and validation.' },
+  { slug: 'pdf-a', name: 'PDF/A', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'Archival conversion. Refused when the fonts are not embedded.' },
 ];
 
 /** Things we are honest about not doing in the browser, and why. */
+/**
+ * What genuinely cannot happen in the browser, and why.
+ *
+ * This is the list the homepage prints, so it has to track reality. Several
+ * entries have already moved off it — OCR, Word conversion and PDF/A
+ * conversion all run locally now — and leaving a stale claim here would be
+ * lying in the one section whose whole point is not to.
+ */
 export const SERVER_ONLY_REASONS = [
-  { what: 'Word, Excel and PowerPoint conversion', why: 'LibreOffice compiled to WebAssembly is about 52 MB. We are not making your phone download that.' },
-  { what: 'Web page to PDF', why: 'A browser cannot fetch a third-party page, or any of its images and fonts. There is also no file of yours involved.' },
-  { what: 'Table extraction from unruled layouts', why: 'The layout models that do this well are far too large to ship to a tab.' },
-  { what: 'PDF/A validation', why: 'The only complete validator is written in Java. Nobody has built a browser one.' },
-  { what: 'OCR over hundreds of pages', why: 'A few pages are fine locally. A 300-page scan will exhaust a phone.' },
-  { what: 'Certified digital signatures', why: 'Timestamp authorities and revocation checks are network calls by definition.' },
+  {
+    what: 'Web page to PDF',
+    why: 'A browser is not allowed to fetch another site — the rules that stop other sites reading your data stop us reading theirs. No file of yours is involved, so we fetch the page ourselves.',
+  },
+  {
+    what: 'Excel and PowerPoint to PDF',
+    why: 'Spreadsheets and slides need a real layout engine, and the only faithful one is LibreOffice — 52 MB compiled to WebAssembly, and it needs browser settings that would break the rest of this site.',
+  },
+  {
+    what: 'PDF/A validation',
+    why: 'We can convert to PDF/A here, and refuse when a document cannot honestly claim it. Proving conformance is different: the only complete validator is veraPDF, which is Java.',
+  },
+  {
+    what: 'Certified digital signatures',
+    why: 'Signing a document so tampering is detectable needs a timestamp authority and a revocation check. Those are network calls by definition. The visual signature tool here is a different thing, and says so.',
+  },
+  {
+    what: 'Table extraction from unruled layouts',
+    why: 'Pulling a table out of a page that has no ruling lines takes a layout model far too large to send to a tab.',
+  },
 ] as const;
 
 export const toolsByCategory = (category: ToolCategory): Tool[] =>

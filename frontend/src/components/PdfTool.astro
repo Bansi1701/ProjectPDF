@@ -908,16 +908,29 @@ const dropTitle = takesWord
         status.textContent = 'Rendering on our server…';
 
         try {
-          const api = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8010';
-          const response = await fetch(`${api}/api/v1/convert/url-to-pdf`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, landscape: false }),
-          });
+          // Unset in a static deploy: the renderer is a separate service and
+          // is not running yet. Say so rather than failing with a fetch error.
+          const api = import.meta.env.PUBLIC_API_URL;
+          if (!api) {
+            throw new Error(
+              'The renderer is not deployed yet, so this tool only works when you run the project locally. Every other tool here runs in your browser and works right now.'
+            );
+          }
+
+          let response: Response;
+          try {
+            response = await fetch(`${api}/api/v1/convert/url-to-pdf`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ url, landscape: false }),
+            });
+          } catch {
+            throw new Error('The renderer could not be reached. It runs as a separate service — check it is running.');
+          }
 
           if (!response.ok) {
             const detail = await response.json().catch(() => ({}));
-            throw new Error(detail.detail ?? `The server returned ${response.status}.`);
+            throw new Error(detail.detail ?? `The renderer returned ${response.status}.`);
           }
 
           const blob = await response.blob();
