@@ -157,3 +157,67 @@ export async function rotate(files: InputFile[], turn: number): Promise<OpResult
     summary: `Rotated ${pages} page${pages === 1 ? '' : 's'} by ${turn}°`,
   };
 }
+
+export async function reorder(files: InputFile[], pageOrder: number[]): Promise<OpResult> {
+  const file = files[0];
+  if (!file) return { ok: false, error: 'Choose a PDF to reorder.' };
+  const started = performance.now();
+  const source = await load(file);
+  const expected = source.getPageCount();
+  const order = pageOrder.length ? pageOrder : source.getPageIndices();
+  if (order.length !== expected || new Set(order).size !== expected || order.some((page) => page < 0 || page >= expected)) {
+    return { ok: false, error: 'The page order is invalid. Try choosing the file again.' };
+  }
+  const output = await PDFDocument.create();
+  const pages = await output.copyPages(source, order);
+  pages.forEach((page) => output.addPage(page));
+  const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false });
+  return {
+    ok: true, files: [{ name: `${baseName(file.name)}-reordered.pdf`, bytes }],
+    bytesIn: file.bytes.byteLength, bytesOut: bytes.length, pages: expected,
+    durationMs: performance.now() - started, summary: `Reordered ${expected} pages`,
+  };
+}
+
+export async function extract(files: InputFile[], ranges: string): Promise<OpResult> {
+  const file = files[0];
+  if (!file) return { ok: false, error: 'Choose a PDF to extract from.' };
+  const started = performance.now();
+  const source = await load(file);
+  try {
+    const output = await PDFDocument.create();
+    const pages = await output.copyPages(source, parseGroup(ranges, source.getPageCount()));
+    pages.forEach((page) => output.addPage(page));
+    const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false });
+    return {
+      ok: true, files: [{ name: `${baseName(file.name)}-extracted.pdf`, bytes }],
+      bytesIn: file.bytes.byteLength, bytesOut: bytes.length, pages: pages.length,
+      durationMs: performance.now() - started, summary: `Extracted ${pages.length} pages`,
+    };
+  } catch (error) {
+    return { ok: false, error: (error as Error).message };
+  }
+}
+
+export async function deletePages(files: InputFile[], ranges: string): Promise<OpResult> {
+  const file = files[0];
+  if (!file) return { ok: false, error: 'Choose a PDF to edit.' };
+  const started = performance.now();
+  const source = await load(file);
+  try {
+    const removed = new Set(parseGroup(ranges, source.getPageCount()));
+    const kept = source.getPageIndices().filter((page) => !removed.has(page));
+    if (!kept.length) return { ok: false, error: 'Choose at least one page to keep.' };
+    const output = await PDFDocument.create();
+    const pages = await output.copyPages(source, kept);
+    pages.forEach((page) => output.addPage(page));
+    const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false });
+    return {
+      ok: true, files: [{ name: `${baseName(file.name)}-pages-deleted.pdf`, bytes }],
+      bytesIn: file.bytes.byteLength, bytesOut: bytes.length, pages: kept.length,
+      durationMs: performance.now() - started, summary: `Removed ${removed.size} pages`,
+    };
+  } catch (error) {
+    return { ok: false, error: (error as Error).message };
+  }
+}

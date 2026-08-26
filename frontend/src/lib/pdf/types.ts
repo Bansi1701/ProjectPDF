@@ -1,5 +1,16 @@
 /** Every tool the worker can run. */
-export type Operation = 'compress' | 'merge' | 'split' | 'rotate';
+export type Operation =
+  | 'compress'
+  | 'merge'
+  | 'split'
+  | 'rotate'
+  | 'reorder'
+  | 'extract'
+  | 'delete'
+  | 'edit'
+  | 'watermark'
+  | 'page-numbers'
+  | 'compare';
 
 export interface InputFile {
   name: string;
@@ -56,6 +67,15 @@ export interface WorkerRequest {
   ranges?: string;
   /** Rotate only: degrees clockwise. */
   turn?: number;
+  /** Reorder only: zero-based page indexes in their new order. */
+  pageOrder?: number[];
+  /** Text tools only. */
+  text?: string;
+  /** Edit only: one-based target page. */
+  targetPage?: number;
+  /** Page-number tool only. */
+  startNumber?: number;
+  prefix?: string;
 }
 
 export interface WorkerResponse {

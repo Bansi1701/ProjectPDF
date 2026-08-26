@@ -6,7 +6,8 @@
  * imported lazily so a tool page costs nothing until someone picks a file.
  */
 import { compress } from './compress';
-import { merge, rotate, split } from './organise';
+import { merge, rotate, split, reorder, extract, deletePages } from './organise';
+import { addText, watermark, pageNumbers, compare } from './edit';
 import type { WorkerRequest, WorkerResponse, OpResult } from './types';
 
 /* Static imports: Vite cannot code-split a worker bundle, and the laziness
@@ -22,6 +23,20 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return split(request.files, request.ranges ?? '');
     case 'rotate':
       return rotate(request.files, request.turn ?? 90);
+    case 'reorder':
+      return reorder(request.files, request.pageOrder ?? []);
+    case 'extract':
+      return extract(request.files, request.ranges ?? '');
+    case 'delete':
+      return deletePages(request.files, request.ranges ?? '');
+    case 'edit':
+      return addText(request.files, request.text ?? '', request.targetPage ?? 1);
+    case 'watermark':
+      return watermark(request.files, request.text ?? '');
+    case 'page-numbers':
+      return pageNumbers(request.files, request.startNumber ?? 1, request.prefix ?? '');
+    case 'compare':
+      return compare(request.files);
     default:
       return { ok: false, error: `Unknown operation: ${String(request.op)}` };
   }
