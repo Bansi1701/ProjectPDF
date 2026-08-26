@@ -21,6 +21,12 @@
   inherits: false;
 }
 
+@property --lens-glow {
+  syntax: '<number>';
+  initial-value: 0;
+  inherits: false;
+}
+
 :root {
   /* ---- paper -------------------------------------------------------- */
   --paper: #fbf8f2;         /* the desk */
@@ -40,6 +46,7 @@
   --accent-bright: #3c63b8;
   --ok: #2f6b45;            /* status only, never a button */
   --seal: #9c3324;          /* used twice: the "never" mark and warnings */
+  --disclose: #8a5a12;      /* server disclosure only. 5.6:1 on --paper */
 
   /* ---- paper shadow: contact line, near diffusion, far diffusion ----- */
   --shadow-paper:
@@ -95,9 +102,9 @@
   --lens-rim-lo: rgb(124 113 95 / 0.3);
   --lens-rim-cool: rgb(150 205 226 / 0.62);
   --lens-rim-warm: rgb(240 199 137 / 0.66);
-  --lens-shadow:
-    0 1px 0 0 rgb(255 255 255 / 0.85) inset,
-    0 -1px 0 0 rgb(124 113 95 / 0.1) inset,
+  --lens-bevel-hi: rgb(255 255 255 / 0.85);
+  --lens-bevel-lo: rgb(124 113 95 / 0.1);
+  --lens-elev:
     0 1px 2px -1px rgb(58 48 32 / 0.1),
     0 10px 18px -12px rgb(58 48 32 / 0.2),
     0 30px 56px -28px rgb(58 48 32 / 0.26);
@@ -128,6 +135,7 @@
     --accent-bright: #bdcef7;
     --ok: #7cc79b;
     --seal: #e0846f;
+    --disclose: #d6a761;
 
     --shadow-paper:
       0 1px 0 0 rgb(255 250 240 / 0.06) inset,
@@ -159,9 +167,9 @@
     --lens-rim-lo: rgb(255 250 240 / 0.06);
     --lens-rim-cool: rgb(126 186 214 / 0.42);
     --lens-rim-warm: rgb(214 166 104 / 0.44);
-    --lens-shadow:
-      0 1px 0 0 rgb(255 250 240 / 0.14) inset,
-      0 -1px 0 0 rgb(0 0 0 / 0.4) inset,
+    --lens-bevel-hi: rgb(255 250 240 / 0.14);
+    --lens-bevel-lo: rgb(0 0 0 / 0.4);
+    --lens-elev:
       0 2px 4px -2px rgb(0 0 0 / 0.55),
       0 26px 52px -26px rgb(0 0 0 / 0.72);
     --lens-solid: #1c1916;

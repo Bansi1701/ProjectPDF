@@ -122,8 +122,8 @@ const promises = [
         <header class="section-head">
           <h2>How it works</h2>
           <p class="section-head__deck">
-            The mechanism is the trust. If you can follow these three steps, you do not have
-            to take our word for anything.
+            The mechanism is the trust. If you can follow it, you do not have to take our
+            word for anything — and you can see exactly which step is missing.
           </p>
         </header>
 
@@ -137,6 +137,13 @@ const promises = [
               </li>
             ))
           }
+
+          <!-- The absence is the argument. Deliberately empty. -->
+          <li class="step step--absent">
+            <span class="step__n">4</span>
+            <h3 class="step__title">Upload to our server</h3>
+            <p class="step__body">Not implemented. There is no endpoint to call.</p>
+          </li>
         </ol>
 
         <p class="how__never">
@@ -204,7 +211,8 @@ const promises = [
       <div class="footer__base">
         <span class="footer__brand">{SITE.name}</span>
         <span class="footer__colophon">
-          Built so that we couldn't read your documents even if we wanted to.
+          Appearance follows your system · Built so that we couldn't read your documents
+          even if we wanted to.
         </span>
       </div>
     </div>
@@ -493,7 +501,7 @@ const promises = [
   }
 
   .card__where.is-server {
-    color: var(--muted);
+    color: var(--disclose);
   }
 
   .card__soon {
@@ -528,6 +536,26 @@ const promises = [
   .step__body {
     font-size: var(--step--1);
     color: var(--ink-2);
+  }
+
+  /* No paper, no shadow — a dotted outline where a step would have been. */
+  .step--absent {
+    padding: 1.5rem;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius);
+    background: none;
+    box-shadow: none;
+    opacity: 0.62;
+  }
+
+  .step--absent .step__n {
+    color: var(--muted);
+    text-decoration: line-through;
+    text-decoration-color: var(--seal);
+  }
+
+  .step--absent .step__title {
+    color: var(--muted);
   }
 
   .how__never {

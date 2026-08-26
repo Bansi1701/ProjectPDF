@@ -32,11 +32,16 @@ import { CATEGORIES, SITE } from '../config/site';
   /* The element is rendered by <Lens>, so the parent's scoped selector never
      lands on it. Constrain :global() under .masthead-slot instead. */
   .masthead-slot :global(.rail) {
+    padding: 0.5rem 0.5rem 0.5rem 1.125rem;
+    min-height: 3.5rem;
+  }
+
+  /* Lens wraps its slot in .lens__body, so the row lives one level down. */
+  .masthead-slot :global(.rail .lens__body) {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.5rem 0.5rem 0.5rem 1.125rem;
-    min-height: 3.5rem;
+    min-height: 2.5rem;
   }
 
   .brand {
