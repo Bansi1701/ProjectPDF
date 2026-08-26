@@ -98,7 +98,7 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport, canvas }).promise;
+      await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport }).promise;
 
       const blob = await canvas.convertToBlob({ type: 'image/png' });
       const result = await worker.recognize(blob, {}, { blocks: true, text: true });
