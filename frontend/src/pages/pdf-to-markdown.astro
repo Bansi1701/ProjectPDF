@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+---
+
+<BaseLayout
+  title="PDF to Markdown — ProjectPDF"
+  description="Turn a PDF's text into clean Markdown, in your browser. Nothing is uploaded."
+>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="pdf-to-markdown"
+      title="PDF to Markdown"
+      description="Pulls the text out and rebuilds headings, lists and paragraphs from the layout. Works on documents that already have a text layer — a scan needs OCR first."
+    />
+  </main>
+</BaseLayout>

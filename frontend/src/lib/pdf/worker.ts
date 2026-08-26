@@ -9,6 +9,7 @@ import { compress } from './compress';
 import { imagesToPdf, pdfToImages, probePdf } from './images';
 import { addText, compare, pageNumbers, watermark } from './edit';
 import { deletePages, extract, merge, reorder, rotate, split } from './organise';
+import { pdfToMarkdown } from './markdown';
 import { protect, unlock } from './security';
 import type { WorkerRequest, WorkerResponse, OpResult } from './types';
 
@@ -63,6 +64,8 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       );
     case 'unlock':
       return unlock(request.files, request.userPassword ?? '');
+    case 'pdf-to-markdown':
+      return pdfToMarkdown(request.files);
     default:
       return { ok: false, error: `Unknown operation: ${String(request.op)}` };
   }

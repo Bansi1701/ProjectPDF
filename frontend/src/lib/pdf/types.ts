@@ -14,7 +14,8 @@ export type Operation =
   | 'images-to-pdf'
   | 'pdf-to-images'
   | 'protect'
-  | 'unlock';
+  | 'unlock'
+  | 'pdf-to-markdown';
 
 /** Images → PDF: the shape each page takes. */
 export type PageSize = 'fit' | 'a4' | 'letter';
