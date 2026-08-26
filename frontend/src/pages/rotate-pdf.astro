@@ -1,7 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
 ---
-<BaseLayout title="Rotate PDF — ProjectPDF" description="Rotate PDF pages privately in your browser.">
-  <PdfTool mode="rotate" title="Rotate PDF pages" description="Rotate every page 90° clockwise. The operation is lossless and stays on your device." multiple />
+
+<BaseLayout title="Rotate PDF — ProjectPDF" description="Turn every page. Lossless — only the page dictionary changes.">
+  <Masthead />
+  <main id="main">
+    <PdfTool mode="rotate" title="Rotate PDF" description="Turn every page. Lossless — only the page dictionary changes." />
+  </main>
 </BaseLayout>

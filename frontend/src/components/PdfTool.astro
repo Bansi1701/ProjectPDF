@@ -1,176 +1,443 @@
 ---
-type Mode = 'merge' | 'split' | 'rotate';
-interface Props { mode: Mode; title: string; description: string; multiple?: boolean; }
-const { mode, title, description, multiple = false } = Astro.props;
-const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
+import Lens from './Lens.astro';
+import type { Operation } from '../lib/pdf/types';
+
+interface Props {
+  mode: Operation;
+  title: string;
+  description: string;
+  multiple?: boolean;
+  /** Shown above the dropzone. */
+  eyebrow?: string;
+}
+
+const {
+  mode,
+  title,
+  description,
+  multiple = false,
+  eyebrow = 'Runs entirely in your browser',
+} = Astro.props;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const action =
+  mode === 'merge'
+    ? 'Merge PDFs'
+    : mode === 'split'
+      ? 'Split PDF'
+      : mode === 'rotate'
+        ? 'Rotate'
+        : 'Compress';
 ---
 
 <section class="tool wrap" data-pdf-tool data-mode={mode}>
-  <a class="back" href={`${baseUrl}#organise`}>← Organise tools</a>
-  <header>
-    <p class="eyebrow">Runs entirely in your browser</p>
+  <a class="back" href={`${base}/#tools`}>← All tools</a>
+
+  <header class="tool__head">
+    <p class="eyebrow"><span class="dot"></span>{eyebrow}</p>
     <h1>{title}</h1>
     <p class="lede">{description}</p>
   </header>
 
-  <label class="drop" data-drop>
-    <input data-input type="file" accept="application/pdf,.pdf" multiple={multiple} />
-    <strong>{multiple ? 'Choose PDF files' : 'Choose a PDF file'}</strong>
-    <span>or drop {multiple ? 'PDFs' : 'a PDF'} here</span>
-  </label>
+  <Lens variant="loupe" class="drop">
+    <label class="drop__zone" data-drop>
+      <input
+        class="sr-only"
+        data-input
+        type="file"
+        accept="application/pdf,.pdf"
+        multiple={multiple}
+      />
+      <span class="drop__icon" aria-hidden="true">
+        <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M8 3h11l6 6v20a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke-linejoin="round"></path>
+          <path d="M19 3v6h6" stroke-linejoin="round"></path>
+          <path d="M16 22v-8m0 0-3.2 3.2M16 14l3.2 3.2" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+      </span>
+      <span class="drop__title">
+        {multiple ? 'Choose PDFs, or drop them here' : 'Choose a PDF, or drop one here'}
+      </span>
+      <span class="drop__meta">Stays on this device · no account</span>
+    </label>
+  </Lens>
 
   <div class="workspace" data-workspace hidden>
-    <div>
-      <h2>Selected</h2>
-      <ol class="files" data-files></ol>
+    <ol class="files" data-files></ol>
+
+    {
+      mode === 'split' && (
+        <label class="field">
+          <span>Page groups</span>
+          <input data-ranges value="1" placeholder="1-3, 4-6, 9" />
+          <small>Each comma-separated group becomes its own PDF.</small>
+        </label>
+      )
+    }
+
+    {
+      mode === 'rotate' && (
+        <fieldset class="field field--turns">
+          <legend>Turn</legend>
+          <label><input type="radio" name="turn" value="90" checked /> 90° right</label>
+          <label><input type="radio" name="turn" value="180" /> 180°</label>
+          <label><input type="radio" name="turn" value="270" /> 90° left</label>
+        </fieldset>
+      )
+    }
+
+    <div class="workspace__actions">
+      <button class="btn btn--primary" data-run type="button">{action}</button>
+      <button class="btn btn--quiet" data-clear type="button">Clear</button>
     </div>
 
-    {mode === 'split' && (
-      <label class="ranges">
-        Page groups
-        <input data-ranges value="1" placeholder="1-3, 4-6, 9" />
-        <small>Each comma-separated group becomes a separate PDF.</small>
-      </label>
-    )}
-
-    <button class="run" data-run type="button">
-      {mode === 'merge' ? 'Merge PDFs' : mode === 'split' ? 'Split PDF' : 'Rotate PDF'}
-    </button>
     <p class="status" data-status role="status" aria-live="polite"></p>
   </div>
 
+  <section class="result" data-result hidden aria-live="polite">
+    <div class="result__headline">
+      <span class="result__pct" data-pct></span>
+      <span class="result__sizes" data-sizes></span>
+    </div>
+
+    <div class="result__bar" data-bar-wrap aria-hidden="true">
+      <span class="result__bar-fill" data-bar></span>
+    </div>
+
+    <p class="result__why" data-why hidden></p>
+    <ul class="result__notes" data-notes></ul>
+
+    <div class="result__actions" data-downloads></div>
+
+    <p class="result__receipt" data-receipt></p>
+  </section>
+
+  <p class="error" data-error hidden role="alert"></p>
+
   <aside class="privacy">
     <strong>Private by construction.</strong>
-    <span>No upload starts when you choose a file. Processing happens in this tab.</span>
+    <span>No upload starts when you choose a file. The work happens in this tab.</span>
   </aside>
 </section>
 
 <script>
-  const root = document.querySelector<HTMLElement>('[data-pdf-tool]');
-  if (root) {
-    const mode = root.dataset.mode as 'merge' | 'split' | 'rotate';
-    const input = root.querySelector<HTMLInputElement>('[data-input]')!;
-    const drop = root.querySelector<HTMLElement>('[data-drop]')!;
-    const workspace = root.querySelector<HTMLElement>('[data-workspace]')!;
-    const list = root.querySelector<HTMLOListElement>('[data-files]')!;
-    const run = root.querySelector<HTMLButtonElement>('[data-run]')!;
-    const status = root.querySelector<HTMLElement>('[data-status]')!;
-    let files: File[] = [];
+  import type { WorkerRequest, WorkerResponse } from '../lib/pdf/types';
 
-    const showFiles = (next: File[]) => {
-      files = mode === 'split' ? next.slice(0, 1) : next;
-      list.replaceChildren(...files.map((file) => {
-        const item = document.createElement('li');
-        item.textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(2)} MB`;
-        return item;
-      }));
-      workspace.hidden = files.length === 0;
+  const root = document.querySelector<HTMLElement>('[data-pdf-tool]');
+
+  if (root) {
+    const mode = root.dataset.mode as WorkerRequest['op'];
+    const q = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel)!;
+
+    const input = q<HTMLInputElement>('[data-input]');
+    const drop = q('[data-drop]');
+    const workspace = q('[data-workspace]');
+    const list = q<HTMLOListElement>('[data-files]');
+    const runBtn = q<HTMLButtonElement>('[data-run]');
+    const clearBtn = q<HTMLButtonElement>('[data-clear]');
+    const status = q('[data-status]');
+    const result = q('[data-result]');
+    const pct = q('[data-pct]');
+    const sizes = q('[data-sizes]');
+    const barWrap = q('[data-bar-wrap]');
+    const bar = q('[data-bar]');
+    const why = q('[data-why]');
+    const notes = q('[data-notes]');
+    const downloads = q('[data-downloads]');
+    const receipt = q('[data-receipt]');
+    const errorEl = q('[data-error]');
+
+    let files: File[] = [];
+    let worker: Worker | null = null;
+    let jobId = 0;
+    let urls: string[] = [];
+
+    const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
+    const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : kb(n));
+
+    /** Created on first use — a tool page costs no JS until someone acts. */
+    function ensureWorker(): Worker {
+      if (!worker) {
+        worker = new Worker(new URL('../lib/pdf/worker.ts', import.meta.url), { type: 'module' });
+        worker.onmessage = (e: MessageEvent<WorkerResponse>) => onDone(e.data);
+        worker.onerror = () => fail('The engine failed to start.');
+      }
+      return worker;
+    }
+
+    function revoke() {
+      for (const url of urls) URL.revokeObjectURL(url);
+      urls = [];
+    }
+
+    function fail(message: string) {
+      errorEl.textContent = message;
+      errorEl.hidden = false;
+      runBtn.disabled = false;
       status.textContent = '';
-    };
+    }
+
+    function showFiles(next: File[]) {
+      const pdfs = next.filter(
+        (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+      );
+
+      files = mode === 'merge' ? pdfs : pdfs.slice(0, 1);
+
+      list.replaceChildren(
+        ...files.map((file) => {
+          const li = document.createElement('li');
+          li.textContent = `${file.name} · ${size(file.size)}`;
+          return li;
+        })
+      );
+
+      workspace.hidden = files.length === 0;
+      result.hidden = true;
+      errorEl.hidden = true;
+      status.textContent = '';
+      revoke();
+    }
+
+    function onDone({ id, result: res }: WorkerResponse) {
+      if (id !== jobId) return;
+      runBtn.disabled = false;
+      status.textContent = '';
+
+      if (!res.ok) {
+        fail(res.error);
+        return;
+      }
+
+      const isCompress = typeof res.ratio === 'number';
+      const percent = Math.round((res.ratio ?? 0) * 100);
+      const weak = String(Boolean(res.unchanged) || (isCompress && percent < 8));
+
+      pct.textContent = isCompress
+        ? res.unchanged
+          ? 'Already optimal'
+          : `${percent}% smaller`
+        : res.summary;
+      pct.dataset.weak = isCompress ? weak : 'false';
+
+      sizes.textContent = isCompress
+        ? res.unchanged
+          ? `${size(res.bytesIn)} — nothing to remove`
+          : `${size(res.bytesIn)} → ${size(res.bytesOut)}`
+        : `${res.pages} page${res.pages === 1 ? '' : 's'} · ${size(res.bytesOut)}`;
+
+      barWrap.hidden = !isCompress;
+      bar.style.width = `${Math.max(2, percent)}%`;
+      bar.dataset.weak = weak;
+
+      if (res.explanation) {
+        why.textContent = res.explanation;
+        why.hidden = false;
+      } else {
+        why.hidden = true;
+      }
+
+      notes.replaceChildren(
+        ...(res.notes ?? []).map((note) => {
+          const li = document.createElement('li');
+          li.textContent = note;
+          return li;
+        })
+      );
+
+      revoke();
+      downloads.replaceChildren(
+        ...res.files.map((file, i) => {
+          const url = URL.createObjectURL(new Blob([file.bytes as BlobPart], { type: 'application/pdf' }));
+          urls.push(url);
+          const a = document.createElement('a');
+          a.className = i === 0 ? 'btn btn--primary' : 'btn btn--quiet';
+          a.href = url;
+          a.download = file.name;
+          a.textContent = res.files.length === 1 ? 'Save the file' : file.name;
+          return a;
+        })
+      );
+
+      receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
+      result.hidden = false;
+    }
 
     input.addEventListener('change', () => showFiles(Array.from(input.files ?? [])));
-    for (const event of ['dragenter', 'dragover']) {
-      drop.addEventListener(event, (e) => { e.preventDefault(); drop.classList.add('is-over'); });
-    }
-    for (const event of ['dragleave', 'drop']) {
-      drop.addEventListener(event, (e) => { e.preventDefault(); drop.classList.remove('is-over'); });
-    }
-    drop.addEventListener('drop', (e) => {
-      const pdfs = Array.from(e.dataTransfer?.files ?? []).filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
-      showFiles(pdfs);
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      showFiles([]);
     });
 
-    const download = (bytes: Uint8Array, name: string) => {
-      const blob = new Blob([bytes.slice().buffer], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = name;
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1_000);
-    };
+    for (const event of ['dragenter', 'dragover'] as const) {
+      drop.addEventListener(event, (e) => {
+        e.preventDefault();
+        drop.dataset.over = 'true';
+      });
+    }
+    for (const event of ['dragleave', 'drop'] as const) {
+      drop.addEventListener(event, (e) => {
+        e.preventDefault();
+        delete drop.dataset.over;
+      });
+    }
+    drop.addEventListener('drop', (e) => showFiles(Array.from(e.dataTransfer?.files ?? [])));
 
-    const parseGroup = (group: string, count: number): number[] => {
-      const pages = new Set<number>();
-      for (const token of group.trim().split(/\s+/)) {
-        if (!token) continue;
-        const [startText, endText] = token.split('-');
-        const start = Number(startText);
-        const end = endText ? Number(endText) : start;
-        if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start || end > count) {
-          throw new Error(`Invalid range “${token}”. This PDF has ${count} pages.`);
-        }
-        for (let page = start; page <= end; page += 1) pages.add(page - 1);
-      }
-      return [...pages];
-    };
-
-    run.addEventListener('click', async () => {
+    runBtn.addEventListener('click', async () => {
       if (!files.length) return;
-      run.disabled = true;
-      status.textContent = 'Working locally…';
-      try {
-        const { PDFDocument, degrees } = await import('@cantoo/pdf-lib');
-        if (mode === 'merge') {
-          const output = await PDFDocument.create();
-          for (const file of files) {
-            const source = await PDFDocument.load(await file.arrayBuffer());
-            const pages = await output.copyPages(source, source.getPageIndices());
-            pages.forEach((page) => output.addPage(page));
-          }
-          download(await output.save(), 'ProjectPDF-merged.pdf');
-          status.textContent = `Done — merged ${files.length} files.`;
-        } else if (mode === 'rotate') {
-          for (const file of files) {
-            const pdf = await PDFDocument.load(await file.arrayBuffer());
-            pdf.getPages().forEach((page) => page.setRotation(degrees((page.getRotation().angle + 90) % 360)));
-            download(await pdf.save(), file.name.replace(/\.pdf$/i, '') + '-rotated.pdf');
-          }
-          status.textContent = `Done — rotated ${files.length} file${files.length === 1 ? '' : 's'}.`;
-        } else {
-          const source = await PDFDocument.load(await files[0].arrayBuffer());
-          const value = root.querySelector<HTMLInputElement>('[data-ranges]')!.value;
-          const groups = value.split(',').map((group) => group.trim()).filter(Boolean);
-          if (!groups.length) throw new Error('Enter at least one page group.');
-          for (const [index, group] of groups.entries()) {
-            const output = await PDFDocument.create();
-            const pages = await output.copyPages(source, parseGroup(group, source.getPageCount()));
-            pages.forEach((page) => output.addPage(page));
-            download(await output.save(), `ProjectPDF-split-${index + 1}.pdf`);
-          }
-          status.textContent = `Done — created ${groups.length} PDF${groups.length === 1 ? '' : 's'}.`;
-        }
-      } catch (error) {
-        status.textContent = error instanceof Error ? error.message : 'This PDF could not be processed.';
-      } finally {
-        run.disabled = false;
-      }
+
+      runBtn.disabled = true;
+      errorEl.hidden = true;
+      result.hidden = true;
+      status.textContent = 'Working on this device…';
+
+      const payload = await Promise.all(
+        files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
+      );
+
+      const turn = Number(
+        root.querySelector<HTMLInputElement>('input[name="turn"]:checked')?.value ?? 90
+      );
+
+      const request: WorkerRequest = {
+        id: ++jobId,
+        op: mode,
+        files: payload,
+        ranges: root.querySelector<HTMLInputElement>('[data-ranges]')?.value,
+        turn,
+      };
+
+      // Transfer, don't copy — a 50 MB file should not exist twice in memory.
+      ensureWorker().postMessage(request, payload.map((f) => f.bytes));
     });
   }
 </script>
 
 <style>
-  .tool { padding-block: clamp(2rem, 4vw, 5rem); max-width: 58rem; }
-  .back { display: inline-block; margin-bottom: 2rem; color: var(--muted); font-size: var(--step--1); }
-  header { max-width: 46rem; }
-  h1 { font-size: var(--step-5); margin-block: .4rem .8rem; }
-  .eyebrow { color: var(--ok); font-family: var(--font-mono); font-size: var(--step--2); text-transform: uppercase; letter-spacing: .12em; }
-  .lede { color: var(--ink-2); font-size: var(--step-1); }
-  .drop { margin-top: 2.5rem; min-height: 15rem; border: 1.5px dashed var(--line-strong); border-radius: var(--radius); background: var(--paper-sunk); display: grid; place-content: center; text-align: center; cursor: pointer; transition: border-color 160ms, background 160ms; }
-  .drop:hover, .drop.is-over { border-color: var(--accent); background: var(--paper); }
-  .drop input { position: absolute; inline-size: 1px; block-size: 1px; opacity: 0; }
-  .drop strong { font-size: var(--step-2); }
-  .drop span { color: var(--muted); margin-top: .35rem; }
-  .workspace { margin-top: 1rem; padding: 1.5rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
-  .workspace h2 { font-size: var(--step-1); }
-  .files { margin-block: .75rem 1.25rem; padding-left: 1.25rem; color: var(--ink-2); font-size: var(--step--1); }
-  .files li + li { margin-top: .35rem; }
-  .ranges { display: grid; gap: .4rem; margin-block: 1.25rem; font-weight: 600; }
-  .ranges input { padding: .8rem .9rem; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--paper-sunk); color: var(--ink); font: inherit; }
-  .ranges small { color: var(--muted); font-weight: 400; }
-  .run { border: 0; border-radius: var(--radius); background: var(--accent); color: white; padding: .85rem 1.2rem; font: inherit; font-weight: 700; cursor: pointer; }
-  .run:disabled { opacity: .55; cursor: wait; }
-  .status { min-height: 1.5rem; margin-top: .8rem; color: var(--ok); }
-  .privacy { margin-top: 1rem; display: flex; gap: .5rem; flex-wrap: wrap; color: var(--muted); font-size: var(--step--1); }
-  .privacy strong { color: var(--ink-2); }
+  .tool {
+    padding-block: clamp(2rem, 1.5rem + 2vw, 3rem) clamp(3.5rem, 3rem + 4vw, 6rem);
+    display: grid;
+    gap: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+    max-width: 46rem;
+  }
+
+  .back {
+    font-size: var(--step--1);
+    color: var(--muted);
+    text-decoration: none;
+    justify-self: start;
+  }
+
+  .back:hover { color: var(--ink); }
+
+  .tool__head h1 { font-size: var(--step-4); margin-block: 1rem 1.25rem; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 0.5rem; }
+  .dot { width: 0.4rem; height: 0.4rem; border-radius: 50%; background: var(--ok); }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
+  }
+
+  .tool :global(.drop) { --lens-radius: 20px; }
+
+  .drop__zone {
+    display: grid; justify-items: center; gap: 0.5rem;
+    padding: clamp(1.75rem, 1.25rem + 3vw, 3rem) 1.5rem;
+    text-align: center; cursor: pointer; border-radius: inherit;
+    border: 1.5px dashed var(--line-strong); margin: 0.5rem;
+    transition: border-color 160ms ease-out, background-color 160ms ease-out;
+  }
+
+  .drop__zone:hover,
+  .drop__zone[data-over] {
+    border-color: var(--accent);
+    background: color-mix(in oklab, var(--accent) 5%, transparent);
+  }
+
+  .drop__zone:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .drop__icon { width: 2rem; height: 2rem; color: var(--ink-2); }
+  .drop__icon svg { width: 100%; height: 100%; }
+  .drop__title { font-size: var(--step-1); font-weight: 500; }
+  .drop__meta { font-size: var(--step--2); color: var(--muted); }
+
+  .workspace { display: grid; gap: 1rem; }
+
+  .files {
+    margin: 0; padding-left: 1.2rem; display: grid; gap: 0.3rem;
+    font-size: var(--step--1); color: var(--ink-2);
+  }
+
+  .field { display: grid; gap: 0.4rem; font-size: var(--step--1); }
+  .field input[type='text'], .field input:not([type]) {
+    padding: 0.6rem 0.75rem; border: 1px solid var(--line-strong);
+    border-radius: 8px; background: var(--paper-raised); color: var(--ink);
+    font-family: var(--font-mono); font-size: var(--step--1);
+  }
+  .field small { color: var(--muted); font-size: var(--step--2); }
+
+  .field--turns {
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 0.75rem 1rem; display: flex; flex-wrap: wrap; gap: 1rem;
+  }
+  .field--turns legend { font-size: var(--step--2); color: var(--muted); padding-inline: 0.25rem; }
+  .field--turns label { display: inline-flex; align-items: center; gap: 0.4rem; }
+
+  .workspace__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .status { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); }
+  .status:empty { display: none; }
+
+  .result {
+    background: var(--paper-sunk); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: clamp(1.25rem, 1rem + 1vw, 1.75rem);
+    display: grid; gap: 1rem;
+  }
+
+  .result__headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem; }
+  .result__pct {
+    font-size: var(--step-3); font-weight: 600;
+    letter-spacing: -0.03em; color: var(--ok);
+  }
+  .result__pct[data-weak='true'] { color: var(--ink-2); }
+  .result__sizes { font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-2); }
+
+  .result__bar { height: 0.4rem; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .result__bar-fill {
+    display: block; height: 100%; width: 0; border-radius: inherit; background: var(--ok);
+    transition: width 520ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .result__bar-fill[data-weak='true'] { background: var(--line-strong); }
+
+  .result__why {
+    margin: 0; padding: 0.9rem 1rem; border-left: 2px solid var(--disclose);
+    background: color-mix(in oklab, var(--disclose) 6%, transparent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: var(--step--1); color: var(--ink-2);
+  }
+
+  .result__notes {
+    margin: 0; padding-left: 1.1rem; display: grid; gap: 0.35rem;
+    font-size: var(--step--1); color: var(--ink-2);
+  }
+  .result__notes:empty { display: none; }
+
+  .result__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+
+  .result__receipt {
+    font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted);
+    padding-top: 0.75rem; border-top: 1px solid var(--line);
+  }
+
+  .error {
+    margin: 0; padding: 0.9rem 1.1rem; border-radius: var(--radius);
+    border: 1px solid var(--seal); color: var(--seal); font-size: var(--step--1);
+  }
+
+  .privacy {
+    display: grid; gap: 0.25rem; padding-top: 1.25rem;
+    border-top: 1px solid var(--line); font-size: var(--step--1); color: var(--muted);
+  }
+  .privacy strong { color: var(--ink); }
 </style>

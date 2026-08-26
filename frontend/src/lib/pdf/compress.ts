@@ -8,11 +8,15 @@ import { PDFDocument } from '@cantoo/pdf-lib';
 
 import { analyse, explainSmallSaving } from './composition';
 import { rewrite, stripNonRendering } from './lossless';
-import type { CompressResponse } from './types';
+import type { InputFile, OpResult } from './types';
 import { validate } from './validate';
 
-export async function compress(input: Uint8Array): Promise<CompressResponse> {
+export async function compress(files: InputFile[]): Promise<OpResult> {
+  const file = files[0];
+  if (!file) return { ok: false, error: 'Choose a PDF to compress.' };
+
   const started = performance.now();
+  const input = new Uint8Array(file.bytes);
   const bytesIn = input.length;
 
   let doc: PDFDocument;
@@ -67,37 +71,37 @@ export async function compress(input: Uint8Array): Promise<CompressResponse> {
 
     return {
       ok: true,
-      bytes: input,
+      files: [{ name: file.name, bytes: input }],
       bytesIn,
       bytesOut: bytesIn,
       ratio: 0,
       pages,
       durationMs: performance.now() - started,
+      summary: 'Already optimal',
       savings: { metadata: 0, pieceInfo: 0, attachments: 0, structural: 0 },
       unchanged: true,
       explanation:
         explainSmallSaving(composition) ??
         'This PDF is already packed as tightly as lossless compression allows.',
-      imageShare: composition.imageShare,
       notes: [],
     };
   }
 
+  const ratio = (bytesIn - candidate.length) / bytesIn;
+
   return {
     ok: true,
-    bytes: candidate,
+    files: [{ name: file.name.replace(/\.pdf$/i, '') + '-compressed.pdf', bytes: candidate }],
     bytesIn,
     bytesOut: candidate.length,
-    ratio: (bytesIn - candidate.length) / bytesIn,
+    ratio,
     pages,
     durationMs: performance.now() - started,
+    summary: `${Math.round(ratio * 100)}% smaller`,
     savings,
     unchanged: false,
     // Only explain when the number would otherwise look like a failure.
-    explanation: (bytesIn - candidate.length) / bytesIn < 0.08
-      ? explainSmallSaving(composition)
-      : null,
-    imageShare: composition.imageShare,
+    explanation: ratio < 0.08 ? explainSmallSaving(composition) : null,
     notes,
   };
 }

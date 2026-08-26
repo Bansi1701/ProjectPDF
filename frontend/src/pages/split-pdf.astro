@@ -1,7 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
 ---
-<BaseLayout title="Split PDF — ProjectPDF" description="Split a PDF into page groups privately in your browser.">
-  <PdfTool mode="split" title="Split a PDF" description="Turn page ranges into separate PDF files without sending the original anywhere." />
+
+<BaseLayout title="Split PDF — ProjectPDF" description="Cut one document into several, at the pages you choose.">
+  <Masthead />
+  <main id="main">
+    <PdfTool mode="split" title="Split PDF" description="Cut one document into several, at the pages you choose." />
+  </main>
 </BaseLayout>
