@@ -45,6 +45,8 @@ const ACTIONS: Record<Operation, string> = {
   ocr: 'Read the text',
   'word-to-pdf': 'Convert to PDF',
   'url-to-pdf': 'Render the page',
+  'excel-to-pdf': 'Convert to PDF',
+  'powerpoint-to-pdf': 'Convert to PDF',
 };
 
 /** Modes whose ranges field means "pages to act on", not "groups". */
@@ -55,14 +57,24 @@ const action = ACTIONS[mode];
 /** The only tool whose input is not a PDF. */
 const takesImages = mode === 'images-to-pdf';
 const takesWord = mode === 'word-to-pdf';
+const takesExcel = mode === 'excel-to-pdf';
+const takesSlides = mode === 'powerpoint-to-pdf';
 
 const accept = takesImages
   ? 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
   : takesWord
     ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx'
-    : 'application/pdf,.pdf';
+    : takesExcel
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx'
+      : takesSlides
+        ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation,.pptx'
+        : 'application/pdf,.pdf';
 
-const dropTitle = takesWord
+const dropTitle = takesExcel
+  ? 'Choose a spreadsheet, or drop one here'
+  : takesSlides
+  ? 'Choose a presentation, or drop one here'
+  : takesWord
   ? 'Choose a Word document, or drop one here'
   : takesImages
   ? 'Choose images, or drop them here'
@@ -737,6 +749,8 @@ const dropTitle = takesWord
         return /^image\/(jpeg|png|webp)$/.test(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name);
       }
       if (mode === 'word-to-pdf') return /\.docx$/i.test(file.name);
+      if (mode === 'excel-to-pdf') return /\.xlsx$/i.test(file.name);
+      if (mode === 'powerpoint-to-pdf') return /\.pptx$/i.test(file.name);
       return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     };
 

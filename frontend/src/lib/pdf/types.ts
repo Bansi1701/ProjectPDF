@@ -22,7 +22,9 @@ export type Operation =
   | 'repair'
   | 'ocr'
   | 'redact'
-  | 'word-to-pdf';
+  | 'word-to-pdf'
+  | 'excel-to-pdf'
+  | 'powerpoint-to-pdf';
 
 /** A rectangle to remove, in fractions of the page so scale never matters. */
 export interface RedactionBox {

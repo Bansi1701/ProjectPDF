@@ -44,8 +44,8 @@ export const TOOLS: Tool[] = [
   { slug: 'pdf-to-markdown', name: 'PDF to Markdown', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'For documents that already have a text layer.' },
   { slug: 'word-to-pdf', name: 'Word to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Text, headings and lists from a .docx — in your browser.' },
   { slug: 'url-to-pdf', name: 'Web page to PDF', category: 'Convert', runsWhere: 'server', status: 'building', blurb: 'A public URL is not your private file, so we fetch it.' },
-  { slug: 'excel-to-pdf', name: 'Excel to PDF', category: 'Convert', runsWhere: 'server', status: 'planned', blurb: 'Spreadsheets need a real layout engine. This one needs our server.' },
-  { slug: 'powerpoint-to-pdf', name: 'PowerPoint to PDF', category: 'Convert', runsWhere: 'server', status: 'planned', blurb: 'Slides need a real layout engine. This one needs our server.' },
+  { slug: 'excel-to-pdf', name: 'Excel to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Formula results, currency and dates exactly as the sheet shows them.' },
+  { slug: 'powerpoint-to-pdf', name: 'PowerPoint to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'One page per slide — template layouts, theme colours and tables.' },
 
   // --- Edit ---
   { slug: 'edit-pdf', name: 'Edit', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Text, shapes, highlights and images on the page.' },
@@ -69,18 +69,21 @@ export const TOOLS: Tool[] = [
  * What genuinely cannot happen in the browser, and why.
  *
  * This is the list the homepage prints, so it has to track reality. Several
- * entries have already moved off it — OCR, Word conversion and PDF/A
+ * entries have already moved off it — OCR, Word, Excel, PowerPoint and PDF/A
  * conversion all run locally now — and leaving a stale claim here would be
  * lying in the one section whose whole point is not to.
+ *
+ * Excel and PowerPoint were on this list, on the grounds that they "need a
+ * real layout engine". That was wrong. A spreadsheet is already laid out —
+ * column widths, row heights and every formula's cached result are stored in
+ * the file — and a slide has no flow layout at all, only absolutely positioned
+ * shapes. Both turned out to be easier than the Word converter that was
+ * already running locally.
  */
 export const SERVER_ONLY_REASONS = [
   {
     what: 'Web page to PDF',
     why: 'A browser is not allowed to fetch another site — the rules that stop other sites reading your data stop us reading theirs. No file of yours is involved, so we fetch the page ourselves.',
-  },
-  {
-    what: 'Excel and PowerPoint to PDF',
-    why: 'Spreadsheets and slides need a real layout engine, and the only faithful one is LibreOffice — 52 MB compiled to WebAssembly, and it needs browser settings that would break the rest of this site.',
   },
   {
     what: 'PDF/A validation',

@@ -16,6 +16,8 @@ import { pdfToMarkdown } from './markdown';
 import { ocrPdf } from './ocr';
 import { docxToPdf } from './docx';
 import { redact } from './redact';
+import { pptxToPdf } from './slides';
+import { xlsxToPdf } from './spreadsheet';
 import { protect, unlock } from './security';
 import { signPdf } from './sign';
 import type { WorkerRequest, WorkerResponse, OpResult } from './types';
@@ -99,6 +101,10 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return redact(request.files, request.boxes ?? []);
     case 'word-to-pdf':
       return docxToPdf(request.files);
+    case 'excel-to-pdf':
+      return xlsxToPdf(request.files);
+    case 'powerpoint-to-pdf':
+      return pptxToPdf(request.files);
     default:
       return { ok: false, error: `Unknown operation: ${String(request.op)}` };
   }
