@@ -28,22 +28,12 @@ Docs at http://localhost:8010/docs while `DEBUG=true`.
 
 ## Database (Neon)
 
-1. Neon dashboard → your project → **Connect** → copy the connection string.
-2. `cp .env.example .env` and paste it as `DATABASE_URL`. Paste it **exactly** as
-   Neon gives it — the app strips the parameters `asyncpg` cannot handle
-   (`sslmode`, `channel_binding`) and enables TLS itself.
-3. Use the **pooled** host (contains `-pooler`) for the app; the **direct** host
-   for Alembic migrations.
-4. Check it: `curl localhost:8010/api/v1/health/db`
+Ask a maintainer for the `.env` file and save it here as `backend/.env`. It holds
+`DATABASE_URL` — the Neon connection string.
+
+Check it worked: `curl localhost:8010/api/v1/health/db`
 
 `.env` is git-ignored. Never commit it.
-
-To work offline against a throwaway local Postgres instead:
-
-```bash
-docker compose --profile local-db up
-# DATABASE_URL=postgresql://projectpdf:projectpdf@db:5432/projectpdf
-```
 
 ## Structure
 

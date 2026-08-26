@@ -2,13 +2,6 @@
 #
 # The database is Neon (managed Postgres). Put its connection string in
 # backend/.env as DATABASE_URL — see backend/.env.example.
-#
-# To run a throwaway local Postgres instead of Neon (offline work, or to avoid
-# spending Neon compute hours):
-#
-#     docker compose --profile local-db up
-#
-# ...and set DATABASE_URL=postgresql://projectpdf:projectpdf@db:5432/projectpdf
 name: projectpdf
 
 services:
@@ -37,31 +30,10 @@ services:
       # Live so `ruff`/`pytest` config edits apply without a rebuild.
       - ./backend/pyproject.toml:/app/pyproject.toml
     env_file:
-      # Real secrets live here and are git-ignored. Copy .env.example first.
+      # Real secrets live here and are git-ignored.
       - path: ./backend/.env
         required: false
     environment:
       ENVIRONMENT: development
       DEBUG: "true"
       CORS_ORIGINS: '["http://localhost:4321","http://127.0.0.1:4321"]'
-
-  # Optional. Only starts with `--profile local-db`.
-  db:
-    profiles: ["local-db"]
-    image: postgres:17-alpine
-    environment:
-      POSTGRES_USER: projectpdf
-      POSTGRES_PASSWORD: projectpdf
-      POSTGRES_DB: projectpdf
-    ports:
-      - "5433:5432"   # 5432 is taken on this machine
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U projectpdf -d projectpdf"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-volumes:
-  pgdata:

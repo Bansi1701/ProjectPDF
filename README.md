@@ -29,7 +29,7 @@ ProjectPDF/
 ## Run
 
 ```bash
-cp backend/.env.example backend/.env    # paste your Neon connection string
+# save the shared .env at backend/.env first — ask a maintainer
 docker compose up
 ```
 
@@ -39,8 +39,7 @@ docker compose up
 | API | http://localhost:8010 |
 | API docs | http://localhost:8010/docs |
 
-Both reload on save. Ports 8000 and 5432 were already in use on this machine,
-hence 8010 and 5433.
+Both reload on save. Port 8000 was already in use on this machine, hence 8010.
 
 Check the database is connected:
 

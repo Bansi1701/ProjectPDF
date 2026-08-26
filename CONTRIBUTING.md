@@ -13,7 +13,7 @@ Thanks for helping build this. Here's how to get running locally.
 | Node.js | 22+ | Only if running the frontend outside Docker |
 | Python | 3.11+ | Only if running the backend outside Docker |
 
-You also need a **free Neon account** for a database. Details below.
+You also need the project's `.env` file — ask a maintainer for it.
 
 ---
 
@@ -22,18 +22,11 @@ You also need a **free Neon account** for a database. Details below.
 ```bash
 git clone https://github.com/Bansi1701/ProjectPDF.git
 cd ProjectPDF
-cp backend/.env.example backend/.env
 ```
 
-Now get a database — **use your own Neon project, not a shared one**:
-
-1. Sign up at [neon.tech](https://neon.tech) (free tier is plenty)
-2. Create a project
-3. **Connect** → copy the connection string
-4. Paste it into `backend/.env` as `DATABASE_URL`
-
-Use the host containing **`-pooler`**. Paste the string exactly as Neon gives it,
-including `?sslmode=require` — the app normalises it. Don't add quotes.
+Ask a maintainer for the `.env` file and save it at **`backend/.env`**. It holds
+the Neon database connection string. It is git-ignored — never commit it, and
+don't paste its contents into chat, issues, or PRs.
 
 Then:
 
@@ -58,10 +51,9 @@ curl localhost:8010/api/v1/health/db   # {"connected":true,...}
 
 ### About the ports
 
-The API is on **8010**, not 8000, and the optional local database is on **5433**,
-not 5432 — both defaults were already taken on the machine this was set up on. If
-they're free for you and you'd rather use them, change `docker-compose.yml`
-locally; don't commit that change.
+The API is on **8010**, not 8000 — 8000 was already taken on the machine this was
+set up on. If it's free for you and you'd rather use it, change
+`docker-compose.yml` locally; don't commit that change.
 
 ---
 
@@ -90,17 +82,6 @@ uvicorn app.main:app --reload  # http://localhost:8000
 Note this runs on **8000**, not 8010 — the 8010 mapping only exists in Docker.
 Update `CORS_ORIGINS` in `backend/.env` if you change the frontend port.
 
-### Working offline
-
-If you'd rather not use Neon (or have no internet), run a throwaway local Postgres:
-
-```bash
-docker compose --profile local-db up
-```
-
-...and set `DATABASE_URL=postgresql://projectpdf:projectpdf@db:5432/projectpdf`.
-Data lives in a Docker volume and means nothing — wipe it freely with
-`docker compose down -v`.
 
 ---
 
@@ -245,8 +226,7 @@ Read the `detail` field — it says what's wrong. It has no credentials in it, s
 it's safe to paste when asking for help.
 
 - `DATABASE_URL is not set` — `backend/.env` is missing or the value is empty
-- `rejected SSL upgrade` — you pointed a remote URL at the local container
-- `password authentication failed` — bad credentials, or you copied a truncated string
+- `password authentication failed` — the credentials have been rotated; ask for the current `.env`
 
 After editing `.env`, **recreate** the container — a plain restart won't reload it:
 
