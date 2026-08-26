@@ -7,7 +7,8 @@
  */
 import { compress } from './compress';
 import { imagesToPdf, pdfToImages, probePdf } from './images';
-import { merge, rotate, split } from './organise';
+import { addText, compare, pageNumbers, watermark } from './edit';
+import { deletePages, extract, merge, reorder, rotate, split } from './organise';
 import type { WorkerRequest, WorkerResponse, OpResult } from './types';
 
 /* Static imports: Vite cannot code-split a worker bundle, and the laziness
@@ -33,6 +34,20 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return imagesToPdf(request.files, request.pageSize ?? 'fit');
     case 'pdf-to-images':
       return pdfToImages(request.files, request.format ?? 'png', request.dpi ?? 150);
+    case 'reorder':
+      return reorder(request.files, request.pageOrder ?? []);
+    case 'extract':
+      return extract(request.files, request.ranges ?? '');
+    case 'delete':
+      return deletePages(request.files, request.ranges ?? '');
+    case 'edit':
+      return addText(request.files, request.text ?? '', request.targetPage ?? 1);
+    case 'watermark':
+      return watermark(request.files, request.text ?? '');
+    case 'page-numbers':
+      return pageNumbers(request.files, request.startNumber ?? 1, request.prefix ?? '');
+    case 'compare':
+      return compare(request.files);
     default:
       return { ok: false, error: `Unknown operation: ${String(request.op)}` };
   }

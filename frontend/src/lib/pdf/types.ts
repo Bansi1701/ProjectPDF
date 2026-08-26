@@ -4,6 +4,13 @@ export type Operation =
   | 'merge'
   | 'split'
   | 'rotate'
+  | 'reorder'
+  | 'extract'
+  | 'delete'
+  | 'edit'
+  | 'watermark'
+  | 'page-numbers'
+  | 'compare'
   | 'images-to-pdf'
   | 'pdf-to-images';
 
@@ -93,6 +100,15 @@ export interface WorkerRequest {
   dpi?: number;
   /** PDF → image only: measure the pages and return DPI limits, render nothing. */
   probe?: boolean;
+  /** Reorder only: zero-based page indexes in their new order. */
+  pageOrder?: number[];
+  /** Text tools only. */
+  text?: string;
+  /** Edit only: one-based target page. */
+  targetPage?: number;
+  /** Page-number tool only. */
+  startNumber?: number;
+  prefix?: string;
 }
 
 export interface WorkerResponse {
