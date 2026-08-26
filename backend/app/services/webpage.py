@@ -39,7 +39,7 @@ async def render(url: str, landscape: bool = False) -> RenderResult:
     safe = validate(url)
 
     try:
-        from playwright.async_api import async_playwright
+        import playwright.async_api  # noqa: F401 - check if playwright is installed
     except ImportError as exc:  # pragma: no cover - depends on the image
         raise RenderError(
             "The renderer is not installed in this environment."
@@ -47,7 +47,7 @@ async def render(url: str, landscape: bool = False) -> RenderResult:
 
     try:
         return await asyncio.wait_for(_render(safe, landscape), timeout=HARD_TIMEOUT_S)
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         raise RenderError("That page took too long to render.") from exc
 
 

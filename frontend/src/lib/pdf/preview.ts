@@ -42,7 +42,7 @@ export async function renderThumbnails(files: InputFile[]): Promise<OpResult> {
 
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
-      await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport, canvas })
+      await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport })
         .promise;
 
       const blob = await canvas.convertToBlob({ type: 'image/png' });
