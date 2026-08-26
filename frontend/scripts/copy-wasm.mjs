@@ -13,6 +13,17 @@ import { dirname, resolve } from 'node:path';
 // directly rather than require.resolve.
 const assets = [
   ['node_modules/harfbuzzjs/dist/harfbuzz-subset.wasm', 'public/wasm/harfbuzz-subset.wasm'],
+  // tesseract.js otherwise fetches these from a public CDN, which would tell a
+  // third party that someone opened the OCR tool. Every core variant is copied:
+  // the library picks one at runtime from the SIMD support it detects, and a
+  // missing variant is a 404 only some machines ever see.
+  ['node_modules/tesseract.js/dist/worker.min.js', 'public/tesseract/worker.min.js'],
+  ['node_modules/tesseract.js-core/tesseract-core-lstm.wasm.js', 'public/tesseract/tesseract-core-lstm.wasm.js'],
+  ['node_modules/tesseract.js-core/tesseract-core-relaxedsimd-lstm.wasm.js', 'public/tesseract/tesseract-core-relaxedsimd-lstm.wasm.js'],
+  ['node_modules/tesseract.js-core/tesseract-core-relaxedsimd.wasm.js', 'public/tesseract/tesseract-core-relaxedsimd.wasm.js'],
+  ['node_modules/tesseract.js-core/tesseract-core-simd-lstm.wasm.js', 'public/tesseract/tesseract-core-simd-lstm.wasm.js'],
+  ['node_modules/tesseract.js-core/tesseract-core-simd.wasm.js', 'public/tesseract/tesseract-core-simd.wasm.js'],
+  ['node_modules/tesseract.js-core/tesseract-core.wasm.js', 'public/tesseract/tesseract-core.wasm.js'],
 ];
 
 for (const [from, to] of assets) {

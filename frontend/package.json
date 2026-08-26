@@ -13,7 +13,9 @@
     "@cantoo/pdf-lib": "^2.4.0",
     "astro": "^5.13.2",
     "harfbuzzjs": "^1.6.0",
-    "pdfjs-dist": "5.7.284"
+    "pdfjs-dist": "5.7.284",
+    "tesseract.js": "7.0.0",
+    "tesseract.js-core": "7.0.0"
   },
   "devDependencies": {
     "playwright": "^1.62.1"

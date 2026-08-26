@@ -1,0 +1,19 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+---
+
+<BaseLayout
+  title="OCR a PDF — ProjectPDF"
+  description="Read the text off a scanned PDF and make it searchable, without uploading the document."
+>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="ocr"
+      title="OCR a scanned PDF"
+      description="Recognises the text in a scan and hands back both the plain text and a searchable copy of the original. The recognition engine runs here, on your machine."
+    />
+  </main>
+</BaseLayout>

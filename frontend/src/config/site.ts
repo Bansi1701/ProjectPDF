@@ -50,7 +50,7 @@ export const TOOLS: Tool[] = [
   { slug: 'watermark-pdf', name: 'Watermark', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Stamp text or an image across every page.' },
   { slug: 'page-numbers', name: 'Page numbers', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Numbering that matches the page labels people cite.' },
   { slug: 'compare-pdf', name: 'Compare', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'What changed between two drafts, in words not pixels.' },
-  { slug: 'ocr-pdf', name: 'OCR', category: 'Edit', runsWhere: 'local', status: 'planned', blurb: 'Make a scan searchable. Small jobs stay on your machine.' },
+  { slug: 'ocr-pdf', name: 'OCR', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Make a scan searchable. Small jobs stay on your machine.' },
   { slug: 'pdf-forms', name: 'Forms', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Fill a form, or build the fields yourself.' },
 
   // --- Secure ---
