@@ -13,6 +13,7 @@ import { repair, toPdfA } from './archive';
 import { fillForm, probeForm } from './forms';
 import { pdfToMarkdown } from './markdown';
 import { ocrPdf } from './ocr';
+import { docxToPdf } from './docx';
 import { redact } from './redact';
 import { protect, unlock } from './security';
 import { signPdf } from './sign';
@@ -93,6 +94,8 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return ocrPdf(request.files, request.searchable ?? true);
     case 'redact':
       return redact(request.files, request.boxes ?? []);
+    case 'word-to-pdf':
+      return docxToPdf(request.files);
     default:
       return { ok: false, error: `Unknown operation: ${String(request.op)}` };
   }

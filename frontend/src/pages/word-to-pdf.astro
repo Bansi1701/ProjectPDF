@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+---
+
+<BaseLayout
+  title="Word to PDF — ProjectPDF"
+  description="Convert a .docx to PDF in your browser. The document is never uploaded."
+>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="word-to-pdf"
+      eyebrow="Converted here, not on a server"
+      title="Word to PDF"
+      description="Reads the text, headings, lists and emphasis out of a .docx and typesets them as a PDF — without the document ever leaving this tab. It is not a layout engine, and it tells you what it could not carry over."
+    />
+  </main>
+</BaseLayout>

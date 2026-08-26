@@ -2,8 +2,9 @@
 
 from fastapi import APIRouter
 
-from app.api.routes import health, status
+from app.api.routes import convert, health, status
 
 api_router = APIRouter()
 api_router.include_router(health.router)
 api_router.include_router(status.router)
+api_router.include_router(convert.router)

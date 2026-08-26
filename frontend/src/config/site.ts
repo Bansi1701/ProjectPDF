@@ -42,8 +42,8 @@ export const TOOLS: Tool[] = [
   { slug: 'jpg-to-pdf', name: 'Images to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'JPG, PNG or WebP into one document. JPG and PNG are not re-encoded.' },
   { slug: 'pdf-to-jpg', name: 'PDF to image', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Export pages as JPG or PNG at the DPI you pick.' },
   { slug: 'pdf-to-markdown', name: 'PDF to Markdown', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'For documents that already have a text layer.' },
-  { slug: 'word-to-pdf', name: 'Office to PDF', category: 'Convert', runsWhere: 'server', status: 'planned', blurb: 'Word, Excel and PowerPoint. This one needs our server.' },
-  { slug: 'url-to-pdf', name: 'Web page to PDF', category: 'Convert', runsWhere: 'server', status: 'planned', blurb: 'A public URL is not your private file, so we fetch it.' },
+  { slug: 'word-to-pdf', name: 'Word to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Text, headings and lists from a .docx — in your browser.' },
+  { slug: 'url-to-pdf', name: 'Web page to PDF', category: 'Convert', runsWhere: 'server', status: 'live', blurb: 'A public URL is not your private file, so we fetch it.' },
 
   // --- Edit ---
   { slug: 'edit-pdf', name: 'Edit', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Text, shapes, highlights and images on the page.' },

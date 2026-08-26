@@ -12,6 +12,7 @@
   "dependencies": {
     "@cantoo/pdf-lib": "^2.4.0",
     "astro": "^5.13.2",
+    "fflate": "0.8.3",
     "harfbuzzjs": "^1.6.0",
     "pdfjs-dist": "5.7.284",
     "tesseract.js": "7.0.0",

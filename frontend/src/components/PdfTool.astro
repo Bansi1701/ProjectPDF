@@ -43,6 +43,8 @@ const ACTIONS: Record<Operation, string> = {
   'pdf-a': 'Convert to PDF/A',
   repair: 'Repair',
   ocr: 'Read the text',
+  'word-to-pdf': 'Convert to PDF',
+  'url-to-pdf': 'Render the page',
 };
 
 /** Modes whose ranges field means "pages to act on", not "groups". */
@@ -52,12 +54,17 @@ const action = ACTIONS[mode];
 
 /** The only tool whose input is not a PDF. */
 const takesImages = mode === 'images-to-pdf';
+const takesWord = mode === 'word-to-pdf';
 
 const accept = takesImages
   ? 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
-  : 'application/pdf,.pdf';
+  : takesWord
+    ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx'
+    : 'application/pdf,.pdf';
 
-const dropTitle = takesImages
+const dropTitle = takesWord
+  ? 'Choose a Word document, or drop one here'
+  : takesImages
   ? 'Choose images, or drop them here'
   : multiple
     ? 'Choose PDFs, or drop them here'
@@ -73,7 +80,36 @@ const dropTitle = takesImages
     <p class="lede">{description}</p>
   </header>
 
-  <Lens variant="loupe" class="drop">
+  {
+    mode === 'url-to-pdf' && (
+      <Fragment>
+        <label class="field field--url">
+          <span>Address</span>
+          <input data-url type="url" placeholder="https://example.com/article" />
+          <small>
+            Must be a page anyone can reach. Addresses inside a private network are refused.
+          </small>
+        </label>
+
+        <aside class="server-note">
+          <strong>This one runs on our server.</strong>
+          <span>
+            A browser cannot fetch someone else's page — the security rules that protect you
+            from other sites also stop us reading them. So we fetch it. No document of yours
+            is involved: you give us a public address, and we render what anyone could see.
+            Nothing is stored.
+          </span>
+        </aside>
+
+        <div class="workspace__actions">
+          <button class="btn btn--primary" data-run type="button">{action}</button>
+        </div>
+        <p class="status" data-status role="status" aria-live="polite"></p>
+      </Fragment>
+    )
+  }
+
+  <Lens variant="loupe" class="drop" data-file-ui>
     <label class="drop__zone" data-drop>
       <input class="sr-only" data-input type="file" accept={accept} multiple={multiple} />
       <span class="drop__icon" aria-hidden="true">
@@ -685,10 +721,13 @@ const dropTitle = takesImages
       status.textContent = '';
     }
 
-    const usable = (file: File) =>
-      takesImages
-        ? /^image\/(jpeg|png|webp)$/.test(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name)
-        : file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const usable = (file: File) => {
+      if (takesImages) {
+        return /^image\/(jpeg|png|webp)$/.test(file.type) || /\.(jpe?g|png|webp)$/i.test(file.name);
+      }
+      if (mode === 'word-to-pdf') return /\.docx$/i.test(file.name);
+      return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    };
 
     /**
      * How much resolution a page can take depends on how big the page is, so
@@ -853,6 +892,66 @@ const dropTitle = takesImages
     }
 
     if (mode === 'sign') setupSignature();
+
+    // The URL tool has no file to pick, so the dropzone and worker are unused.
+    if (mode === 'url-to-pdf') {
+      const fileUi = root.querySelector<HTMLElement>('[data-file-ui]');
+      if (fileUi) fileUi.hidden = true;
+
+      runBtn.addEventListener('click', async () => {
+        const url = root.querySelector<HTMLInputElement>('[data-url]')?.value?.trim() ?? '';
+        if (!url) return fail('Enter a web address first.');
+
+        runBtn.disabled = true;
+        errorEl.hidden = true;
+        result.hidden = true;
+        status.textContent = 'Rendering on our server…';
+
+        try {
+          const api = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8010';
+          const response = await fetch(`${api}/api/v1/convert/url-to-pdf`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, landscape: false }),
+          });
+
+          if (!response.ok) {
+            const detail = await response.json().catch(() => ({}));
+            throw new Error(detail.detail ?? `The server returned ${response.status}.`);
+          }
+
+          const blob = await response.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          urls.push(objectUrl);
+
+          pct.textContent = 'Rendered';
+          sizes.textContent = `${size(blob.size)}`;
+          barWrap.hidden = true;
+          why.hidden = true;
+          notes.replaceChildren(
+            Object.assign(document.createElement('li'), {
+              textContent:
+                'Fetched and rendered on our server, because a browser cannot read another site. The page was public; nothing of yours was sent.',
+            })
+          );
+
+          const link = document.createElement('a');
+          link.className = 'btn btn--primary';
+          link.href = objectUrl;
+          link.download = 'page.pdf';
+          link.textContent = 'Save the PDF';
+          downloads.replaceChildren(link);
+
+          receipt.textContent = 'rendered remotely · no document uploaded';
+          result.hidden = false;
+        } catch (error) {
+          fail((error as Error).message);
+        } finally {
+          runBtn.disabled = false;
+          status.textContent = '';
+        }
+      });
+    }
 
     input.addEventListener('change', () => showFiles(Array.from(input.files ?? [])));
     clearBtn.addEventListener('click', () => {
@@ -1072,6 +1171,29 @@ const dropTitle = takesImages
     color: var(--ink);
     font: italic 1.5rem ui-serif, Georgia, serif;
   }
+
+  .field--url input {
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-size: var(--step-0);
+    width: 100%;
+  }
+
+  .server-note {
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.9rem 1rem;
+    border-left: 2px solid var(--disclose);
+    background: color-mix(in oklab, var(--disclose) 6%, transparent);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-size: var(--step--1);
+    color: var(--ink-2);
+  }
+
+  .server-note strong { color: var(--ink); }
 
   .fields {
     display: grid;

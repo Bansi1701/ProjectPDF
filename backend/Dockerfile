@@ -13,6 +13,9 @@ FROM base AS development
 COPY pyproject.toml README.md ./
 COPY app ./app
 RUN pip install -e ".[dev]"
+# Chromium for URL to PDF. --with-deps pulls the system libraries it needs;
+# this is the bulk of the image and only the development target carries it.
+RUN playwright install --with-deps chromium
 COPY tests ./tests
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

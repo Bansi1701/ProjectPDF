@@ -21,7 +21,8 @@ export type Operation =
   | 'pdf-a'
   | 'repair'
   | 'ocr'
-  | 'redact';
+  | 'redact'
+  | 'word-to-pdf';
 
 /** A rectangle to remove, in fractions of the page so scale never matters. */
 export interface RedactionBox {
