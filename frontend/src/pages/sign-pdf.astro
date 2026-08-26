@@ -1,0 +1,12 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+---
+
+<BaseLayout title="Sign a PDF — ProjectPDF" description="Draw or type a signature and place it on the page. The document never leaves your device.">
+  <Masthead />
+  <main id="main">
+    <PdfTool mode="sign" title="Sign a PDF" description="Draw or type a signature and place it on the page. The document never leaves your device." />
+  </main>
+</BaseLayout>

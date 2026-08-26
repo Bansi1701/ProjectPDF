@@ -16,7 +16,10 @@ export type Operation =
   | 'protect'
   | 'unlock'
   | 'pdf-to-markdown'
-  | 'forms';
+  | 'forms'
+  | 'sign'
+  | 'pdf-a'
+  | 'repair';
 
 /** Images → PDF: the shape each page takes. */
 export type PageSize = 'fit' | 'a4' | 'letter';
@@ -125,6 +128,10 @@ export interface WorkerRequest {
   /** Page-number tool only. */
   startNumber?: number;
   prefix?: string;
+  /** Sign only: PNG of the drawn or typed mark, plus where it goes. */
+  signature?: ArrayBuffer;
+  corner?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
+  signatureWidth?: number;
   /** Forms only: field name → value, and whether to bake them in. */
   fieldValues?: Record<string, string>;
   flatten?: boolean;

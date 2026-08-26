@@ -39,6 +39,9 @@ const ACTIONS: Record<Operation, string> = {
   unlock: 'Unlock',
   'pdf-to-markdown': 'Convert to Markdown',
   forms: 'Fill the form',
+  sign: 'Place the signature',
+  'pdf-a': 'Convert to PDF/A',
+  repair: 'Repair',
 };
 
 /** Modes whose ranges field means "pages to act on", not "groups". */
@@ -172,6 +175,48 @@ const dropTitle = takesImages
             <span>Prefix</span>
             <input data-prefix placeholder="Page " />
             <small>Optional. Numbers are drawn in the bottom-right corner.</small>
+          </label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'sign' && (
+        <Fragment>
+          <div class="sign">
+            <div class="sign__tabs" role="group" aria-label="Signature style">
+              <button type="button" data-sign-tab="draw" class="is-on">Draw</button>
+              <button type="button" data-sign-tab="type">Type</button>
+            </div>
+
+            <div data-sign-panel="draw">
+              <canvas data-signature-canvas width="720" height="240"></canvas>
+              <div class="sign__row">
+                <button class="btn btn--quiet" type="button" data-sign-clear>Clear</button>
+                <span class="sign__hint">Draw with a mouse, trackpad or finger.</span>
+              </div>
+            </div>
+
+            <div data-sign-panel="type" hidden>
+              <input data-sign-text placeholder="Your name" />
+              <span class="sign__hint">Rendered in a handwriting-like italic.</span>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Page</span>
+            <input data-target-page type="number" min="1" placeholder="last page" />
+            <small>Leave empty to sign the last page.</small>
+          </label>
+
+          <label class="field">
+            <span>Position</span>
+            <select data-corner>
+              <option value="bottom-right">Bottom right</option>
+              <option value="bottom-left">Bottom left</option>
+              <option value="top-right">Top right</option>
+              <option value="top-left">Top left</option>
+            </select>
           </label>
         </Fragment>
       )
@@ -363,8 +408,157 @@ const dropTitle = takesImages
     const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
     const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : kb(n));
 
+    /**
+     * An empty page box means "the default for this tool", not page zero.
+     * Number('') is 0, which reads as an out-of-range page and rejects the job.
+     */
+    function readTargetPage(): number {
+      const raw = root.querySelector<HTMLInputElement>('[data-target-page]')?.value?.trim() ?? '';
+      if (raw === '') return mode === 'sign' ? -1 : 1;
+      const value = Number(raw);
+      return Number.isFinite(value) && value > 0 ? value : 1;
+    }
+
     const perm = (name: string): boolean =>
       root.querySelector<HTMLInputElement>(`[data-perm="${name}"]`)?.checked ?? false;
+
+    /**
+     * The signature pad.
+     *
+     * Drawn at 3x the placed size so the mark stays crisp when a reader zooms,
+     * and trimmed to its ink before embedding — a canvas-sized PNG would put a
+     * large transparent rectangle on the page and push the mark out of place.
+     */
+    function setupSignature() {
+      const canvas = root.querySelector<HTMLCanvasElement>('[data-signature-canvas]');
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#1a2340';
+
+      let drawing = false;
+
+      const at = (event: PointerEvent) => {
+        const box = canvas.getBoundingClientRect();
+        return {
+          x: ((event.clientX - box.left) / box.width) * canvas.width,
+          y: ((event.clientY - box.top) / box.height) * canvas.height,
+        };
+      };
+
+      canvas.addEventListener('pointerdown', (event) => {
+        drawing = true;
+        canvas.setPointerCapture(event.pointerId);
+        const { x, y } = at(event);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      });
+
+      canvas.addEventListener('pointermove', (event) => {
+        if (!drawing) return;
+        event.preventDefault();
+        const { x, y } = at(event);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      });
+
+      for (const name of ['pointerup', 'pointercancel', 'pointerleave'] as const) {
+        canvas.addEventListener(name, () => {
+          drawing = false;
+        });
+      }
+
+      root.querySelector('[data-sign-clear]')?.addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      });
+
+      for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-sign-tab]')) {
+        tab.addEventListener('click', () => {
+          const wanted = tab.dataset.signTab;
+          for (const other of root.querySelectorAll<HTMLButtonElement>('[data-sign-tab]')) {
+            other.classList.toggle('is-on', other === tab);
+          }
+          for (const panel of root.querySelectorAll<HTMLElement>('[data-sign-panel]')) {
+            panel.hidden = panel.dataset.signPanel !== wanted;
+          }
+        });
+      }
+    }
+
+    /** Crops a canvas to its drawn pixels. */
+    function trimmed(source: HTMLCanvasElement): HTMLCanvasElement | null {
+      const ctx = source.getContext('2d');
+      if (!ctx) return null;
+
+      const { data } = ctx.getImageData(0, 0, source.width, source.height);
+      let minX = source.width;
+      let minY = source.height;
+      let maxX = -1;
+      let maxY = -1;
+
+      for (let y = 0; y < source.height; y += 1) {
+        for (let x = 0; x < source.width; x += 1) {
+          if (data[(y * source.width + x) * 4 + 3] < 8) continue;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+
+      if (maxX < 0) return null; // nothing drawn
+
+      const pad = 6;
+      minX = Math.max(0, minX - pad);
+      minY = Math.max(0, minY - pad);
+      maxX = Math.min(source.width - 1, maxX + pad);
+      maxY = Math.min(source.height - 1, maxY + pad);
+
+      const out = document.createElement('canvas');
+      out.width = maxX - minX + 1;
+      out.height = maxY - minY + 1;
+      out.getContext('2d')?.drawImage(source, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
+      return out;
+    }
+
+    function signatureBytes(): ArrayBuffer | undefined {
+      if (mode !== 'sign') return undefined;
+
+      const typed = root.querySelector<HTMLInputElement>('[data-sign-text]');
+      const typePanel = root.querySelector<HTMLElement>('[data-sign-panel="type"]');
+
+      if (typePanel && !typePanel.hidden && typed?.value.trim()) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 900;
+        canvas.height = 260;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return undefined;
+        ctx.fillStyle = '#1a2340';
+        ctx.font = 'italic 120px ui-serif, Georgia, serif';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(typed.value.trim(), 20, canvas.height / 2);
+        const cropped = trimmed(canvas);
+        return cropped ? dataToBytes(cropped) : undefined;
+      }
+
+      const pad = root.querySelector<HTMLCanvasElement>('[data-signature-canvas]');
+      if (!pad) return undefined;
+      const cropped = trimmed(pad);
+      return cropped ? dataToBytes(cropped) : undefined;
+    }
+
+    function dataToBytes(canvas: HTMLCanvasElement): ArrayBuffer {
+      const url = canvas.toDataURL('image/png');
+      const binary = atob(url.slice(url.indexOf(',') + 1));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      return bytes.buffer;
+    }
 
     /**
      * Builds an input per field the document actually has. A form is different
@@ -641,6 +835,8 @@ const dropTitle = takesImages
       });
     }
 
+    if (mode === 'sign') setupSignature();
+
     input.addEventListener('change', () => showFiles(Array.from(input.files ?? [])));
     clearBtn.addEventListener('click', () => {
       input.value = '';
@@ -683,9 +879,12 @@ const dropTitle = takesImages
         ranges: root.querySelector<HTMLInputElement>('[data-ranges]')?.value,
         pageOrder: readOrder(),
         text: root.querySelector<HTMLInputElement>('[data-text]')?.value,
-        targetPage: Number(root.querySelector<HTMLInputElement>('[data-target-page]')?.value ?? 1),
+        targetPage: readTargetPage(),
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
         prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
+        signature: signatureBytes(),
+        corner: root.querySelector<HTMLSelectElement>('[data-corner]')?.value as WorkerRequest['corner'],
+        signatureWidth: 180,
         fieldValues: readFields(),
         flatten: root.querySelector<HTMLInputElement>('[data-flatten]')?.checked ?? false,
         userPassword: root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '',
@@ -792,6 +991,69 @@ const dropTitle = takesImages
   .workspace__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
   .status { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); }
   .status:empty { display: none; }
+
+  .sign {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .sign__tabs {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.2rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    justify-self: start;
+  }
+
+  .sign__tabs button {
+    padding: 0.35rem 0.9rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: var(--step--1);
+    cursor: pointer;
+  }
+
+  .sign__tabs button.is-on {
+    background: var(--accent);
+    color: var(--paper-raised);
+  }
+
+  .sign canvas {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 1;
+    border: 1.5px dashed var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--paper-raised);
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  .sign__row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  .sign__hint {
+    font-size: var(--step--2);
+    color: var(--muted);
+  }
+
+  .sign input[data-sign-text] {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font: italic 1.5rem ui-serif, Georgia, serif;
+  }
 
   .fields {
     display: grid;

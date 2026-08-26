@@ -9,9 +9,11 @@ import { compress } from './compress';
 import { imagesToPdf, pdfToImages, probePdf } from './images';
 import { addText, compare, pageNumbers, watermark } from './edit';
 import { deletePages, extract, merge, reorder, rotate, split } from './organise';
+import { repair, toPdfA } from './archive';
 import { fillForm, probeForm } from './forms';
 import { pdfToMarkdown } from './markdown';
 import { protect, unlock } from './security';
+import { signPdf } from './sign';
 import type { WorkerRequest, WorkerResponse, OpResult } from './types';
 
 /* Static imports: Vite cannot code-split a worker bundle, and the laziness
@@ -73,6 +75,18 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return pdfToMarkdown(request.files);
     case 'forms':
       return fillForm(request.files, request.fieldValues ?? {}, request.flatten ?? false);
+    case 'sign':
+      return signPdf(
+        request.files,
+        request.signature,
+        request.targetPage ?? -1,
+        request.corner ?? 'bottom-right',
+        request.signatureWidth ?? 160
+      );
+    case 'pdf-a':
+      return toPdfA(request.files);
+    case 'repair':
+      return repair(request.files);
     default:
       return { ok: false, error: `Unknown operation: ${String(request.op)}` };
   }
