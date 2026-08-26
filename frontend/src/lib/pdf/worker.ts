@@ -8,6 +8,10 @@
 import { compress } from './compress';
 import { imagesToPdf, pdfToImages, probePdf } from './images';
 import { compose } from './pageplan';
+import { crop } from './crop';
+import { pdfToExcel } from './pdftoexcel';
+import { pdfToWord } from './pdftoword';
+import { scanToPdf } from './scan';
 import { renderThumbnails } from './preview';
 import { closeSession, openSession, renderThumbs } from './thumbs';
 import { addText, compare, pageNumbers, watermark } from './edit';
@@ -118,6 +122,23 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return xlsxToPdf(request.files);
     case 'powerpoint-to-pdf':
       return pptxToPdf(request.files);
+    case 'pdf-to-word':
+      return pdfToWord(request.files);
+    case 'pdf-to-excel':
+      return pdfToExcel(request.files);
+    case 'crop':
+      return crop(
+        request.files,
+        request.cropBox ?? { x: 0, y: 0, width: 1, height: 1 },
+        request.cropPages
+      );
+    case 'scan':
+      return scanToPdf(
+        request.files,
+        request.scanMode ?? 'text',
+        request.pageSize ?? 'fit',
+        request.detectEdges ?? true
+      );
     case 'compose':
       return compose(
         request.files,

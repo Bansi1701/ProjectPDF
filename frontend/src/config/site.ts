@@ -44,6 +44,8 @@ export const TOOLS: Tool[] = [
   { slug: 'pdf-to-markdown', name: 'PDF to Markdown', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'For documents that already have a text layer.' },
   { slug: 'word-to-pdf', name: 'Word to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Text, headings and lists from a .docx — in your browser.' },
   { slug: 'url-to-pdf', name: 'Web page to PDF', category: 'Convert', runsWhere: 'server', status: 'building', blurb: 'A public URL is not your private file, so we fetch it.' },
+  { slug: 'pdf-to-word', name: 'PDF to Word', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'An editable .docx, rebuilt from the page in your browser.' },
+  { slug: 'pdf-to-excel', name: 'PDF to Excel', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Tables into cells — and an honest word about what it found.' },
   { slug: 'excel-to-pdf', name: 'Excel to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Formula results, currency and dates exactly as the sheet shows them.' },
   { slug: 'powerpoint-to-pdf', name: 'PowerPoint to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'One page per slide — template layouts, theme colours and tables.' },
 

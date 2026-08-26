@@ -25,7 +25,11 @@ export type Operation =
   | 'word-to-pdf'
   | 'excel-to-pdf'
   | 'powerpoint-to-pdf'
-  | 'compose';
+  | 'compose'
+  | 'pdf-to-word'
+  | 'pdf-to-excel'
+  | 'crop'
+  | 'scan';
 
 /**
  * One page of the output: which source page it is, and how it is turned.
@@ -213,6 +217,14 @@ export interface WorkerRequest {
   cuts?: number[];
   /** compose only: base name for the produced file(s). */
   label?: string;
+  /** Crop only: the rectangle to keep, in fractions of the page as displayed. */
+  cropBox?: { x: number; y: number; width: number; height: number };
+  /** Crop only: one-based pages to crop. Absent means every page. */
+  cropPages?: number[];
+  /** Scan only: how the captured page is cleaned up. */
+  scanMode?: 'text' | 'grey' | 'colour';
+  /** Scan only: find the page in the frame and straighten it. */
+  detectEdges?: boolean;
   /** Reorder only: zero-based page indexes in their new order. */
   pageOrder?: number[];
   /** Text tools only. */

@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+
+const description =
+  'Pulls tables out of a PDF into a spreadsheet, and tells you how much of it was guesswork. Runs in this tab — nothing is uploaded.';
+---
+
+<BaseLayout title="PDF to Excel — ProjectPDF" description={description}>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="pdf-to-excel"
+      eyebrow="Converted here, not on a server"
+      title="PDF to Excel"
+      description={description}
+    />
+  </main>
+</BaseLayout>

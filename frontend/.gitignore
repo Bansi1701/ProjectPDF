@@ -1,0 +1,7 @@
+
+# Scratch bundles used to exercise worker modules in node during development.
+.tmpverify/
+
+# Scratch bundles agents produce while exercising modules in node.
+.flatten-test/
+__*_bundle.mjs
