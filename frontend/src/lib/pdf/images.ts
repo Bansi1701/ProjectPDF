@@ -17,6 +17,7 @@
 import { PDFDocument, degrees } from '@cantoo/pdf-lib';
 import type { PDFImage } from '@cantoo/pdf-lib';
 
+import { documentOptions, loadPdfjs } from './pdfjs';
 import type { ImageFormat, InputFile, OpResult, OutputFile, PageSize } from './types';
 
 /**
@@ -335,92 +336,6 @@ export async function probePdf(files: InputFile[]): Promise<OpResult> {
   return { ok: true, probe: true, pages: doc.getPageCount(), maxDpi };
 }
 
-/**
- * A canvas factory backed by OffscreenCanvas.
- *
- * pdf.js reaches for `document.createElement('canvas')` when it needs a
- * scratch surface for a soft mask or a shading pattern. There is no document
- * in a worker, and this is the supported way to say so.
- */
-class OffscreenCanvasFactory {
-  create(width: number, height: number) {
-    if (width <= 0 || height <= 0) throw new Error('Invalid canvas size');
-    const canvas = new OffscreenCanvas(width, height);
-    return { canvas, context: canvas.getContext('2d', { willReadFrequently: true }) };
-  }
-
-  reset(entry: { canvas: OffscreenCanvas | null }, width: number, height: number) {
-    if (!entry.canvas) throw new Error('Canvas is not specified');
-    if (width <= 0 || height <= 0) throw new Error('Invalid canvas size');
-    entry.canvas.width = width;
-    entry.canvas.height = height;
-  }
-
-  destroy(entry: { canvas: OffscreenCanvas | null; context: unknown }) {
-    if (!entry.canvas) throw new Error('Canvas is not specified');
-    entry.canvas.width = entry.canvas.height = 0;
-    entry.canvas = null;
-    entry.context = null;
-  }
-}
-
-/**
- * pdf.js composes some soft masks through an SVG `<filter>` in the host
- * document. There is no document here, so those return "none" — the mask is
- * still applied, just without its transfer curve. Everything else, including
- * all text and image drawing, is unaffected.
- */
-class NoFilterFactory {
-  addFilter() {
-    return 'none';
-  }
-  addHCMFilter() {
-    return 'none';
-  }
-  addAlphaFilter() {
-    return 'none';
-  }
-  addLuminosityFilter() {
-    return 'none';
-  }
-  addHighlightHCMFilter() {
-    return 'none';
-  }
-  destroy() {}
-}
-
-type PdfjsApi = typeof import('pdfjs-dist/legacy/build/pdf.mjs');
-
-let pdfjs: Promise<PdfjsApi> | null = null;
-
-/**
- * Load the renderer, once, on demand.
- *
- * pdf.js normally spawns its own Worker. We are already inside one, and nested
- * workers are a long-running source of Safari bugs — so the worker module is
- * imported directly and handed over through `globalThis.pdfjsWorker`, which is
- * pdf.js's supported same-thread path. "Same thread" here still means off the
- * main thread; the page stays responsive either way.
- */
-function loadPdfjs(): Promise<PdfjsApi> {
-  pdfjs ??= (async () => {
-    const [api, worker] = await Promise.all([
-      import('pdfjs-dist/legacy/build/pdf.mjs'),
-      import('pdfjs-dist/legacy/build/pdf.worker.mjs'),
-    ]);
-    (globalThis as Record<string, unknown>).pdfjsWorker = worker;
-    return api;
-  })();
-
-  return pdfjs;
-}
-
-/** Absolute, same-origin, and honouring the `base` this site is deployed under. */
-const assetUrl = (folder: string): string => {
-  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-  return new URL(`${base}/pdfjs/${folder}/`, self.location.href).href;
-};
-
 /** Stop before the tab dies rather than after. */
 const OUTPUT_BUDGET = 400 * 1024 * 1024;
 
@@ -438,21 +353,7 @@ export async function pdfToImages(
 
   const doc = await api.getDocument({
     data: new Uint8Array(file.bytes),
-    // Without these two, CJK text and non-embedded base-14 fonts render as a
-    // blank page — the failure looks like success, which is the worst kind.
-    cMapUrl: assetUrl('cmaps'),
-    cMapPacked: true,
-    standardFontDataUrl: assetUrl('standard_fonts'),
-    // JBIG2 and JPEG 2000 images in scanned documents are decoded by these.
-    wasmUrl: assetUrl('wasm'),
-    iccUrl: assetUrl('iccs'),
-    // The default is computed from `document.baseURI`, which does not exist in
-    // a worker. Say it explicitly or getDocument throws before it starts.
-    useWorkerFetch: true,
-    // `document.fonts` does not exist here either; glyphs are drawn as outlines.
-    disableFontFace: true,
-    CanvasFactory: OffscreenCanvasFactory,
-    FilterFactory: NoFilterFactory,
+    ...documentOptions(),
   }).promise;
 
   const out: OutputFile[] = [];
