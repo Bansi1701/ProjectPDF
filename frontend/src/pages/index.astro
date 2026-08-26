@@ -262,7 +262,15 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
               <h4>{category}</h4>
               <ul>
                 {toolsByCategory(category).map((tool) => (
-                  <li>{tool.name}</li>
+                  <li>
+                    {tool.status === 'live' ? (
+                      <a href={`${baseUrl}${tool.slug}/`}>{tool.name}</a>
+                    ) : (
+                      <span class="footer__building" title="This tool is still being built">
+                        {tool.name}<small>Building</small>
+                      </span>
+                    )}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -1133,6 +1141,36 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   .footer__cols li {
     font-size: var(--step--1);
     color: var(--ink-2);
+  }
+
+  .footer__cols a {
+    color: var(--ink-2);
+    text-decoration: none;
+    transition: color 160ms ease-out, padding-left 160ms ease-out;
+  }
+
+  .footer__cols a:hover {
+    color: var(--accent);
+    padding-left: 0.2rem;
+  }
+
+  .footer__building {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    color: var(--muted);
+  }
+
+  .footer__building small {
+    padding: 0.08rem 0.38rem;
+    border: 1px solid color-mix(in srgb, var(--disclose) 35%, var(--line));
+    border-radius: 999px;
+    color: var(--disclose);
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   .footer__base {
