@@ -127,6 +127,11 @@ const dropTitle = takesWord
   <div class="workspace" data-workspace hidden>
     <ol class="files" data-files></ol>
 
+    <section class="preview" data-preview hidden>
+      <p class="preview__note" data-preview-note hidden></p>
+      <div class="preview__pages" data-preview-pages></div>
+    </section>
+
     {
       mode === 'split' && (
         <label class="field">
@@ -447,13 +452,19 @@ const dropTitle = takesWord
     const downloads = q('[data-downloads]');
     const receipt = q('[data-receipt]');
     const errorEl = q('[data-error]');
+    const previewSection = q('[data-preview]');
+    const previewNote = q('[data-preview-note]');
+    const previewPages = q('[data-preview-pages]');
 
     let files: File[] = [];
     let worker: Worker | null = null;
     let jobId = 0;
     let urls: string[] = [];
+    let previewUrls: string[] = [];
     /** Id of the in-flight page-size probe, so its answer is never shown as a result. */
     let probeId = -1;
+    /** Id of the in-flight thumbnail preview, so its answer is never shown as a result. */
+    let previewId = -1;
 
     const takesImages = mode === 'images-to-pdf';
     const takesMany = mode === 'merge' || mode === 'compare' || takesImages;
@@ -771,6 +782,46 @@ const dropTitle = takesWord
       );
     }
 
+    /** The only modes whose input file is a PDF pdf.js can open. */
+    const previewable = !takesImages && mode !== 'word-to-pdf' && mode !== 'url-to-pdf';
+
+    async function preview(file: File) {
+      previewId = ++jobId;
+      const bytes = await file.arrayBuffer();
+      ensureWorker().postMessage(
+        { id: previewId, op: mode, files: [{ name: file.name, bytes }], preview: true },
+        [bytes]
+      );
+    }
+
+    function renderThumbnailStrip(thumbnails: { page: number; bytes: Uint8Array }[], totalPages: number) {
+      for (const url of previewUrls) URL.revokeObjectURL(url);
+      previewUrls = [];
+
+      previewPages.replaceChildren(
+        ...thumbnails.map(({ page, bytes }) => {
+          const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'image/png' }));
+          previewUrls.push(url);
+          const figure = document.createElement('figure');
+          const img = document.createElement('img');
+          img.src = url;
+          img.alt = `Page ${page}`;
+          img.loading = 'lazy';
+          const caption = document.createElement('figcaption');
+          caption.textContent = `Page ${page}`;
+          figure.append(img, caption);
+          return figure;
+        })
+      );
+
+      previewNote.textContent =
+        totalPages > thumbnails.length
+          ? `Showing the first ${thumbnails.length} of ${totalPages} pages.`
+          : '';
+      previewNote.hidden = totalPages <= thumbnails.length;
+      previewSection.hidden = false;
+    }
+
     function showFiles(next: File[]) {
       const kept = next.filter(usable);
 
@@ -790,7 +841,13 @@ const dropTitle = takesWord
       status.textContent = '';
       revoke();
 
+      previewSection.hidden = true;
+      previewPages.replaceChildren();
+      for (const url of previewUrls) URL.revokeObjectURL(url);
+      previewUrls = [];
+
       if ((mode === 'pdf-to-images' || mode === 'forms') && files[0]) void probe(files[0]);
+      if (previewable && files[0]) void preview(files[0]);
     }
 
     function onDone({ id, result: res }: WorkerResponse) {
@@ -804,6 +861,14 @@ const dropTitle = takesWord
         } else if (!res.ok && mode === 'forms') {
           fail(res.error);
         }
+        return;
+      }
+
+      // Same idea: a preview answers what the dropzone should show, not what
+      // the tool produced, so a failure here is quiet — the real run still says so.
+      if (id === previewId) {
+        previewId = -1;
+        if (res.ok && 'preview' in res) renderThumbnailStrip(res.thumbnails, res.pages);
         return;
       }
 
@@ -1091,6 +1156,20 @@ const dropTitle = takesWord
   .files {
     margin: 0; padding-left: 1.2rem; display: grid; gap: 0.3rem;
     font-size: var(--step--1); color: var(--ink-2);
+  }
+
+  .preview__note { margin: 0 0 0.6rem; color: var(--muted); font-size: var(--step--2); }
+  .preview__pages {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+    gap: 0.75rem;
+  }
+  .preview__pages figure {
+    margin: 0; padding: 0.4rem; border: 1px solid var(--line);
+    border-radius: calc(var(--radius) - 4px); background: var(--paper-raised);
+  }
+  .preview__pages img { display: block; width: 100%; height: auto; border: 1px solid var(--line); }
+  .preview__pages figcaption {
+    margin-top: 0.3rem; color: var(--muted); font-family: var(--font-mono); font-size: var(--step--2);
   }
 
   .field { display: grid; gap: 0.4rem; font-size: var(--step--1); }

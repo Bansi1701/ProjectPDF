@@ -7,6 +7,7 @@
  */
 import { compress } from './compress';
 import { imagesToPdf, pdfToImages, probePdf } from './images';
+import { renderThumbnails } from './preview';
 import { addText, compare, pageNumbers, watermark } from './edit';
 import { deletePages, extract, merge, reorder, rotate, split } from './organise';
 import { repair, toPdfA } from './archive';
@@ -32,6 +33,8 @@ async function run(request: WorkerRequest): Promise<OpResult> {
   if (request.probe) {
     return request.op === 'forms' ? probeForm(request.files) : probePdf(request.files);
   }
+
+  if (request.preview) return renderThumbnails(request.files);
 
   switch (request.op) {
     case 'compress':

@@ -113,7 +113,15 @@ export interface ProbeSuccess {
   fields?: FormField[];
 }
 
-export type OpResult = OpSuccess | OpFailure | ProbeSuccess;
+/** Answer to a `preview` request: a strip of small page thumbnails, not a result to save. */
+export interface PreviewSuccess {
+  ok: true;
+  preview: true;
+  pages: number;
+  thumbnails: { page: number; bytes: Uint8Array }[];
+}
+
+export type OpResult = OpSuccess | OpFailure | ProbeSuccess | PreviewSuccess;
 
 export interface WorkerRequest {
   id: number;
@@ -131,6 +139,8 @@ export interface WorkerRequest {
   dpi?: number;
   /** PDF → image only: measure the pages and return DPI limits, render nothing. */
   probe?: boolean;
+  /** Render a strip of low-resolution page thumbnails instead of running `op`. */
+  preview?: boolean;
   /** Reorder only: zero-based page indexes in their new order. */
   pageOrder?: number[];
   /** Text tools only. */
