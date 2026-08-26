@@ -1,4 +1,5 @@
 ---
+import PageGrid from './PageGrid.astro';
 import Lens from './Lens.astro';
 import type { Operation } from '../lib/pdf/types';
 
@@ -51,6 +52,21 @@ const ACTIONS: Record<Operation, string> = {
 
 /** Modes whose ranges field means "pages to act on", not "groups". */
 const RANGE_MODES = new Set<Operation>(['extract', 'delete']);
+
+/**
+ * Tools whose whole job is choosing pages. Each gets the visual grid, because
+ * "1-3, 7, 10-12" asks you to know what is on page 7 before you can say
+ * anything about it. The typed box stays alongside it, and they stay in sync.
+ */
+const GRID_MODES: Partial<Record<Operation, import('../lib/pdf/types').GridMode>> = {
+  reorder: 'organise',
+  rotate: 'rotate',
+  delete: 'delete',
+  extract: 'extract',
+  split: 'split',
+  merge: 'merge',
+};
+const gridMode = GRID_MODES[mode];
 
 const action = ACTIONS[mode];
 
@@ -138,6 +154,8 @@ const dropTitle = takesExcel
 
   <div class="workspace" data-workspace hidden>
     <ol class="files" data-files></ol>
+
+    {gridMode && <PageGrid mode={gridMode} />}
 
     <section class="preview" data-preview hidden>
       <p class="preview__note" data-preview-note hidden></p>
@@ -477,6 +495,34 @@ const dropTitle = takesExcel
     let probeId = -1;
     /** Id of the in-flight thumbnail preview, so its answer is never shown as a result. */
     let previewId = -1;
+
+    /**
+     * The page grid speaks to the worker in request/response pairs rather than
+     * fire-and-forget, so its messages resolve promises here instead of
+     * landing in the result panel.
+     */
+    const gridWaiting = new Map<number, (result: OpResult) => void>();
+
+    interface GridElement extends HTMLElement {
+      attach(host: { request(message: Partial<WorkerRequest>): Promise<OpResult> }): void;
+      load(): Promise<string | null>;
+      release(): Promise<void>;
+      getPlan(): { file: number; page: number; rotate: number }[];
+      getCuts(): number[];
+      getRanges(): string;
+      applyRanges(text: string): void;
+      readonly touched: boolean;
+    }
+
+    const grid = root.querySelector('page-grid') as GridElement | null;
+
+    /** Identifies the grid's open documents across messages, unlike a job id. */
+    let gridSession = 0;
+
+    // Nothing should outlive the tab: a session holds a parsed PDF.
+    window.addEventListener('pagehide', () => {
+      if (grid) void grid.release();
+    });
 
     const takesImages = mode === 'images-to-pdf';
     const takesMany = mode === 'merge' || mode === 'compare' || takesImages;
@@ -861,10 +907,23 @@ const dropTitle = takesExcel
       previewUrls = [];
 
       if ((mode === 'pdf-to-images' || mode === 'forms') && files[0]) void probe(files[0]);
-      if (previewable && files[0]) void preview(files[0]);
+
+      // A tool with a grid gets the grid instead of the thumbnail strip: the
+      // strip shows the first eight pages, the grid shows all of them and
+      // lets you act on what you see.
+      if (grid) void openGrid();
+      else if (previewable && files[0]) void preview(files[0]);
     }
 
     function onDone({ id, result: res }: WorkerResponse) {
+      // Grid traffic is answered where it was asked from.
+      const waiting = gridWaiting.get(id);
+      if (waiting) {
+        gridWaiting.delete(id);
+        waiting(res);
+        return;
+      }
+
       // A probe answers a question the UI asked, not one the user did. If the
       // file turns out to be unreadable, the real run will say so properly.
       if (id === probeId) {
@@ -977,7 +1036,89 @@ const dropTitle = takesExcel
       const fileUi = root.querySelector<HTMLElement>('[data-file-ui]');
       if (fileUi) fileUi.hidden = true;
 
-      runBtn.addEventListener('click', async () => {
+      /**
+     * Hands the grid a way to talk to the worker.
+     *
+     * The file bytes are copied rather than transferred here: the grid keeps
+     * its documents open for the whole session, and the run afterwards needs
+     * the same bytes again. Transferring would detach them and the export
+     * would find an empty buffer.
+     */
+    async function openGrid(): Promise<void> {
+      if (!grid) return;
+
+      // Whatever was open belongs to the file that just went away. Releasing
+      // first matters: the worker holds a parsed document per session, and
+      // swapping files without closing would keep every one of them alive.
+      await grid.release();
+      if (files.length === 0) return;
+
+      gridSession += 1;
+
+      const payload = await Promise.all(
+        files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
+      );
+
+      // Until the grid has its pages, running would silently fall back to the
+      // typed box and give a different answer for the same click. Better to
+      // wait the moment it takes than to be non-deterministic.
+      runBtn.disabled = true;
+
+      grid.attach({
+        request(message) {
+          return new Promise<OpResult>((resolve) => {
+            const id = ++jobId;
+            gridWaiting.set(id, resolve);
+            ensureWorker().postMessage({
+              id,
+              op: mode,
+              sessionId: gridSession,
+              // Only opening needs the bytes; later messages name the session.
+              files: message.session === 'open' ? payload : [],
+              ...message,
+            });
+          });
+        },
+      });
+
+      const failure = await grid.load();
+      runBtn.disabled = false;
+
+      if (failure) {
+        // The grid failing is not the tool failing — the typed box still works.
+        grid.hidden = true;
+        return;
+      }
+
+      syncRangesFromGrid();
+    }
+
+    const rangesInput = q<HTMLInputElement>('[data-ranges]');
+    const orderInput = q<HTMLInputElement>('[data-order]');
+
+    /** Grid edited → mirror it into whichever text box this tool shows. */
+    function syncRangesFromGrid() {
+      if (!grid) return;
+      if (rangesInput) rangesInput.value = grid.getRanges();
+      if (orderInput) {
+        orderInput.value = grid
+          .getPlan()
+          .map((entry) => entry.page)
+          .join(', ');
+      }
+    }
+
+    if (grid) {
+      grid.addEventListener('gridchange', syncRangesFromGrid);
+
+      // Text box edited → mirror it into the grid. Both edit one plan, so
+      // neither can quietly disagree with the other.
+      rangesInput?.addEventListener('input', () => {
+        if (document.activeElement === rangesInput) grid.applyRanges(rangesInput.value);
+      });
+    }
+
+    runBtn.addEventListener('click', async () => {
         const url = root.querySelector<HTMLInputElement>('[data-url]')?.value?.trim() ?? '';
         if (!url) return fail('Enter a web address first.');
 
@@ -1065,6 +1206,88 @@ const dropTitle = takesExcel
     }
     drop.addEventListener('drop', (e) => showFiles(Array.from(e.dataTransfer?.files ?? [])));
 
+    /**
+     * Hands the grid a way to talk to the worker.
+     *
+     * The file bytes are copied rather than transferred here: the grid keeps
+     * its documents open for the whole session, and the run afterwards needs
+     * the same bytes again. Transferring would detach them and the export
+     * would find an empty buffer.
+     */
+    async function openGrid(): Promise<void> {
+      if (!grid) return;
+
+      // Whatever was open belongs to the file that just went away. Releasing
+      // first matters: the worker holds a parsed document per session, and
+      // swapping files without closing would keep every one of them alive.
+      await grid.release();
+      if (files.length === 0) return;
+
+      gridSession += 1;
+
+      const payload = await Promise.all(
+        files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
+      );
+
+      // Until the grid has its pages, running would silently fall back to the
+      // typed box and give a different answer for the same click. Better to
+      // wait the moment it takes than to be non-deterministic.
+      runBtn.disabled = true;
+
+      grid.attach({
+        request(message) {
+          return new Promise<OpResult>((resolve) => {
+            const id = ++jobId;
+            gridWaiting.set(id, resolve);
+            ensureWorker().postMessage({
+              id,
+              op: mode,
+              sessionId: gridSession,
+              // Only opening needs the bytes; later messages name the session.
+              files: message.session === 'open' ? payload : [],
+              ...message,
+            });
+          });
+        },
+      });
+
+      const failure = await grid.load();
+      runBtn.disabled = false;
+
+      if (failure) {
+        // The grid failing is not the tool failing — the typed box still works.
+        grid.hidden = true;
+        return;
+      }
+
+      syncRangesFromGrid();
+    }
+
+    const rangesInput = q<HTMLInputElement>('[data-ranges]');
+    const orderInput = q<HTMLInputElement>('[data-order]');
+
+    /** Grid edited → mirror it into whichever text box this tool shows. */
+    function syncRangesFromGrid() {
+      if (!grid) return;
+      if (rangesInput) rangesInput.value = grid.getRanges();
+      if (orderInput) {
+        orderInput.value = grid
+          .getPlan()
+          .map((entry) => entry.page)
+          .join(', ');
+      }
+    }
+
+    if (grid) {
+      grid.addEventListener('gridchange', syncRangesFromGrid);
+
+      // Text box edited → mirror it into the grid. Both edit one plan, so
+      // neither can quietly disagree with the other.
+      rangesInput?.addEventListener('input', () => {
+        if (document.activeElement === rangesInput) grid.applyRanges(rangesInput.value);
+      });
+    }
+
     runBtn.addEventListener('click', async () => {
       if (!files.length) return;
 
@@ -1109,6 +1332,27 @@ const dropTitle = takesExcel
         format: picked('format') as WorkerRequest['format'],
         dpi: Number(picked('dpi') ?? 150),
       };
+
+      // A grid tool always exports what the grid holds. The typed box feeds
+      // the same plan, so there is one path here rather than two that drift.
+      if (grid && !grid.hidden) {
+        const plan = grid.getPlan();
+        if (plan.length === 0) {
+          runBtn.disabled = false;
+          status.textContent = '';
+          fail(
+            mode === 'extract'
+              ? 'No pages are picked yet. Click the ones you want to pull out.'
+              : 'Every page is marked for removal, so there would be nothing left. Keep at least one.'
+          );
+          return;
+        }
+
+        request.op = 'compose';
+        request.plan = plan;
+        request.cuts = grid.getCuts();
+        request.label = (files[0]?.name ?? 'pages').replace(/\.pdf$/i, '');
+      }
 
       // Transfer, don't copy — a 50 MB file should not exist twice in memory.
       ensureWorker().postMessage(request, payload.map((f) => f.bytes));

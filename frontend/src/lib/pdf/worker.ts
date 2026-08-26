@@ -7,7 +7,9 @@
  */
 import { compress } from './compress';
 import { imagesToPdf, pdfToImages, probePdf } from './images';
+import { compose } from './pageplan';
 import { renderThumbnails } from './preview';
+import { closeSession, openSession, renderThumbs } from './thumbs';
 import { addText, compare, pageNumbers, watermark } from './edit';
 import { deletePages, extract, merge, reorder, rotate, split } from './organise';
 import { repair, toPdfA } from './archive';
@@ -37,6 +39,17 @@ async function run(request: WorkerRequest): Promise<OpResult> {
   }
 
   if (request.preview) return renderThumbnails(request.files);
+
+  // The page grid keeps its documents open between requests, so its messages
+  // are addressed to a session rather than run as a one-shot operation.
+  if (request.session === 'open') return openSession(request.sessionId ?? 0, request.files);
+  if (request.session === 'render') {
+    return renderThumbs(request.sessionId ?? 0, request.wanted ?? []);
+  }
+  if (request.session === 'close') {
+    closeSession(request.sessionId ?? 0);
+    return { ok: true, session: true, geometry: [] };
+  }
 
   switch (request.op) {
     case 'compress':
@@ -105,6 +118,13 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return xlsxToPdf(request.files);
     case 'powerpoint-to-pdf':
       return pptxToPdf(request.files);
+    case 'compose':
+      return compose(
+        request.files,
+        request.plan ?? [],
+        request.cuts ?? [],
+        request.label ?? 'pages'
+      );
     default:
       return { ok: false, error: `Unknown operation: ${String(request.op)}` };
   }
@@ -119,11 +139,15 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     const result = await run(request);
     const response: WorkerResponse = { id: request.id, result };
 
-    // Transfer output buffers rather than copying them.
-    const transfer =
+    // Transfer output buffers and bitmaps rather than copying them. A grid
+    // scrolling through a long document moves a lot of pixels; copying them
+    // would cost more than the rendering.
+    const transfer: Transferable[] =
       result.ok && 'files' in result
         ? result.files.map((file) => file.bytes.buffer as ArrayBuffer)
-        : [];
+        : result.ok && 'thumbs' in result
+          ? result.frames.map((frame) => frame.bitmap)
+          : [];
 
     ctx.postMessage(response, transfer);
   } catch (error) {

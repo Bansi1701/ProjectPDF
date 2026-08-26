@@ -24,7 +24,34 @@ export type Operation =
   | 'redact'
   | 'word-to-pdf'
   | 'excel-to-pdf'
-  | 'powerpoint-to-pdf';
+  | 'powerpoint-to-pdf'
+  | 'compose';
+
+/**
+ * One page of the output: which source page it is, and how it is turned.
+ *
+ * This is the shared model behind reorder, rotate, delete, extract, split and
+ * merge — see pageplan.ts for why those are one operation and not six.
+ */
+export interface PagePlan {
+  /** Index into the request's `files`. */
+  file: number;
+  /** One-based page number within that file. */
+  page: number;
+  /** Extra clockwise degrees, on top of the rotation the page already has. */
+  rotate: number;
+}
+
+/** Which editing affordances the page grid offers for a given tool. */
+export type GridMode = 'organise' | 'rotate' | 'delete' | 'extract' | 'split' | 'merge';
+
+/** A page's size as it is meant to be seen, with its own rotation applied. */
+export interface PageGeometry {
+  file: number;
+  page: number;
+  width: number;
+  height: number;
+}
 
 /** A rectangle to remove, in fractions of the page so scale never matters. */
 export interface RedactionBox {
@@ -123,7 +150,29 @@ export interface PreviewSuccess {
   thumbnails: { page: number; bytes: Uint8Array }[];
 }
 
-export type OpResult = OpSuccess | OpFailure | ProbeSuccess | PreviewSuccess;
+/** Answer to `session: 'open'`: every page's size, nothing rendered yet. */
+export interface SessionSuccess {
+  ok: true;
+  session: true;
+  geometry: PageGeometry[];
+  /** Pages past this many get a numbered placeholder rather than a picture. */
+  previewLimit?: number;
+}
+
+/** Answer to `session: 'render'`: bitmaps, transferred rather than copied. */
+export interface ThumbsSuccess {
+  ok: true;
+  thumbs: true;
+  frames: { file: number; page: number; bitmap: ImageBitmap }[];
+}
+
+export type OpResult =
+  | OpSuccess
+  | OpFailure
+  | ProbeSuccess
+  | PreviewSuccess
+  | SessionSuccess
+  | ThumbsSuccess;
 
 export interface WorkerRequest {
   id: number;
@@ -143,6 +192,27 @@ export interface WorkerRequest {
   probe?: boolean;
   /** Render a strip of low-resolution page thumbnails instead of running `op`. */
   preview?: boolean;
+  /**
+   * Page-grid session. `open` parses the files and reports page sizes,
+   * `render` draws the pages named in `wanted`, `close` releases them.
+   */
+  session?: 'open' | 'render' | 'close';
+  /**
+   * Which grid session the message belongs to.
+   *
+   * Not the message id: every message has a fresh one of those, and keying
+   * the open documents by it meant every later request looked up a session
+   * that could not exist.
+   */
+  sessionId?: number;
+  /** session: 'render' only — which pages to draw now. */
+  wanted?: { file: number; page: number }[];
+  /** compose only: the output, page by page. */
+  plan?: PagePlan[];
+  /** compose only: plan indexes after which a new output file begins. */
+  cuts?: number[];
+  /** compose only: base name for the produced file(s). */
+  label?: string;
   /** Reorder only: zero-based page indexes in their new order. */
   pageOrder?: number[];
   /** Text tools only. */
