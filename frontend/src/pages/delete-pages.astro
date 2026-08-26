@@ -1,0 +1,12 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+---
+
+<BaseLayout title="Delete PDF pages — ProjectPDF" description="Remove the pages you do not want and keep everything else.">
+  <Masthead />
+  <main id="main">
+    <PdfTool mode="delete" title="Delete PDF pages" description="Remove the pages you do not want and keep everything else." />
+  </main>
+</BaseLayout>

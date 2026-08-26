@@ -28,7 +28,17 @@ const ACTIONS: Record<Operation, string> = {
   rotate: 'Rotate',
   'images-to-pdf': 'Build the PDF',
   'pdf-to-images': 'Export images',
+  reorder: 'Reorder pages',
+  extract: 'Extract pages',
+  delete: 'Delete pages',
+  edit: 'Add the text',
+  watermark: 'Add watermark',
+  'page-numbers': 'Add numbers',
+  compare: 'Compare',
 };
+
+/** Modes whose ranges field means "pages to act on", not "groups". */
+const RANGE_MODES = new Set<Operation>(['extract', 'delete']);
 
 const action = ACTIONS[mode];
 
@@ -91,6 +101,75 @@ const dropTitle = takesImages
           <label><input type="radio" name="turn" value="180" /> 180°</label>
           <label><input type="radio" name="turn" value="270" /> 90° left</label>
         </fieldset>
+      )
+    }
+
+    {
+      RANGE_MODES.has(mode) && (
+        <label class="field">
+          <span>Pages</span>
+          <input data-ranges value="1" placeholder="1-3, 7, 10-12" />
+          <small>
+            {mode === 'extract'
+              ? 'These pages are pulled into a new document. The original is untouched.'
+              : 'These pages are removed. Everything else is kept, in order.'}
+          </small>
+        </label>
+      )
+    }
+
+    {
+      mode === 'reorder' && (
+        <label class="field">
+          <span>New page order</span>
+          <input data-order placeholder="3, 1, 2" />
+          <small>
+            Every page number, once each, in the order you want them. Leave empty to keep the
+            current order.
+          </small>
+        </label>
+      )
+    }
+
+    {
+      mode === 'edit' && (
+        <Fragment>
+          <label class="field">
+            <span>Text to add</span>
+            <input data-text placeholder="Approved — 12 March" />
+          </label>
+          <label class="field">
+            <span>Page</span>
+            <input data-target-page type="number" min="1" value="1" />
+            <small>The text is placed near the bottom-left corner of that page.</small>
+          </label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'watermark' && (
+        <label class="field">
+          <span>Watermark text</span>
+          <input data-text placeholder="DRAFT" />
+          <small>Drawn diagonally across every page at low opacity.</small>
+        </label>
+      )
+    }
+
+    {
+      mode === 'page-numbers' && (
+        <Fragment>
+          <label class="field">
+            <span>Start at</span>
+            <input data-start-number type="number" min="1" value="1" />
+          </label>
+          <label class="field">
+            <span>Prefix</span>
+            <input data-prefix placeholder="Page " />
+            <small>Optional. Numbers are drawn in the bottom-right corner.</small>
+          </label>
+        </Fragment>
       )
     }
 
@@ -215,10 +294,20 @@ const dropTitle = takesImages
     let probeId = -1;
 
     const takesImages = mode === 'images-to-pdf';
-    const takesMany = mode === 'merge' || takesImages;
+    const takesMany = mode === 'merge' || mode === 'compare' || takesImages;
 
     const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
     const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : kb(n));
+
+    /** "3, 1, 2" → [2, 0, 1]. Empty means "leave the order alone". */
+    function readOrder(): number[] {
+      const raw = root.querySelector<HTMLInputElement>('[data-order]')?.value ?? '';
+      if (!raw.trim()) return [];
+      return raw
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map((n) => Number(n) - 1);
+    }
 
     /** Created on first use — a tool page costs no JS until someone acts. */
     function ensureWorker(): Worker {
@@ -428,6 +517,11 @@ const dropTitle = takesImages
         op: mode,
         files: payload,
         ranges: root.querySelector<HTMLInputElement>('[data-ranges]')?.value,
+        pageOrder: readOrder(),
+        text: root.querySelector<HTMLInputElement>('[data-text]')?.value,
+        targetPage: Number(root.querySelector<HTMLInputElement>('[data-target-page]')?.value ?? 1),
+        startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
+        prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
         turn: Number(picked('turn') ?? 90),
         pageSize: root.querySelector<HTMLSelectElement>('[data-page-size]')
           ?.value as WorkerRequest['pageSize'],

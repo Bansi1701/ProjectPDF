@@ -1,0 +1,12 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+---
+
+<BaseLayout title="Reorder PDF pages — ProjectPDF" description="Put the pages in the order you actually wanted. Nothing is uploaded.">
+  <Masthead />
+  <main id="main">
+    <PdfTool mode="reorder" title="Reorder PDF pages" description="Put the pages in the order you actually wanted. Nothing is uploaded." />
+  </main>
+</BaseLayout>

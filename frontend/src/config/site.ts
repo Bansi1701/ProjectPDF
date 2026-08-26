@@ -33,9 +33,9 @@ export const TOOLS: Tool[] = [
   { slug: 'merge-pdf', name: 'Merge', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Combine files and reorder pages before you export.' },
   { slug: 'split-pdf', name: 'Split', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Cut one document into many, at the pages you choose.' },
   { slug: 'rotate-pdf', name: 'Rotate', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Fix sideways scans. Lossless — only the page dictionary changes.' },
-  { slug: 'organise-pdf', name: 'Reorder', category: 'Organise', runsWhere: 'local', status: 'planned', blurb: 'Drag pages into the order you actually wanted.' },
-  { slug: 'extract-pages', name: 'Extract pages', category: 'Organise', runsWhere: 'local', status: 'planned', blurb: 'Pull a range out into its own file.' },
-  { slug: 'delete-pages', name: 'Delete pages', category: 'Organise', runsWhere: 'local', status: 'planned', blurb: 'Remove pages and save what is left.' },
+  { slug: 'organise-pdf', name: 'Reorder', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Drag pages into the order you actually wanted.' },
+  { slug: 'extract-pages', name: 'Extract pages', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Pull a range out into its own file.' },
+  { slug: 'delete-pages', name: 'Delete pages', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Remove pages and save what is left.' },
 
   // --- Convert ---
   { slug: 'compress-pdf', name: 'Compress', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Smaller file, checked against the original before you get it.' },
@@ -46,10 +46,10 @@ export const TOOLS: Tool[] = [
   { slug: 'url-to-pdf', name: 'Web page to PDF', category: 'Convert', runsWhere: 'server', status: 'planned', blurb: 'A public URL is not your private file, so we fetch it.' },
 
   // --- Edit ---
-  { slug: 'edit-pdf', name: 'Edit', category: 'Edit', runsWhere: 'local', status: 'planned', blurb: 'Text, shapes, highlights and images on the page.' },
-  { slug: 'watermark-pdf', name: 'Watermark', category: 'Edit', runsWhere: 'local', status: 'planned', blurb: 'Stamp text or an image across every page.' },
-  { slug: 'page-numbers', name: 'Page numbers', category: 'Edit', runsWhere: 'local', status: 'planned', blurb: 'Numbering that matches the page labels people cite.' },
-  { slug: 'compare-pdf', name: 'Compare', category: 'Edit', runsWhere: 'local', status: 'planned', blurb: 'What changed between two drafts, in words not pixels.' },
+  { slug: 'edit-pdf', name: 'Edit', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Text, shapes, highlights and images on the page.' },
+  { slug: 'watermark-pdf', name: 'Watermark', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Stamp text or an image across every page.' },
+  { slug: 'page-numbers', name: 'Page numbers', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Numbering that matches the page labels people cite.' },
+  { slug: 'compare-pdf', name: 'Compare', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'What changed between two drafts, in words not pixels.' },
   { slug: 'ocr-pdf', name: 'OCR', category: 'Edit', runsWhere: 'local', status: 'planned', blurb: 'Make a scan searchable. Small jobs stay on your machine.' },
   { slug: 'pdf-forms', name: 'Forms', category: 'Edit', runsWhere: 'local', status: 'planned', blurb: 'Fill a form, or build the fields yourself.' },
 
