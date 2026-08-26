@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+
+const description =
+  'Plain text, a spreadsheet export or Markdown, typeset into a PDF here in this tab.';
+---
+
+<BaseLayout title="Text, CSV or Markdown to PDF — ProjectPDF" description={description}>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="text-to-pdf"
+      eyebrow="Runs entirely in your browser"
+      title="Text, CSV or Markdown to PDF"
+      description={description}
+    />
+  </main>
+</BaseLayout>

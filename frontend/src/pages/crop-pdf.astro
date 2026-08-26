@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+
+const description =
+  'Trim the margins off every page, or just the ones you pick. Lossless — only the page box moves, so nothing is thrown away.';
+---
+
+<BaseLayout title="Crop a PDF — ProjectPDF" description={description}>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="crop"
+      eyebrow="Runs entirely in your browser"
+      title="Crop a PDF"
+      description={description}
+    />
+  </main>
+</BaseLayout>

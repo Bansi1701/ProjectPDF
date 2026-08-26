@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+
+const description =
+  'Lay one document over another — letterhead, a draft mark, a signature block. Neither file is uploaded.';
+---
+
+<BaseLayout title="Overlay two PDFs — ProjectPDF" description={description}>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="overlay"
+      eyebrow="Runs entirely in your browser"
+      title="Overlay two PDFs"
+      description={description}
+    />
+  </main>
+</BaseLayout>

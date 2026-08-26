@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+
+const description =
+  'Every N pages, into equal parts, under a size limit, or at every chapter. Runs in your browser.';
+---
+
+<BaseLayout title="Split by size or bookmark — ProjectPDF" description={description}>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="split-by"
+      eyebrow="Runs entirely in your browser"
+      title="Split by size or bookmark"
+      description={description}
+    />
+  </main>
+</BaseLayout>

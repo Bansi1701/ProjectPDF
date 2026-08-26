@@ -1,3 +1,19 @@
+/**
+ * Option shapes live with the tool that implements them and are pulled in as
+ * TYPES only. That keeps one definition of each — the alternative, restating
+ * them here, is the drift that has already cost this codebase real bugs — and
+ * type-only imports are erased, so importing back from the tools is not a
+ * runtime cycle.
+ */
+import type { FlattenOptions } from './flatten';
+import type { ImposeOptions } from './impose';
+import type { ExtractImagesOptions } from './extractimages';
+import type { OverlayOptions } from './overlay';
+import type { TextDocOptions } from './textdoc';
+import type { MetadataChanges, MetadataReport } from './metadata';
+import type { HeaderFooterOptions } from './headerfooter';
+import type { SplitByOptions } from './splitby';
+
 /** Every tool the worker can run. */
 export type Operation =
   | 'compress'
@@ -29,7 +45,16 @@ export type Operation =
   | 'pdf-to-word'
   | 'pdf-to-excel'
   | 'crop'
-  | 'scan';
+  | 'scan'
+  | 'flatten'
+  | 'impose'
+  | 'extract-images'
+  | 'overlay'
+  | 'text-to-pdf'
+  | 'metadata'
+  | 'header-footer'
+  | 'split-by'
+  | 'grayscale';
 
 /**
  * One page of the output: which source page it is, and how it is turned.
@@ -170,7 +195,16 @@ export interface ThumbsSuccess {
   frames: { file: number; page: number; bitmap: ImageBitmap }[];
 }
 
+/**
+ * Answer to a metadata read: what the file is carrying, not a file to save.
+ * Shaped like the other probes so the worker's single response path covers it.
+ */
+export interface MetadataSuccess extends MetadataReport {
+  ok: true;
+}
+
 export type OpResult =
+  | MetadataSuccess
   | OpSuccess
   | OpFailure
   | ProbeSuccess
@@ -225,6 +259,16 @@ export interface WorkerRequest {
   scanMode?: 'text' | 'grey' | 'colour';
   /** Scan only: find the page in the frame and straighten it. */
   detectEdges?: boolean;
+
+  // --- the cheap-win tools, each carrying its own option shape ----------
+  flattenOptions?: FlattenOptions;
+  imposeOptions?: ImposeOptions;
+  extractOptions?: ExtractImagesOptions;
+  overlayOptions?: OverlayOptions;
+  textDocOptions?: TextDocOptions;
+  metadataChanges?: MetadataChanges;
+  headerFooterOptions?: HeaderFooterOptions;
+  splitByOptions?: SplitByOptions;
   /** Reorder only: zero-based page indexes in their new order. */
   pageOrder?: number[];
   /** Text tools only. */

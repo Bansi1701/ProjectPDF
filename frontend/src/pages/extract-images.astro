@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+
+const description =
+  'Pulls the original pictures out at their own resolution, rather than screenshotting the page.';
+---
+
+<BaseLayout title="Extract images from a PDF — ProjectPDF" description={description}>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="extract-images"
+      eyebrow="Runs entirely in your browser"
+      title="Extract images from a PDF"
+      description={description}
+    />
+  </main>
+</BaseLayout>

@@ -5,3 +5,5 @@
 # Scratch bundles agents produce while exercising modules in node.
 .flatten-test/
 __*_bundle.mjs
+*-gs.mjs
+gs-test.mjs

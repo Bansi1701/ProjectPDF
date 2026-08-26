@@ -81,6 +81,7 @@ const takesImages = mode === 'images-to-pdf';
 const takesWord = mode === 'word-to-pdf';
 const takesExcel = mode === 'excel-to-pdf';
 const takesSlides = mode === 'powerpoint-to-pdf';
+const takesText = mode === 'text-to-pdf';
 
 const accept = takesImages
   ? 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
@@ -90,7 +91,9 @@ const accept = takesImages
       ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx'
       : takesSlides
         ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation,.pptx'
-        : 'application/pdf,.pdf';
+        : takesText
+          ? 'text/plain,text/csv,text/markdown,.txt,.csv,.md,.markdown,.tsv,.log'
+          : 'application/pdf,.pdf';
 
 const dropTitle = takesExcel
   ? 'Choose a spreadsheet, or drop one here'
@@ -440,6 +443,207 @@ const dropTitle = takesExcel
       )
     }
 
+    {
+      mode === 'crop' && (
+        <Fragment>
+          <label class="field">
+            <span>Trim from each edge</span>
+            <span class="triple">
+              <input data-crop-top type="number" min="0" max="45" value="0" placeholder="top %" />
+              <input data-crop-side type="number" min="0" max="45" value="0" placeholder="sides %" />
+              <input data-crop-bottom type="number" min="0" max="45" value="0" placeholder="bottom %" />
+            </span>
+            <small>
+              A percentage of the page as you see it, so it works the same on a rotated scan.
+              Nothing is deleted: cropping moves the page box, and the trimmed margins stay one
+              edit away from coming back.
+            </small>
+          </label>
+          <label class="field">
+            <span>Pages</span>
+            <input data-crop-pages placeholder="all, or 1-4, 9" />
+          </label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'flatten' && (
+        <fieldset class="field">
+          <legend>Make permanent</legend>
+          <label><input type="checkbox" data-flat-fields checked /> Form fields — keep how they look, stop them being edited</label>
+          <label><input type="checkbox" data-flat-annots checked /> Comments, highlights and stamps</label>
+          <label><input type="checkbox" data-flat-layers /> Layers — keep only what is visible now</label>
+          <label><input type="checkbox" data-flat-links checked /> Keep links clickable</label>
+          <small>Anything this cannot bake in is reported rather than dropped quietly.</small>
+        </fieldset>
+      )
+    }
+
+    {
+      mode === 'impose' && (
+        <Fragment>
+          <label class="field">
+            <span>Layout</span>
+            <select data-imp-kind>
+              <option value="n-up">Several pages per sheet</option>
+              <option value="booklet">Booklet — fold and staple</option>
+              <option value="poster">Poster — one page across many sheets</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Pages per sheet</span>
+            <select data-imp-per>
+              <option value="2" selected>2</option>
+              <option value="4">4</option>
+              <option value="6">6</option>
+              <option value="8">8</option>
+              <option value="9">9</option>
+              <option value="16">16</option>
+            </select>
+            <small>Ignored for a booklet, which is always two to a side.</small>
+          </label>
+          <label class="field">
+            <span>Sheet</span>
+            <select data-imp-sheet>
+              <option value="a4" selected>A4</option>
+              <option value="letter">Letter</option>
+              <option value="a3">A3</option>
+            </select>
+          </label>
+          <label class="field"><input type="checkbox" data-imp-sep /> Draw a hairline between pages</label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'extract-images' && (
+        <Fragment>
+          <label class="field">
+            <span>Ignore images smaller than</span>
+            <input data-ext-min type="number" min="0" value="64" />
+            <small>Pixels on the shorter side. Rules, bullets and spacers are images too; this leaves them out.</small>
+          </label>
+          <label class="field"><input type="checkbox" data-ext-masks checked /> Apply transparency masks</label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'overlay' && (
+        <Fragment>
+          <label class="field">
+            <span>Apply the second file</span>
+            <select data-ov-mode>
+              <option value="repeat" selected>Its first page, onto every page</option>
+              <option value="pairwise">Page for page</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Draw it</span>
+            <select data-ov-layer>
+              <option value="over" selected>Over the page</option>
+              <option value="under">Under the page — for letterhead</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Opacity</span>
+            <input data-ov-opacity type="number" min="0.05" max="1" step="0.05" value="1" />
+          </label>
+          <small>Drop the base document first, then the one to lay over it.</small>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'text-to-pdf' && (
+        <Fragment>
+          <label class="field">
+            <span>Paper</span>
+            <select data-td-paper>
+              <option value="a4" selected>A4</option>
+              <option value="letter">Letter</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Text size</span>
+            <input data-td-size type="number" min="6" max="24" step="0.5" value="10.5" />
+          </label>
+          <small>Plain text, CSV and Markdown. The kind is read from the file, not guessed from the name.</small>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'metadata' && (
+        <Fragment>
+          <div class="fields" data-meta-current />
+          <label class="field"><span>Title</span><input data-meta-title /></label>
+          <label class="field"><span>Author</span><input data-meta-author /></label>
+          <label class="field"><span>Subject</span><input data-meta-subject /></label>
+          <label class="field"><span>Keywords</span><input data-meta-keywords /></label>
+          <label class="field"><input type="checkbox" data-meta-strip /> Remove everything instead, including the XMP packet</label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'header-footer' && (
+        <Fragment>
+          <label class="field">
+            <span>Header — left, centre, right</span>
+            <span class="triple">
+              <input data-hf-hl placeholder="left" />
+              <input data-hf-hc placeholder="centre" />
+              <input data-hf-hr placeholder="right" />
+            </span>
+          </label>
+          <label class="field">
+            <span>Footer — left, centre, right</span>
+            <span class="triple">
+              <input data-hf-fl placeholder="left" />
+              <input data-hf-fc placeholder="centre" />
+              <input data-hf-fr placeholder="right" value="{page} of {pages}" />
+            </span>
+            <small>Tokens: {'{page}'}, {'{pages}'}, {'{date}'}, {'{filename}'}.</small>
+          </label>
+          <label class="field">
+            <span>Bates prefix</span>
+            <input data-hf-bates placeholder="ABC" />
+            <small>
+              A fixed prefix and a padded number running across the whole document, for legal
+              and discovery work. It takes the footer's right slot, so clear that first.
+            </small>
+          </label>
+          <label class="field"><span>Start numbering at</span><input data-hf-start type="number" min="1" value="1" /></label>
+          <label class="field"><span>Leave the first N pages alone</span><input data-hf-skip type="number" min="0" value="0" /></label>
+          <label class="field"><input type="checkbox" data-hf-mirror /> Mirror on odd and even pages</label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'split-by' && (
+        <Fragment>
+          <label class="field">
+            <span>Split</span>
+            <select data-sb-mode>
+              <option value="every" selected>Every N pages</option>
+              <option value="parts">Into N files of equal length</option>
+              <option value="size">At a size limit</option>
+              <option value="bookmarks">At every top-level bookmark</option>
+            </select>
+          </label>
+          <label class="field"><span>N</span><input data-sb-n type="number" min="1" value="10" /></label>
+          <label class="field">
+            <span>Size limit (MB)</span>
+            <input data-sb-mb type="number" min="0.1" step="0.1" value="5" />
+            <small>Approximate: pages share fonts and images, so size is not proportional to page count.</small>
+          </label>
+        </Fragment>
+      )
+    }
+
     <div class="workspace__actions">
       <button class="btn btn--primary" data-run type="button">{action}</button>
       <button class="btn btn--quiet" data-clear type="button">Clear</button>
@@ -572,7 +776,7 @@ const dropTitle = takesExcel
     });
 
     const takesImages = mode === 'images-to-pdf';
-    const takesMany = mode === 'merge' || mode === 'compare' || takesImages;
+    const takesMany = mode === 'merge' || mode === 'compare' || mode === 'overlay' || takesImages;
 
     const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
     const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : kb(n));
@@ -844,6 +1048,9 @@ const dropTitle = takesExcel
       if (mode === 'word-to-pdf') return /\.docx$/i.test(file.name);
       if (mode === 'excel-to-pdf') return /\.xlsx$/i.test(file.name);
       if (mode === 'powerpoint-to-pdf') return /\.pptx$/i.test(file.name);
+      // The kind is decided from the CONTENT inside the converter; the name
+      // only decides what the picker offers.
+      if (mode === 'text-to-pdf') return /\.(txt|csv|tsv|md|markdown|log)$/i.test(file.name);
       return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     };
 
@@ -1015,7 +1222,9 @@ const dropTitle = takesExcel
           files.length === 1 ? files[0].name : `${files.length} files selected`;
       }
 
-      if ((mode === 'pdf-to-images' || mode === 'forms') && files[0]) void probe(files[0]);
+      if ((mode === 'pdf-to-images' || mode === 'forms' || mode === 'metadata') && files[0]) {
+        void probe(files[0]);
+      }
 
       // A tool with a grid gets the grid instead of the thumbnail strip: the
       // strip shows the first eight pages, the grid shows all of them and
@@ -1048,6 +1257,54 @@ const dropTitle = takesExcel
     }
     setPreviewSize(localStorage.getItem(PREVIEW_SIZE_KEY) ?? 'md');
 
+    /**
+     * Shows what the file is already carrying, and seeds the inputs with it.
+     *
+     * The point of this tool is the surprise: an author name that survived in
+     * the XMP packet long after the document properties were cleared is the
+     * kind of thing people want to know before they send a file out.
+     */
+    function showMetadata(report: {
+      title: string;
+      author: string;
+      subject: string;
+      keywords: string;
+      creator: string;
+      producer: string;
+      extraPackets: number;
+      custom: { key: string; value: string }[];
+      xmp: { present: boolean };
+    }) {
+      const set = (selector: string, value: string) => {
+        const input = root.querySelector<HTMLInputElement>(selector);
+        if (input && !input.value) input.value = value;
+      };
+      set('[data-meta-title]', report.title);
+      set('[data-meta-author]', report.author);
+      set('[data-meta-subject]', report.subject);
+      set('[data-meta-keywords]', report.keywords);
+
+      const current = root.querySelector('[data-meta-current]');
+      if (!current) return;
+
+      const rows: string[] = [];
+      if (report.creator) rows.push(`Made with ${report.creator}`);
+      if (report.producer && report.producer !== report.creator) {
+        rows.push(`Written by ${report.producer}`);
+      }
+      if (report.xmp.present) rows.push('Carries an XMP packet');
+      if (report.extraPackets > 0) {
+        rows.push(`${report.extraPackets} further XMP packet(s) on pages or images`);
+      }
+      for (const entry of report.custom.slice(0, 6)) rows.push(`${entry.key}: ${entry.value}`);
+
+      current.replaceChildren(
+        ...(rows.length === 0
+          ? [Object.assign(document.createElement('p'), { textContent: 'This file carries no metadata beyond the fields below.', className: 'hint' })]
+          : rows.map((row) => Object.assign(document.createElement('p'), { textContent: row, className: 'hint' })))
+      );
+    }
+
     function onDone({ id, result: res }: WorkerResponse) {
       // Grid traffic is answered where it was asked from.
       const waiting = gridWaiting.get(id);
@@ -1061,6 +1318,10 @@ const dropTitle = takesExcel
       // file turns out to be unreadable, the real run will say so properly.
       if (id === probeId) {
         probeId = -1;
+        if (res.ok && 'pages' in res && mode === 'metadata' && 'xmp' in res) {
+          showMetadata(res);
+          return;
+        }
         if (res.ok && 'probe' in res) {
           if (mode === 'forms') renderFields(res.fields ?? []);
           else limitDpi(res.maxDpi);
@@ -1511,6 +1772,115 @@ const dropTitle = takesExcel
         format: picked('format') as WorkerRequest['format'],
         dpi: Number(picked('dpi') ?? 150),
       };
+
+      const val = (sel: string) => root.querySelector<HTMLInputElement>(sel)?.value ?? '';
+      const on = (sel: string) => root.querySelector<HTMLInputElement>(sel)?.checked ?? false;
+      const num = (sel: string, fallback: number) => {
+        const raw = Number(val(sel));
+        return Number.isFinite(raw) ? raw : fallback;
+      };
+      const sel = (s2: string) => root.querySelector<HTMLSelectElement>(s2)?.value ?? '';
+
+      if (mode === 'crop') {
+        const top = Math.min(Math.max(num('[data-crop-top]', 0), 0), 45) / 100;
+        const side = Math.min(Math.max(num('[data-crop-side]', 0), 0), 45) / 100;
+        const bottom = Math.min(Math.max(num('[data-crop-bottom]', 0), 0), 45) / 100;
+        request.cropBox = {
+          x: side,
+          y: top,
+          width: Math.max(1 - side * 2, 0.05),
+          height: Math.max(1 - top - bottom, 0.05),
+        };
+        const pages = val('[data-crop-pages]').trim();
+        if (pages && !/^all$/i.test(pages)) {
+          const wanted: number[] = [];
+          for (const part of pages.split(',')) {
+            const m = /^\s*(\d+)\s*(?:-\s*(\d+))?\s*$/.exec(part);
+            if (!m) continue;
+            const from = Number(m[1]);
+            const to = m[2] ? Number(m[2]) : from;
+            for (let n = Math.min(from, to); n <= Math.max(from, to); n += 1) wanted.push(n);
+          }
+          if (wanted.length > 0) request.cropPages = wanted;
+        }
+      } else if (mode === 'flatten') {
+        request.flattenOptions = {
+          fields: on('[data-flat-fields]'),
+          annotations: on('[data-flat-annots]'),
+          layers: on('[data-flat-layers]'),
+          keepLinks: on('[data-flat-links]'),
+        };
+      } else if (mode === 'impose') {
+        const kind = sel('[data-imp-kind]');
+        const sheet = sel('[data-imp-sheet]') as 'a4' | 'letter' | 'a3';
+        request.imposeOptions =
+          kind === 'booklet'
+            ? { kind: 'booklet', sheet }
+            : kind === 'poster'
+              ? { kind: 'poster', sheet }
+              : {
+                  kind: 'n-up',
+                  perSheet: num('[data-imp-per]', 2) as 2 | 4 | 6 | 8 | 9 | 16,
+                  sheet,
+                  separators: on('[data-imp-sep]'),
+                };
+      } else if (mode === 'extract-images') {
+        request.extractOptions = {
+          minSize: num('[data-ext-min]', 64),
+          includeMasks: on('[data-ext-masks]'),
+        };
+      } else if (mode === 'overlay') {
+        request.overlayOptions = {
+          mode: sel('[data-ov-mode]') as 'repeat' | 'pairwise',
+          layer: sel('[data-ov-layer]') as 'over' | 'under',
+          opacity: num('[data-ov-opacity]', 1),
+        };
+      } else if (mode === 'text-to-pdf') {
+        request.textDocOptions = {
+          paper: sel('[data-td-paper]') as 'a4' | 'letter',
+          fontSize: num('[data-td-size]', 10.5),
+        };
+      } else if (mode === 'metadata') {
+        // The inputs are pre-filled with what the file already says, so
+        // sending all four is right: untouched ones are a no-op, an edited one
+        // applies, and one someone emptied is a deliberate clear.
+        request.metadataChanges = on('[data-meta-strip]')
+          ? { strip: true }
+          : {
+              fields: {
+                title: val('[data-meta-title]'),
+                author: val('[data-meta-author]'),
+                subject: val('[data-meta-subject]'),
+                keywords: val('[data-meta-keywords]'),
+              },
+            };
+      } else if (mode === 'header-footer') {
+        const bates = val('[data-hf-bates]').trim();
+        request.headerFooterOptions = {
+          header: {
+            left: val('[data-hf-hl]'),
+            centre: val('[data-hf-hc]'),
+            right: val('[data-hf-hr]'),
+          },
+          footer: {
+            left: val('[data-hf-fl]'),
+            centre: val('[data-hf-fc]'),
+            right: val('[data-hf-fr]'),
+          },
+          ...(bates ? { bates: { prefix: bates } } : {}),
+          startNumber: num('[data-hf-start]', 1),
+          skipPages: num('[data-hf-skip]', 0),
+          mirror: on('[data-hf-mirror]'),
+        };
+      } else if (mode === 'split-by') {
+        const how = sel('[data-sb-mode]') as 'every' | 'parts' | 'size' | 'bookmarks';
+        request.splitByOptions = {
+          mode: how,
+          every: num('[data-sb-n]', 10),
+          parts: num('[data-sb-n]', 2),
+          targetBytes: Math.round(num('[data-sb-mb]', 5) * 1024 * 1024),
+        };
+      }
 
       // A grid tool always exports what the grid holds. The typed box feeds
       // the same plan, so there is one path here rather than two that drift.

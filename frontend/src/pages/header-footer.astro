@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+
+const description =
+  'Running heads and page numbers, including the fixed-prefix Bates numbering legal work needs.';
+---
+
+<BaseLayout title="Headers, footers and Bates numbering — ProjectPDF" description={description}>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="header-footer"
+      eyebrow="Runs entirely in your browser"
+      title="Headers, footers and Bates numbering"
+      description={description}
+    />
+  </main>
+</BaseLayout>

@@ -38,6 +38,7 @@ export const TOOLS: Tool[] = [
   { slug: 'delete-pages', name: 'Delete pages', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Remove pages and save what is left.' },
 
   // --- Convert ---
+  { slug: 'split-by', name: 'Split by size or bookmark', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Every N pages, into equal parts, at a size, or at each chapter.' },
   { slug: 'compress-pdf', name: 'Compress', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Smaller file, checked against the original before you get it.' },
   { slug: 'jpg-to-pdf', name: 'Images to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'JPG, PNG or WebP into one document. JPG and PNG are not re-encoded.' },
   { slug: 'pdf-to-jpg', name: 'PDF to image', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Export pages as JPG or PNG at the DPI you pick.' },
@@ -50,9 +51,17 @@ export const TOOLS: Tool[] = [
   { slug: 'powerpoint-to-pdf', name: 'PowerPoint to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'One page per slide — template layouts, theme colours and tables.' },
 
   // --- Edit ---
+  { slug: 'text-to-pdf', name: 'Text, CSV or Markdown to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Plain text, a spreadsheet export, or Markdown — typeset here.' },
+  { slug: 'extract-images', name: 'Extract images', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'The original pictures at their own resolution, not screenshots.' },
   { slug: 'edit-pdf', name: 'Edit', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Text, shapes, highlights and images on the page.' },
   { slug: 'watermark-pdf', name: 'Watermark', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Stamp text or an image across every page.' },
   { slug: 'page-numbers', name: 'Page numbers', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Numbering that matches the page labels people cite.' },
+  { slug: 'crop-pdf', name: 'Crop', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Trim the margins. Lossless — only the page box changes.' },
+  { slug: 'flatten-pdf', name: 'Flatten', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Make forms and comments permanent so nothing stays editable.' },
+  { slug: 'impose-pdf', name: 'N-up & booklet', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Several pages to a sheet, a foldable booklet, or a poster.' },
+  { slug: 'overlay-pdf', name: 'Overlay', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Lay one PDF over another — letterhead, a draft mark, a stamp.' },
+  { slug: 'header-footer', name: 'Header, footer & Bates', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Running heads, and the numbering discovery workflows need.' },
+  { slug: 'metadata-pdf', name: 'Metadata', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'See what your file is carrying, then change or remove it.' },
   { slug: 'compare-pdf', name: 'Compare', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'What changed between two drafts, in words not pixels.' },
   { slug: 'ocr-pdf', name: 'OCR', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Make a scan searchable. Small jobs stay on your machine.' },
   { slug: 'pdf-forms', name: 'Forms', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Fill a form, or build the fields yourself.' },

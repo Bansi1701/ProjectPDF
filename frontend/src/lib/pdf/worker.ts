@@ -9,6 +9,14 @@ import { compress } from './compress';
 import { imagesToPdf, pdfToImages, probePdf } from './images';
 import { compose } from './pageplan';
 import { crop } from './crop';
+import { extractImages } from './extractimages';
+import { flattenPdf } from './flatten';
+import { headerFooter } from './headerfooter';
+import { impose } from './impose';
+import { readMetadata, writeMetadata } from './metadata';
+import { overlay } from './overlay';
+import { splitBy } from './splitby';
+import { textDocToPdf } from './textdoc';
 import { pdfToExcel } from './pdftoexcel';
 import { pdfToWord } from './pdftoword';
 import { scanToPdf } from './scan';
@@ -39,7 +47,11 @@ async function run(request: WorkerRequest): Promise<OpResult> {
   // A probe inspects the document and renders nothing, so each tool that needs
   // one answers for itself.
   if (request.probe) {
-    return request.op === 'forms' ? probeForm(request.files) : probePdf(request.files);
+    if (request.op === 'forms') return probeForm(request.files);
+    // Metadata's probe is the tool's read half: it shows what the file is
+    // carrying before anyone decides what to change.
+    if (request.op === 'metadata') return readMetadata(request.files);
+    return probePdf(request.files);
   }
 
   if (request.preview) return renderThumbnails(request.files);
@@ -122,6 +134,25 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return xlsxToPdf(request.files);
     case 'powerpoint-to-pdf':
       return pptxToPdf(request.files);
+    case 'flatten':
+      return flattenPdf(request.files, request.flattenOptions ?? {});
+    case 'impose':
+      return impose(
+        request.files,
+        request.imposeOptions ?? { kind: 'n-up', perSheet: 2 }
+      );
+    case 'extract-images':
+      return extractImages(request.files, request.extractOptions ?? {});
+    case 'overlay':
+      return overlay(request.files, request.overlayOptions ?? {});
+    case 'text-to-pdf':
+      return textDocToPdf(request.files, request.textDocOptions ?? {});
+    case 'metadata':
+      return writeMetadata(request.files, request.metadataChanges ?? {});
+    case 'header-footer':
+      return headerFooter(request.files, request.headerFooterOptions ?? {});
+    case 'split-by':
+      return splitBy(request.files, request.splitByOptions ?? { mode: 'every', every: 10 });
     case 'pdf-to-word':
       return pdfToWord(request.files);
     case 'pdf-to-excel':
