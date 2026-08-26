@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@cantoo/pdf-lib": "^2.4.0",
-    "astro": "^5.13.2"
+    "astro": "^5.13.2",
+    "pdfjs-dist": "^5.7.284"
   },
   "devDependencies": {
     "playwright": "^1.62.1"

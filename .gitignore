@@ -46,3 +46,6 @@ docker-compose.override.yml
 
 # The business plan is not public. Keep strategy documents out of the repo.
 Docs/*.pdf
+
+# Vendored out of node_modules at build time by the pdfjs-assets integration.
+frontend/public/pdfjs/
