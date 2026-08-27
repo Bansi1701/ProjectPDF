@@ -30,8 +30,9 @@ const promises = [
 const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
 const serverOnlyCount = NUMBER_WORDS[SERVER_ONLY_REASONS.length] ?? String(SERVER_ONLY_REASONS.length);
 
-/* The five people actually arrive wanting. Everything else is one tap further. */
-const SHORTCUTS = ['merge-pdf', 'compress-pdf', 'edit-pdf', 'sign-pdf', 'scan-pdf'];
+/* The eight jobs people most often arrive wanting. On a return visit the
+   browser replaces these with the visitor's own most-used tools. */
+const SHORTCUTS = ['merge-pdf', 'split-pdf', 'compress-pdf', 'edit-pdf', 'sign-pdf', 'scan-pdf', 'protect-pdf', 'pdf-to-word'];
 const shortcuts = SHORTCUTS.map((slug) => TOOLS.find((tool) => tool.slug === slug)!).filter(Boolean);
 const liveTools = TOOLS.filter((tool) => tool.status === 'live');
 
@@ -61,17 +62,17 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
       <div class="hero__copy">
         <p class="eyebrow"><span class="dot"></span>Private document workspace</p>
 
-        <h1>Every PDF task,<br />shaped around your document.</h1>
+        <h1>Free PDF tools.<br />No sign-up. No daily limit.</h1>
 
         <p class="lede">
-          A focused place to organise, convert, edit and protect PDFs. The work stays in your
-          browser, and every result is ready to inspect before you save it.
+          Merge, split, compress, edit, sign, and convert PDFs without sending the document
+          away. The work happens in this browser and the result stays yours.
         </p>
 
         <ul class="hero__proof" aria-label={`${SITE.name} benefits`}>
-          <li><span>01</span> Browser-side processing</li>
-          <li><span>02</span> Visible page controls</li>
-          <li><span>03</span> Ready-to-save results</li>
+          <li><span>01</span> Free to use</li>
+          <li><span>02</span> No account</li>
+          <li><span>03</span> No daily limit</li>
         </ul>
 
         <!-- Search that answers where you type it. Filtering a grid a thousand
@@ -96,7 +97,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
           <ul class="quickfind__results" id="quickfind-results" data-tool-search-results hidden>
             {
               liveTools.map((tool) => (
-                <li data-search={`${tool.name} ${tool.blurb} ${tool.category}`.toLowerCase()} hidden>
+                <li data-search={`${tool.searchName} ${tool.name} ${tool.blurb} ${tool.category}`.toLowerCase()} hidden>
                   <a href={`${baseUrl}${tool.slug}/`}>
                     <strong>{tool.name}</strong>
                     <span>{tool.blurb}</span>
@@ -108,10 +109,10 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
           </ul>
         </div>
 
-        <nav class="shortcuts" aria-label="Popular tools">
+        <nav class="shortcuts" aria-label="Popular tools" data-popular-tools>
           {
             shortcuts.map((tool) => (
-              <a class="shortcuts__item" href={`${baseUrl}${tool.slug}/`}>
+              <a class="shortcuts__item" href={`${baseUrl}${tool.slug}/`} data-shortcut-slug={tool.slug}>
                 {tool.name}
               </a>
             ))
@@ -119,7 +120,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
           <a class="shortcuts__all" href="#tools">All {liveTools.length} tools →</a>
         </nav>
 
-        <p class="hero__meta">Free · No account · Your files stay on this device · <a href="#how">How that works</a></p>
+        <p class="hero__meta">Your file stays on this device · <a href="#proof">See the browser measure it</a></p>
       </div>
 
       <!-- The metaphor: a sheet of paper with a glass lens laid across it -->
@@ -152,47 +153,6 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
       </figure>
     </section>
 
-    <!-- ── The receipt ────────────────────────────────────────────────── -->
-    <section class="receipt">
-      <div class="wrap">
-        <ul class="receipt__row">
-          {
-            promises.map((item) => (
-              <li>
-                <span class="receipt__figure">{item.figure}</span>
-                <span class="receipt__label">{item.label}</span>
-              </li>
-            ))
-          }
-          <li class="receipt__verdict">
-            <span class="receipt__verdict-line">Privacy you can verify</span>
-            <span class="receipt__label">not a promise — a thing you can check</span>
-          </li>
-        </ul>
-        <p class="receipt__note">
-          Not a badge we award ourselves. When a tool ships, open your browser's Network
-          tab and use it — you will watch nothing happen.
-        </p>
-
-        <div class="boundary"><span>device boundary</span></div>
-
-        <ul class="telemetry">
-          {
-            crossings.map(([key, value]) => (
-              <li>
-                <span>{key}</span>
-                <b>{value}</b>
-              </li>
-            ))
-          }
-        </ul>
-        <p class="telemetry__note">
-          The only things that will ever cross it. No filename, no page count, no text —
-          those never leave the tab in the first place.
-        </p>
-      </div>
-    </section>
-
     <!-- ── Tools ──────────────────────────────────────────────────────── -->
     <section class="tools wrap reveal" id="tools">
       <header class="section-head">
@@ -214,7 +174,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
             <h3 class="cluster__name">{category}</h3>
             <ul class="grid">
               {toolsByCategory(category).map((tool) => (
-                <li class="sheet card" data-tool-card data-slug={tool.slug} data-name={tool.name} data-search={`${tool.name} ${tool.blurb} ${category}`.toLowerCase()}>
+                <li class="sheet card" data-tool-card data-slug={tool.slug} data-name={tool.name} data-search={`${tool.searchName} ${tool.name} ${tool.blurb} ${category}`.toLowerCase()}>
                   {tool.status === 'live' && <a class="card__link" href={`${baseUrl}${tool.slug}/`} aria-label={`Open ${tool.name}`}></a>}
                   {tool.status === 'live' && (
                     <button class="card__star" type="button" data-fav={tool.slug} aria-pressed="false" aria-label={`Keep ${tool.name} in your tools`} title="Keep in your tools">
@@ -234,6 +194,42 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
           </div>
         ))
       }
+    </section>
+
+    <!-- ── The receipt ────────────────────────────────────────────────── -->
+    <section class="receipt" id="proof">
+      <div class="wrap">
+        <ul class="receipt__row">
+          {
+            promises.map((item) => (
+              <li>
+                <span class="receipt__figure">{item.figure}</span>
+                <span class="receipt__label">{item.label}</span>
+              </li>
+            ))
+          }
+          <li class="receipt__verdict">
+            <span class="receipt__verdict-line">Privacy the browser can report</span>
+            <span class="receipt__label">measured after you choose a file</span>
+          </li>
+        </ul>
+        <div data-proof-counter-home></div>
+        <p class="receipt__note">
+          The counter separates support assets such as the PDF engine from non-asset requests.
+          A competitor can copy the words; it cannot keep this reading at zero while uploading a PDF.
+        </p>
+
+        <div class="boundary"><span>device boundary</span></div>
+
+        <ul class="telemetry">
+          {
+            crossings.map(([key, value]) => (
+              <li><span>{key}</span><b>{value}</b></li>
+            ))
+          }
+        </ul>
+        <p class="telemetry__note">Job timing and byte counts can be shown without a filename, page text, or document content leaving this tab.</p>
+      </div>
     </section>
 
     <!-- ── How it works ───────────────────────────────────────────────── -->
@@ -334,6 +330,17 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
             </div>
           ))
         }
+        <div>
+          <h4>Project</h4>
+          <ul>
+            <li><a href={`${baseUrl}how-to/`}>Connected recipes</a></li>
+            <li><a href={`${baseUrl}privacy/`}>Privacy</a></li>
+            <li><a href={`${baseUrl}terms/`}>Terms</a></li>
+            <li><a href={`${baseUrl}about/`}>About</a></li>
+            <li><a href={`${baseUrl}vs/ilovepdf/`}>Compare with iLovePDF</a></li>
+            <li><a href={`${baseUrl}vs/smallpdf/`}>Compare with Smallpdf</a></li>
+          </ul>
+        </div>
       </div>
 
       <div class="footer__base">
@@ -365,7 +372,8 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     search?.setAttribute('aria-expanded', 'false');
   }
 
-  search?.addEventListener('input', () => {
+  function filterTools(writeUrl = true) {
+    if (!search) return;
     const query = search.value.trim().toLowerCase();
 
     // The grid stays in step, so scrolling down after a search is not confusing.
@@ -377,20 +385,38 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
       options.forEach((option) => { option.hidden = true; });
       if (empty) empty.hidden = true;
       close();
-      return;
+    } else {
+      let shown = 0;
+      options.forEach((option) => {
+        const match = option.dataset.search?.includes(query) ?? false;
+        option.hidden = !match || shown >= SHOWN;
+        if (match && shown < SHOWN) shown += 1;
+      });
+
+      if (empty) empty.hidden = shown !== 0;
+      if (results) results.hidden = false;
+      search.setAttribute('aria-expanded', 'true');
     }
 
-    let shown = 0;
-    options.forEach((option) => {
-      const match = option.dataset.search?.includes(query) ?? false;
-      option.hidden = !match || shown >= SHOWN;
-      if (match && shown < SHOWN) shown += 1;
-    });
+    if (writeUrl) {
+      const url = new URL(location.href);
+      if (query) url.searchParams.set('q', query);
+      else url.searchParams.delete('q');
+      url.searchParams.delete('focus');
+      history.replaceState(null, '', url);
+    }
+  }
 
-    if (empty) empty.hidden = shown !== 0;
-    if (results) results.hidden = false;
-    search.setAttribute('aria-expanded', 'true');
-  });
+  search?.addEventListener('input', () => filterTools());
+
+  const initial = new URLSearchParams(location.search);
+  if (search && initial.get('q')) {
+    search.value = initial.get('q') ?? '';
+    filterTools(false);
+  }
+  if (search && initial.get('focus') === 'search') {
+    requestAnimationFrame(() => search.focus());
+  }
 
   // A combobox people can drive from the keyboard, not just the mouse.
   search?.addEventListener('keydown', (event) => {
@@ -471,6 +497,35 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   }
 
   paintFavourites();
+
+  /* Return visits show actual behavior rather than a generic popularity list. */
+  const popular = document.querySelector<HTMLElement>('[data-popular-tools]');
+  try {
+    const visitKey = 'projectpdf-home-visits';
+    const priorVisits = Number(localStorage.getItem(visitKey) ?? '0');
+    localStorage.setItem(visitKey, String(priorVisits + 1));
+    const raw: unknown = JSON.parse(localStorage.getItem('projectpdf-tool-usage') ?? '{}');
+    const usage = raw && typeof raw === 'object' ? raw as Record<string, number> : {};
+    const used = Object.entries(usage).filter(([, count]) => Number(count) > 0).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    if (priorVisits > 0 && popular && used.length > 0) {
+      const allLink = popular.querySelector<HTMLAnchorElement>('.shortcuts__all');
+      const defaults = [...popular.querySelectorAll<HTMLElement>('[data-shortcut-slug]')]
+        .map((link) => link.dataset.shortcutSlug)
+        .filter((slug): slug is string => Boolean(slug));
+      const ranked = [...new Set([...used.map(([slug]) => slug), ...defaults])].slice(0, 8);
+      const personal = ranked.flatMap((slug) => {
+        const card = document.querySelector<HTMLElement>(`[data-tool-card][data-slug="${CSS.escape(slug)}"]`);
+        if (!card) return [];
+        const link = document.createElement('a');
+        link.className = 'shortcuts__item';
+        link.href = card.querySelector<HTMLAnchorElement>('.card__link')?.href ?? '#';
+        link.textContent = card.dataset.name ?? slug;
+        return [link];
+      });
+      popular.replaceChildren(...personal, ...(allLink ? [allLink] : []));
+      popular.setAttribute('aria-label', 'Your most-used tools');
+    }
+  } catch {}
 </script>
 
 <style>
@@ -871,6 +926,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     .hero {
       grid-template-columns: 1.05fr 0.95fr;
       align-items: center;
+      padding-block: clamp(3rem, 2rem + 2vw, 4.5rem) clamp(3rem, 2rem + 2vw, 4.5rem);
     }
   }
 
@@ -1161,6 +1217,18 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     background: none;
     color: var(--muted);
     font-weight: 400;
+  }
+
+  @media (max-width: 48em) {
+    .shortcuts {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      margin-right: calc(var(--gutter) * -1);
+      padding-right: var(--gutter);
+      padding-bottom: 0.35rem;
+      scrollbar-width: none;
+    }
+    .shortcuts::-webkit-scrollbar { display: none; }
   }
 
   .hero__meta a { color: var(--ink-2); }
