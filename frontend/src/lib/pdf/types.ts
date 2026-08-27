@@ -382,6 +382,8 @@ export interface WorkerRequest {
   format?: ImageFormat;
   /** PDF → image only: 72, 150 or 300. Clamped per page if a page is huge. */
   dpi?: number;
+  /** PDF → image only: which pages to export. Empty means all of them. */
+  imagePages?: string;
   /** PDF → image only: measure the pages and return DPI limits, render nothing. */
   probe?: boolean;
   /** Render a strip of low-resolution page thumbnails instead of running `op`. */

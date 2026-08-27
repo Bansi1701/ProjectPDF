@@ -19,6 +19,7 @@ import type { PDFImage } from '@cantoo/pdf-lib';
 
 import { documentOptions, loadPdfjs } from './pdfjs';
 import type { ImageFormat, InputFile, OpResult, OutputFile, PageSize } from './types';
+import { parsePageSet } from './pageset';
 
 /**
  * iOS Safari refuses to allocate a canvas backing store above roughly 16.7 M
@@ -342,7 +343,8 @@ const OUTPUT_BUDGET = 400 * 1024 * 1024;
 export async function pdfToImages(
   files: InputFile[],
   format: ImageFormat,
-  dpi: number
+  dpi: number,
+  pageSpec = ''
 ): Promise<OpResult> {
   const file = files[0];
   if (!file) return { ok: false, error: 'Choose a PDF to export.' };
@@ -365,8 +367,16 @@ export async function pdfToImages(
   let clamped = 0;
   let lowest = dpi;
 
+  // Exporting 300 pages to get the one with the chart on it is a lot of
+  // rendering, and a lot of files to pick through afterwards.
+  const chosen = parsePageSet(pageSpec, doc.numPages).pages;
+  if (chosen.length === 0) {
+    await doc.destroy();
+    return { ok: false, error: `That page selection matches nothing. This document has ${doc.numPages} pages.` };
+  }
+
   try {
-    for (let n = 1; n <= doc.numPages; n += 1) {
+    for (const n of chosen) {
       const page = await doc.getPage(n);
       const unit = page.getViewport({ scale: 1 });
 
@@ -428,6 +438,9 @@ export async function pdfToImages(
   }
 
   const notes: string[] = [];
+  if (chosen.length < doc.numPages) {
+    notes.push(`${chosen.length} of ${doc.numPages} pages were exported, keeping their original page numbers in the filenames.`);
+  }
   if (clamped > 0) {
     notes.push(
       `${clamped} page${clamped === 1 ? ' is' : 's are'} too large for ${dpi} DPI and ${clamped === 1 ? 'was' : 'were'} rendered at ${lowest} DPI instead. Above about 16.7 million pixels a canvas fails outright on iOS, so we stop at 12 million.`

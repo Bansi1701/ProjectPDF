@@ -112,7 +112,7 @@ async function run(request: WorkerRequest): Promise<OpResult> {
     case 'images-to-pdf':
       return imagesToPdf(request.files, request.pageSize ?? 'fit');
     case 'pdf-to-images':
-      return pdfToImages(request.files, request.format ?? 'png', request.dpi ?? 150);
+      return pdfToImages(request.files, request.format ?? 'png', request.dpi ?? 150, request.imagePages ?? '');
     case 'reorder':
       return reorder(request.files, request.pageOrder ?? []);
     case 'extract':

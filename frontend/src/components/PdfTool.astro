@@ -2,6 +2,7 @@
 import PageGrid from './PageGrid.astro';
 import SaveDialog from './SaveDialog.astro';
 import Lens from './Lens.astro';
+import CropStage from './CropStage.astro';
 import LivePdfEditor from './LivePdfEditor.astro';
 import type { Operation } from '../lib/pdf/types';
 import { TOOLS } from '../config/site';
@@ -599,6 +600,14 @@ const dropTitle = takesExcel
     {
       mode === 'pdf-to-images' && (
         <Fragment>
+          <label class="field">
+            <span>Which pages</span>
+            <input data-image-pages placeholder="all, or 1-5, 12" />
+            <small>
+              Empty means every page. Exported files keep their original page numbers, so page
+              12 is still <code>-12</code> even when it is the only one.
+            </small>
+          </label>
           <fieldset class="field field--turns">
             <legend>Format</legend>
             <label>
@@ -673,22 +682,26 @@ const dropTitle = takesExcel
     {
       mode === 'crop' && (
         <Fragment>
+          <CropStage />
+
           <label class="field">
-            <span>Trim from each edge</span>
-            <span class="triple">
-              <input data-crop-top type="number" min="0" max="45" value="0" placeholder="top %" />
-              <input data-crop-side type="number" min="0" max="45" value="0" placeholder="sides %" />
-              <input data-crop-bottom type="number" min="0" max="45" value="0" placeholder="bottom %" />
+            <span>Or trim each edge exactly</span>
+            <span class="quad">
+              <input data-crop-top type="number" min="0" max="45" value="0" aria-label="Trim from the top, percent" placeholder="top %" />
+              <input data-crop-right type="number" min="0" max="45" value="0" aria-label="Trim from the right, percent" placeholder="right %" />
+              <input data-crop-bottom type="number" min="0" max="45" value="0" aria-label="Trim from the bottom, percent" placeholder="bottom %" />
+              <input data-crop-left type="number" min="0" max="45" value="0" aria-label="Trim from the left, percent" placeholder="left %" />
             </span>
             <small>
-              A percentage of the page as you see it, so it works the same on a rotated scan.
-              Nothing is deleted: cropping moves the page box, and the trimmed margins stay one
-              edit away from coming back.
+              A percentage of the page as you see it, so it works the same on a rotated scan, and
+              it stays in step with the box above. Nothing is deleted: cropping moves the page
+              box, and the trimmed margins stay one edit away from coming back.
             </small>
           </label>
+
           <label class="field">
             <span>Pages</span>
-            <input data-crop-pages placeholder="all, or 1-4, 9" />
+            <input data-crop-pages placeholder="all, or 1-4, 9, odd" />
           </label>
         </Fragment>
       )
@@ -927,6 +940,11 @@ const dropTitle = takesExcel
     <ul class="result__notes" data-notes></ul>
 
     <div class="result__actions" data-downloads></div>
+
+    <div class="bundle" data-bundle hidden>
+      <button class="btn btn--quiet" type="button" data-zip>Save all as a ZIP</button>
+      <small data-zip-note></small>
+    </div>
 
     {
       nextTools.length > 0 && (
@@ -1572,6 +1590,7 @@ const dropTitle = takesExcel
       for (const url of previewUrls) URL.revokeObjectURL(url);
       previewUrls = [];
       if (liveEditor) void liveEditor.release();
+      if (cropStage && files.length === 0) void cropStage.release();
 
       // The dropzone is only useful before a file is picked — once one is,
       // showing it alongside the file list and preview just eats space.
@@ -1600,6 +1619,7 @@ const dropTitle = takesExcel
       // strip shows the first eight pages, the grid shows all of them and
       // lets you act on what you see.
       if (grid) void openGrid();
+      else if (cropStage && files[0]) void cropStage.open(files[0]);
       else if (liveEditor && files[0]) void liveEditor.open(files[0]).then(updateLiveOverlay);
       else if (previewable && files[0]) void preview(files[0]);
     }
@@ -1756,6 +1776,53 @@ const dropTitle = takesExcel
         ? `Turned ${turned} page${turned === 1 ? '' : 's'} by ${by}°. Undo is in the grid.`
         : 'That selection matches no pages in this document.';
     });
+
+    /* ── Crop ───────────────────────────────────────────────────────────
+       The dragged box and the four numbers are the same value; whichever you
+       touch, the other follows. */
+    interface CropStageElement extends HTMLElement {
+      open(file: File): Promise<void>;
+      release(): Promise<void>;
+      getBox(): { x: number; y: number; width: number; height: number };
+      setBox(box: { x: number; y: number; width: number; height: number }): void;
+    }
+    const cropStage = root.querySelector('crop-stage') as CropStageElement | null;
+
+    const edge = (name: string) => root.querySelector<HTMLInputElement>(`[data-crop-${name}]`);
+    const edgeValue = (name: string) =>
+      Math.min(Math.max(Number(edge(name)?.value ?? 0) || 0, 0), 45) / 100;
+
+    function boxFromEdges() {
+      const top = edgeValue('top');
+      const right = edgeValue('right');
+      const bottom = edgeValue('bottom');
+      const left = edgeValue('left');
+      return {
+        x: left,
+        y: top,
+        width: Math.max(1 - left - right, 0.05),
+        height: Math.max(1 - top - bottom, 0.05),
+      };
+    }
+
+    if (cropStage) {
+      const round = (value: number) => Math.round(value * 1000) / 10;
+      cropStage.addEventListener('cropchange', (event) => {
+        const box = (event as CustomEvent<{ x: number; y: number; width: number; height: number }>).detail;
+        const set = (name: string, value: number) => {
+          const field = edge(name);
+          if (field) field.value = String(round(value));
+        };
+        set('top', box.y);
+        set('left', box.x);
+        set('right', 1 - box.x - box.width);
+        set('bottom', 1 - box.y - box.height);
+      });
+
+      for (const name of ['top', 'right', 'bottom', 'left']) {
+        edge(name)?.addEventListener('input', () => cropStage.setBox(boxFromEdges()));
+      }
+    }
 
     const sampleBtn = root.querySelector<HTMLButtonElement>('[data-sample]');
     sampleBtn?.addEventListener('click', async () => {
@@ -1934,6 +2001,7 @@ const dropTitle = takesExcel
 
       revoke();
       downloads.dataset.many = String(res.files.length > 6);
+      offerBundle(res.files);
 
       const produced = res.files.map((file) => file.name);
       // Names chosen in the dialog, so a second click on the same result does
@@ -2003,6 +2071,74 @@ const dropTitle = takesExcel
       setStage('save');
       offerChain(res);
     }
+
+    /**
+     * One ZIP for a job that produced many files.
+     *
+     * Splitting a report into twelve documents and then clicking twelve links
+     * is the part people complain about, and it belongs here rather than in
+     * each engine: every multi-file tool gets it from one place.
+     */
+    const bundle = root.querySelector<HTMLElement>('[data-bundle]');
+    const zipBtn = root.querySelector<HTMLButtonElement>('[data-zip]');
+    const zipNote = root.querySelector<HTMLElement>('[data-zip-note]');
+    let produced: { name: string; bytes: Uint8Array; type?: string }[] = [];
+
+    function offerBundle(files: { name: string; bytes: Uint8Array; type?: string }[]) {
+      produced = files;
+      if (!bundle) return;
+      bundle.hidden = files.length < 2;
+      if (zipNote && files.length >= 2) {
+        const total = files.reduce((sum, file) => sum + file.bytes.length, 0);
+        zipNote.textContent = `${files.length} files · ${size(total)} before zipping`;
+      }
+    }
+
+    zipBtn?.addEventListener('click', async () => {
+      if (produced.length === 0) return;
+      zipBtn.disabled = true;
+      const label = zipBtn.textContent;
+      zipBtn.textContent = 'Packing…';
+      try {
+        const { zip } = await import('fflate');
+        // PDFs, PNGs and JPEGs are already compressed; deflating them again
+        // costs time for roughly nothing, so they go in stored.
+        const entries: Record<string, [Uint8Array, { level: 0 | 6 }]> = {};
+        const seen = new Map<string, number>();
+        for (const file of produced) {
+          // A ZIP with two identical names is a ZIP one of whose files is lost.
+          const count = seen.get(file.name) ?? 0;
+          seen.set(file.name, count + 1);
+          const name = count === 0 ? file.name : file.name.replace(/(\.[^.]+)?$/, `-${count + 1}$1`);
+          const packed = /\.(pdf|png|jpe?g|webp|gz|zip|docx|xlsx|pptx)$/i.test(name);
+          entries[name] = [file.bytes, { level: packed ? 0 : 6 }];
+        }
+
+        const blob: Blob = await new Promise((resolve, reject) => {
+          zip(entries, (error, data) => {
+            if (error) reject(error);
+            else resolve(new Blob([data as BlobPart], { type: 'application/zip' }));
+          });
+        });
+
+        const base = (files[0]?.name ?? 'files').replace(/\.[^.]+$/, '');
+        const answer = await saveAs({ name: `${base}.zip`, siblings: [], index: 0 });
+        if (!answer) return;
+
+        const url = URL.createObjectURL(blob);
+        urls.push(url);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = answer.name;
+        link.click();
+        if (zipNote) zipNote.textContent = `${produced.length} files · ${size(blob.size)} zipped`;
+      } catch {
+        if (zipNote) zipNote.textContent = 'The ZIP could not be built here. The individual links still work.';
+      } finally {
+        zipBtn.disabled = false;
+        zipBtn.textContent = label;
+      }
+    });
 
     /**
      * Shows the diff rather than counting it.
@@ -2485,6 +2621,8 @@ const dropTitle = takesExcel
         };
       } else if (mode === 'grayscale') {
         request.grayscaleOptions = { jpegQuality: Number(picked('gs-q') ?? 0.82) };
+      } else if (mode === 'pdf-to-images') {
+        request.imagePages = val('[data-image-pages]');
       } else if (mode === 'ocr') {
         request.ocrPages = val('[data-ocr-pages]');
       } else if (mode === 'rotate') {
@@ -2520,25 +2658,11 @@ const dropTitle = takesExcel
           bold: on('[data-wm-bold]'),
         };
       } else if (mode === 'crop') {
-        const top = Math.min(Math.max(num('[data-crop-top]', 0), 0), 45) / 100;
-        const side = Math.min(Math.max(num('[data-crop-side]', 0), 0), 45) / 100;
-        const bottom = Math.min(Math.max(num('[data-crop-bottom]', 0), 0), 45) / 100;
-        request.cropBox = {
-          x: side,
-          y: top,
-          width: Math.max(1 - side * 2, 0.05),
-          height: Math.max(1 - top - bottom, 0.05),
-        };
+        request.cropBox = cropStage ? cropStage.getBox() : boxFromEdges();
         const pages = val('[data-crop-pages]').trim();
         if (pages && !/^all$/i.test(pages)) {
-          const wanted: number[] = [];
-          for (const part of pages.split(',')) {
-            const m = /^\s*(\d+)\s*(?:-\s*(\d+))?\s*$/.exec(part);
-            if (!m) continue;
-            const from = Number(m[1]);
-            const to = m[2] ? Number(m[2]) : from;
-            for (let n = Math.min(from, to); n <= Math.max(from, to); n += 1) wanted.push(n);
-          }
+          const { parsePageSet } = await import('../lib/pdf/pageset');
+          const wanted = parsePageSet(pages, 100000).pages;
           if (wanted.length > 0) request.cropPages = wanted;
         }
       } else if (mode === 'flatten') {
@@ -3386,4 +3510,11 @@ const dropTitle = takesExcel
     border-radius: 3px;
     padding: 0.05em 0.2em;
   }
+
+  .bundle { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 0.75rem; }
+  .bundle small { color: var(--muted); font-size: var(--step--2); font-variant-numeric: tabular-nums; }
+
+  .quad { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+  @media (min-width: 34em) { .quad { grid-template-columns: repeat(4, 1fr); } }
+  .quad input { min-width: 0; }
 </style>

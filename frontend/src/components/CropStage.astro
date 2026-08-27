@@ -1,0 +1,379 @@
+---
+/**
+ * The visual half of cropping.
+ *
+ * Cropping by typing three percentages is guesswork: you cannot see where the
+ * edge lands until after you have saved the file, and "8%" means nothing about
+ * a scanned book's gutter. This renders the page and lets you drag the crop to
+ * where it obviously belongs, with the numbers staying in step for anyone who
+ * does want to type an exact figure.
+ *
+ * pdf.js runs on the main thread here, as it does in the redaction tool and for
+ * the same reason: this is one page at preview size, and shuttling a bitmap out
+ * of a worker would cost more than it saves. The crop itself still runs in the
+ * worker.
+ */
+---
+
+<crop-stage class="crop" data-crop-stage hidden>
+  <div class="crop__bar">
+    <button class="crop__nav" type="button" data-crop-prev aria-label="Previous page">‹</button>
+    <span class="crop__page" data-crop-label>Page 1</span>
+    <button class="crop__nav" type="button" data-crop-next aria-label="Next page">›</button>
+    <span class="crop__spacer"></span>
+    <button class="crop__reset" type="button" data-crop-reset>Reset</button>
+  </div>
+
+  <div class="crop__stage" data-crop-surface>
+    <canvas data-crop-canvas></canvas>
+    <div class="crop__veil" data-crop-veil aria-hidden="true"></div>
+    <div class="crop__rect" data-crop-rect tabindex="0" role="group" aria-label="Crop area">
+      {['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map((at) => (
+        <span class="crop__handle" data-crop-handle={at}></span>
+      ))}
+    </div>
+  </div>
+
+  <p class="crop__read" data-crop-read></p>
+</crop-stage>
+
+<style>
+  .crop { display: grid; gap: 0.6rem; }
+  .crop[hidden] { display: none; }
+
+  .crop__bar { display: flex; align-items: center; gap: 0.5rem; font-size: var(--step--1); }
+  .crop__spacer { flex: 1; }
+
+  .crop__nav,
+  .crop__reset {
+    padding: 0.25rem 0.6rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font: inherit;
+    font-size: var(--step--1);
+    line-height: 1.4;
+    cursor: pointer;
+  }
+  .crop__nav:hover:not(:disabled), .crop__reset:hover { border-color: var(--accent); color: var(--accent); }
+  .crop__nav:disabled { opacity: 0.35; cursor: default; }
+  .crop__page { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 5.5rem; }
+
+  .crop__stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+    max-height: 62vh;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 0.6);
+    background: var(--paper-sunk);
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  .crop__stage canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 62vh;
+    grid-area: 1 / 1;
+  }
+
+  /* Everything outside the crop is dimmed, so the result is the bright part
+     rather than something you have to picture. */
+  .crop__veil {
+    position: absolute;
+    inset: 0;
+    background: rgb(15 23 42 / 0.55);
+    clip-path: var(--veil, none);
+    pointer-events: none;
+  }
+
+  .crop__rect {
+    position: absolute;
+    border: 1.5px solid #fff;
+    box-shadow: 0 0 0 1px rgb(15 23 42 / 0.5);
+    cursor: move;
+  }
+  .crop__rect:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Thirds, the framing guide people already know from a camera. */
+  .crop__rect::before,
+  .crop__rect::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.45;
+  }
+  .crop__rect::before {
+    background:
+      linear-gradient(to right, transparent 33.33%, #fff 33.33%, #fff calc(33.33% + 1px), transparent calc(33.33% + 1px)),
+      linear-gradient(to right, transparent 66.66%, #fff 66.66%, #fff calc(66.66% + 1px), transparent calc(66.66% + 1px));
+  }
+  .crop__rect::after {
+    background:
+      linear-gradient(to bottom, transparent 33.33%, #fff 33.33%, #fff calc(33.33% + 1px), transparent calc(33.33% + 1px)),
+      linear-gradient(to bottom, transparent 66.66%, #fff 66.66%, #fff calc(66.66% + 1px), transparent calc(66.66% + 1px));
+  }
+
+  .crop__handle {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid var(--accent);
+    border-radius: 3px;
+    background: #fff;
+  }
+
+  /* Fingers need more than 14px; the visible square stays small. */
+  .crop__handle::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+  }
+
+  [data-crop-handle='nw'] { top: -8px; left: -8px; cursor: nwse-resize; }
+  [data-crop-handle='n']  { top: -8px; left: 50%; margin-left: -7px; cursor: ns-resize; }
+  [data-crop-handle='ne'] { top: -8px; right: -8px; cursor: nesw-resize; }
+  [data-crop-handle='e']  { top: 50%; right: -8px; margin-top: -7px; cursor: ew-resize; }
+  [data-crop-handle='se'] { bottom: -8px; right: -8px; cursor: nwse-resize; }
+  [data-crop-handle='s']  { bottom: -8px; left: 50%; margin-left: -7px; cursor: ns-resize; }
+  [data-crop-handle='sw'] { bottom: -8px; left: -8px; cursor: nesw-resize; }
+  [data-crop-handle='w']  { top: 50%; left: -8px; margin-top: -7px; cursor: ew-resize; }
+
+  .crop__read {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    color: var(--muted);
+  }
+</style>
+
+<script>
+  interface Box { x: number; y: number; width: number; height: number }
+
+  /** Never let the crop collapse to nothing. */
+  const MIN = 0.05;
+  const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value));
+
+  class CropStage extends HTMLElement {
+    private canvas = this.querySelector<HTMLCanvasElement>('[data-crop-canvas]')!;
+    private surface = this.querySelector<HTMLElement>('[data-crop-surface]')!;
+    private rect = this.querySelector<HTMLElement>('[data-crop-rect]')!;
+    private veil = this.querySelector<HTMLElement>('[data-crop-veil]')!;
+    private label = this.querySelector<HTMLElement>('[data-crop-label]')!;
+    private readout = this.querySelector<HTMLElement>('[data-crop-read]')!;
+
+    private doc: { numPages: number; getPage(n: number): Promise<any>; destroy(): Promise<void> } | null = null;
+    private at = 1;
+    private box: Box = { x: 0, y: 0, width: 1, height: 1 };
+    private pageSize = { width: 0, height: 0 };
+
+    connectedCallback(): void {
+      this.querySelector('[data-crop-prev]')?.addEventListener('click', () => this.go(this.at - 1));
+      this.querySelector('[data-crop-next]')?.addEventListener('click', () => this.go(this.at + 1));
+      this.querySelector('[data-crop-reset]')?.addEventListener('click', () => {
+        this.setBox({ x: 0, y: 0, width: 1, height: 1 });
+        this.announce();
+      });
+
+      this.rect.addEventListener('pointerdown', (event) => this.grab(event, null));
+      for (const handle of this.querySelectorAll<HTMLElement>('[data-crop-handle]')) {
+        handle.addEventListener('pointerdown', (event) => {
+          event.stopPropagation();
+          this.grab(event, handle.dataset.cropHandle ?? null);
+        });
+      }
+
+      // Arrow keys nudge, which is the only way to be exact with a pointer.
+      this.rect.addEventListener('keydown', (event) => {
+        const step = event.shiftKey ? 0.05 : 0.005;
+        const moves: Record<string, [number, number]> = {
+          ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step],
+        };
+        const move = moves[event.key];
+        if (!move) return;
+        event.preventDefault();
+        this.setBox({
+          ...this.box,
+          x: clamp(this.box.x + move[0], 0, 1 - this.box.width),
+          y: clamp(this.box.y + move[1], 0, 1 - this.box.height),
+        });
+        this.announce();
+      });
+
+      window.addEventListener('resize', () => this.paint());
+    }
+
+    /** Opens a document and shows its first page. */
+    async open(file: File): Promise<void> {
+      await this.release();
+
+      const api = await import('pdfjs-dist/legacy/build/pdf.mjs');
+      const worker = await import('pdfjs-dist/legacy/build/pdf.worker.mjs');
+      (globalThis as Record<string, unknown>).pdfjsWorker = worker;
+
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const asset = (folder: string) => new URL(`${base}/pdfjs/${folder}/`, location.href).href;
+
+      this.doc = await api.getDocument({
+        data: new Uint8Array(await file.arrayBuffer()),
+        cMapUrl: asset('cmaps'),
+        cMapPacked: true,
+        standardFontDataUrl: asset('standard_fonts'),
+      }).promise;
+
+      this.hidden = false;
+      this.at = 1;
+      await this.draw();
+    }
+
+    async release(): Promise<void> {
+      await this.doc?.destroy();
+      this.doc = null;
+      this.hidden = true;
+    }
+
+    getBox(): Box {
+      return { ...this.box };
+    }
+
+    /** Lets the numeric inputs drive the rectangle. */
+    setBox(next: Box): void {
+      this.box = {
+        x: clamp(next.x, 0, 1 - MIN),
+        y: clamp(next.y, 0, 1 - MIN),
+        width: clamp(next.width, MIN, 1 - clamp(next.x, 0, 1 - MIN)),
+        height: clamp(next.height, MIN, 1 - clamp(next.y, 0, 1 - MIN)),
+      };
+      this.paint();
+    }
+
+    private async go(to: number): Promise<void> {
+      if (!this.doc) return;
+      this.at = clamp(to, 1, this.doc.numPages);
+      await this.draw();
+    }
+
+    private async draw(): Promise<void> {
+      if (!this.doc) return;
+      const page = await this.doc.getPage(this.at);
+      const unit = page.getViewport({ scale: 1 });
+
+      // Enough to judge a margin by eye, not so much that a phone struggles.
+      const scale = Math.min(2, 900 / Math.max(unit.width, unit.height));
+      const viewport = page.getViewport({ scale });
+      this.canvas.width = Math.ceil(viewport.width);
+      this.canvas.height = Math.ceil(viewport.height);
+      this.pageSize = { width: unit.width, height: unit.height };
+
+      const ctx = this.canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        await page.render({ canvasContext: ctx, viewport }).promise;
+      }
+      page.cleanup();
+
+      this.label.textContent = `Page ${this.at} of ${this.doc.numPages}`;
+      this.querySelector<HTMLButtonElement>('[data-crop-prev]')!.disabled = this.at <= 1;
+      this.querySelector<HTMLButtonElement>('[data-crop-next]')!.disabled = this.at >= this.doc.numPages;
+      this.paint();
+    }
+
+    /** Where the page actually sits inside the stage, after object-fit. */
+    private frame(): DOMRect | null {
+      if (!this.canvas.width) return null;
+      const surface = this.surface.getBoundingClientRect();
+      const shown = this.canvas.getBoundingClientRect();
+      return new DOMRect(shown.left - surface.left, shown.top - surface.top, shown.width, shown.height);
+    }
+
+    private paint(): void {
+      const frame = this.frame();
+      if (!frame) return;
+
+      const left = frame.x + this.box.x * frame.width;
+      const top = frame.y + this.box.y * frame.height;
+      const width = this.box.width * frame.width;
+      const height = this.box.height * frame.height;
+
+      this.rect.style.left = `${left}px`;
+      this.rect.style.top = `${top}px`;
+      this.rect.style.width = `${width}px`;
+      this.rect.style.height = `${height}px`;
+
+      // A hole punched in the dimming layer, rather than four positioned bars.
+      this.veil.style.setProperty(
+        '--veil',
+        `polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0, ${left}px ${top}px, ${left}px ${top + height}px, ${left + width}px ${top + height}px, ${left + width}px ${top}px, ${left}px ${top}px)`
+      );
+
+      const points = (fraction: number, of: number) => Math.round(fraction * of);
+      this.readout.textContent = this.pageSize.width
+        ? `${points(this.box.width, this.pageSize.width)} × ${points(this.box.height, this.pageSize.height)} pt kept · ${Math.round((1 - this.box.width * this.box.height) * 100)}% trimmed away`
+        : '';
+    }
+
+    private grab(event: PointerEvent, handle: string | null): void {
+      const frame = this.frame();
+      if (!frame) return;
+      event.preventDefault();
+      (event.target as HTMLElement).setPointerCapture(event.pointerId);
+
+      const startX = event.clientX;
+      const startY = event.clientY;
+      const start = { ...this.box };
+
+      const move = (moved: PointerEvent) => {
+        const dx = (moved.clientX - startX) / frame.width;
+        const dy = (moved.clientY - startY) / frame.height;
+
+        if (!handle) {
+          this.setBox({
+            ...start,
+            x: clamp(start.x + dx, 0, 1 - start.width),
+            y: clamp(start.y + dy, 0, 1 - start.height),
+          });
+        } else {
+          let { x, y, width, height } = start;
+          if (handle.includes('w')) {
+            const right = start.x + start.width;
+            x = clamp(start.x + dx, 0, right - MIN);
+            width = right - x;
+          }
+          if (handle.includes('e')) {
+            width = clamp(start.width + dx, MIN, 1 - start.x);
+          }
+          if (handle.includes('n')) {
+            const bottom = start.y + start.height;
+            y = clamp(start.y + dy, 0, bottom - MIN);
+            height = bottom - y;
+          }
+          if (handle.includes('s')) {
+            height = clamp(start.height + dy, MIN, 1 - start.y);
+          }
+          this.setBox({ x, y, width, height });
+        }
+        this.announce();
+      };
+
+      const drop = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', drop);
+        window.removeEventListener('pointercancel', drop);
+      };
+
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', drop);
+      window.addEventListener('pointercancel', drop);
+    }
+
+    private announce(): void {
+      this.dispatchEvent(new CustomEvent('cropchange', { detail: this.getBox() }));
+    }
+  }
+
+  if (!customElements.get('crop-stage')) customElements.define('crop-stage', CropStage);
+</script>
