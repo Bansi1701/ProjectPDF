@@ -1,10 +1,10 @@
 ---
-intro: "Use Split PDF to choose one PDF, choose exact page ranges and create separate PDF files. Each requested range becomes its own download, while the original remains untouched. ProjectPDF starts the document engine only after you choose a file, performs the work inside this tab, and creates a new result for you to save. Your selected document, its filename, and its contents are not sent to ProjectPDF."
+intro: "Use Split PDF to choose one PDF, choose exact page ranges or split every page with one click, and create separate PDF files. Each requested range becomes its own download, while the original remains untouched. ProjectPDF starts the document engine only after you choose a file, performs the work inside this tab, and creates new results for you to save. Your selected document, its filename, and its contents are not sent to ProjectPDF."
 howTo:
   - name: "Choose one PDF"
     text: "Select one PDF from the dropzone. ProjectPDF reads it locally and shows the relevant preview or controls before changing anything."
   - name: "Review the settings"
-    text: "Use the page preview and available options to decide exactly how split pdf should handle this document."
+    text: "Use the page preview to place cuts, type exact page groups, or choose Split every page for one PDF per page."
   - name: "Create and check the result"
     text: "Run the tool, review the reported page count, size, or notes, then save the newly created file while keeping the original."
 faqs:
@@ -13,7 +13,7 @@ faqs:
   - question: "Will this change my original file?"
     answer: "No. Browsers cannot silently overwrite the file you selected. ProjectPDF creates a separate result for you to save or pass to another local tool."
   - question: "What should I check after using Split PDF?"
-    answer: "Check the visible preview and the result summary. Each requested range becomes its own download, while the original remains untouched. Keep the original until the new output has been opened and verified."
+    answer: "Check the visible preview, output count, and result summary. Each requested range becomes its own download, while the original remains untouched. Keep the original until the new outputs have been opened and verified."
   - question: "Do I need an account or subscription?"
     answer: "No account is required for this browser-side tool. It runs on the device and does not use a document-upload allowance or daily server quota."
 related:

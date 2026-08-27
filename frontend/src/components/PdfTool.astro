@@ -86,6 +86,7 @@ const ACTIONS: Record<Operation, string> = {
   'pdf-a': 'Convert to PDF/A',
   repair: 'Repair',
   ocr: 'Read the text',
+  redact: 'Redact and save',
   'word-to-pdf': 'Convert to PDF',
   'url-to-pdf': 'Render the page',
   'excel-to-pdf': 'Convert to PDF',
@@ -96,6 +97,14 @@ const ACTIONS: Record<Operation, string> = {
   grayscale: 'Convert to greyscale',
   'auto-crop': 'Trim the margins',
   scan: 'Build the PDF',
+  flatten: 'Flatten the PDF',
+  impose: 'Create the layout',
+  'extract-images': 'Extract images',
+  overlay: 'Apply overlay',
+  'text-to-pdf': 'Create the PDF',
+  metadata: 'Save metadata',
+  'header-footer': 'Add headers and footers',
+  'split-by': 'Split the PDF',
   compose: 'Save the changes',
 };
 
@@ -359,6 +368,12 @@ const dropTitle = takesExcel
           <span>Page groups</span>
           <input data-ranges value="1" placeholder="1-3, 4-6, 9" />
           <small>Each comma-separated group becomes its own PDF.</small>
+          <span class="split-preset">
+            <button type="button" class="btn btn--quiet" data-split-every>
+              Split every page into its own PDF
+            </button>
+            <small>Creates one output file per page without clicking every cut marker.</small>
+          </span>
         </label>
       )
     }
@@ -2762,6 +2777,22 @@ const dropTitle = takesExcel
       });
     }
 
+    const splitEveryBtn = q<HTMLButtonElement>('[data-split-every]');
+    splitEveryBtn?.addEventListener('click', () => {
+      if (!grid || grid.hidden || grid.totalPages < 2 || !rangesInput) {
+        fail('Choose a PDF with at least two pages first.');
+        return;
+      }
+
+      // The typed groups and scissors edit the same page plan. Feeding one
+      // single-page group per source page gives the grid real cut points, so
+      // the normal compose/export path still owns validation and output.
+      const groups = Array.from({ length: grid.totalPages }, (_, index) => String(index + 1)).join(', ');
+      rangesInput.value = groups;
+      grid.applyRanges(groups);
+      status.textContent = `${grid.totalPages} output files ready`;
+    });
+
     runBtn.addEventListener('click', async () => {
       if (!files.length) return;
 
@@ -3262,6 +3293,17 @@ const dropTitle = takesExcel
     font-family: var(--font-mono); font-size: var(--step--1);
   }
   .field small { color: var(--muted); font-size: var(--step--2); }
+
+  .split-preset {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.55rem 0.75rem;
+    margin-top: 0.35rem;
+  }
+
+  .split-preset .btn { min-height: 2.75rem; }
+  .split-preset small { flex: 1 1 15rem; }
 
   .field select {
     padding: 0.6rem 0.75rem; border: 1px solid var(--line-strong);

@@ -112,5 +112,13 @@ export default defineConfig({
     // chunk. With the default `iife` format Vite inlines dynamic imports, and
     // every tool — merge included — would pull 3 MB of renderer it never uses.
     worker: { format: 'es' },
+    build: {
+      // The two deliberately lazy vendor engines are 621 KiB (pdf-lib) and
+      // 1.2 MiB (pdf.js's renderer). They load only after a document needs
+      // them. Our own worker entry is audited separately below 100 KiB, so a
+      // 1.3 MiB warning ceiling reports actual regressions instead of these
+      // indivisible third-party modules.
+      chunkSizeWarningLimit: 1300,
+    },
   },
 });

@@ -67,6 +67,8 @@ const { mode } = Astro.props;
      attribute. Everything is namespaced under .page-grid instead. */
   .page-grid {
     display: block;
+    min-width: 0;
+    max-width: 100%;
     margin: 0 0 1.25rem;
   }
 
@@ -121,6 +123,8 @@ const { mode } = Astro.props;
   .page-grid__pages {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+    min-width: 0;
+    max-width: 100%;
     gap: 0.85rem;
     max-height: 62vh;
     overflow-y: auto;
@@ -142,6 +146,8 @@ const { mode } = Astro.props;
     cursor: pointer;
     user-select: none;
     touch-action: manipulation;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .page-cell:focus-visible {
@@ -432,6 +438,23 @@ const { mode } = Astro.props;
 
   @media (prefers-reduced-motion: reduce) {
     .page-cell__frame { transition: none; }
+  }
+
+  @media (hover: none), (max-width: 42rem) {
+    .page-grid__pages {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+      overflow-x: hidden;
+    }
+
+    /* Touch has no hover state. Page-level actions must be available before
+       somebody taps a thumbnail, not appear only after an accidental focus. */
+    .page-cell__tools {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .page-cell__cut { right: -0.25rem; }
   }
 </style>
 
