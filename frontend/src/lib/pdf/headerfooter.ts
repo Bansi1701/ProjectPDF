@@ -647,6 +647,8 @@ export async function headerFooter(
   let droppedCells = 0;
   let stampsCut = 0;
   let shrunkPages = 0;
+  /** Pages where `shrink` was asked for and refused because the band was too deep. */
+  let unshrunkPages = 0;
   let tooNarrow = 0;
   let overflowed = 0;
   let batesDrawn = 0;
@@ -717,6 +719,12 @@ export async function headerFooter(
 
       if (options.shrink) {
         const room = size.height - headerReserve - footerReserve;
+        // A band that would leave less than a quarter of the page is refused —
+        // shrinking a page to a stamp is worse than overprinting it. But the
+        // whole point of `shrink` is the promise that nothing already on the
+        // page is covered, so a page that did not get it has to be counted:
+        // otherwise the note asserts a guarantee this page never received.
+        if (room <= size.height * 0.25) unshrunkPages += 1;
         if (room > size.height * 0.25) {
           const scale = room / size.height;
           const shrank = shrinkContent(
@@ -851,11 +859,22 @@ export async function headerFooter(
   }
 
   if (options.shrink) {
-    notes.push(
-      shrunkPages > 0
-        ? `The existing content on ${plural(shrunkPages, 'page')} was scaled down and shifted to clear the band the stamps sit in, so nothing already on the page is covered. Links, form fields and other annotations are stored outside the page content and do not scale with it, so they stay where they were — check anything interactive near the edges.`
-        : 'Nothing needed scaling: no page had content to move.'
-    );
+    if (shrunkPages > 0) {
+      notes.push(
+        `The existing content on ${plural(shrunkPages, 'page')} was scaled down and shifted to clear the band the stamps sit in, so nothing already on the page is covered. Links, form fields and other annotations are stored outside the page content and do not scale with it, so they stay where they were — check anything interactive near the edges.`
+      );
+    } else if (unshrunkPages === 0) {
+      notes.push('Nothing needed scaling: no page had content to move.');
+    }
+
+    // Said whenever it happened, including when it happened on every page —
+    // in which case the note above never runs and this is the only thing
+    // standing between the user and a guarantee they did not get.
+    if (unshrunkPages > 0) {
+      notes.push(
+        `${plural(unshrunkPages, 'page')} could not be scaled: the header and footer you asked for would have left less than a quarter of the page for the content. ${unshrunkPages === 1 ? 'That page was' : 'Those pages were'} stamped over instead, so something already there may be covered. Use a smaller text size or a narrower margin if that matters.`
+      );
+    }
   } else {
     notes.push(
       'This draws on top of the page. A PDF has no reserved header area, and there is no reliable way to tell from the file whether something already sits where a stamp lands — if your pages have tight margins or headers of their own, turn on the shrink option, which scales the content down to make real room.'

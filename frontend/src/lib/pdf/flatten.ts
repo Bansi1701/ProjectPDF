@@ -784,18 +784,29 @@ async function flattenFields(doc: PDFDocument): Promise<FieldOutcome> {
   // form whose AcroForm was stripped by an earlier tool still has live boxes
   // on the page, and leaving those is exactly the silent failure this file is
   // here to prevent.
-  form.flatten({ updateFieldAppearances: false });
-
-  // Painted here rather than in the annotations pass, which means a stray
-  // control ends up UNDER any markup annotation that was above it in /Annots.
-  // Two passes cannot preserve one interleaved order, and a control sitting
-  // under a highlight is a better failure than a form that stays fillable.
+  // Every widget is painted HERE, before pdf-lib is asked to flatten anything.
   //
-  // pdf-lib only sweeps orphan widgets that carry /FT on the annotation, and
-  // a widget without one is skipped and left on the page. It is still a form
-  // control — a reader still draws it as a box — so "no fields survive" is not
-  // true until these are gone too. They are baked with the annotation painter
-  // rather than deleted, so whatever they were showing stays visible.
+  // pdf-lib's own flatten places an appearance with a bare
+  // `translate(rect.x, rect.y)`, which is only correct when the appearance
+  // stream's /BBox starts at the origin and is exactly the size of the /Rect.
+  // That happens to be true of forms pdf-lib itself made, and is routinely
+  // untrue of forms made by anything else: ISO 32000-1 §12.5.5 says the BBox
+  // is transformed by /Matrix, and the RESULT is then fitted to the Rect. A
+  // generator that emits an offset BBox, or any rotated field, lands askew or
+  // clipped under a plain translate.
+  //
+  // `paintAnnotation` already implements that algorithm — it was written for
+  // it, and the file's own header describes it — but it was only ever reached
+  // for strays. So the one case this tool exists for, a filled form somebody
+  // wants to make permanent, was the case not using it. Worse, `verifyNoForm`
+  // cannot see the difference: it checks that no fields survive, so a
+  // displaced value still passes and still earns the note saying the result
+  // was verified.
+  //
+  // Painting here also means a control ends up UNDER any markup annotation
+  // that was above it in /Annots. Two passes cannot preserve one interleaved
+  // order, and a control beneath a highlight is a better failure than a form
+  // that stays fillable.
   for (const page of doc.getPages()) {
     const annots = page.node.Annots();
     if (!annots) continue;
@@ -818,6 +829,14 @@ async function flattenFields(doc: PDFDocument): Promise<FieldOutcome> {
     }
     for (const ref of remove) page.node.removeAnnot(ref);
   }
+
+  // pdf-lib's own flatten is NOT called. Removing a widget from a page's
+  // /Annots does not remove it from its field, so asking pdf-lib to flatten
+  // afterwards paints every value a second time — on top of the copy already
+  // placed correctly, with the offset that made this worth fixing. It has
+  // nothing left to do anyway: every widget on every page has been painted and
+  // removed, and the AcroForm dictionary goes below, which is what actually
+  // ends the form. A widget belonging to no page was never visible.
 
   // /Fields is empty now, but the AcroForm dictionary itself is still a way
   // back in: /NeedAppearances asks a reader to redraw fields, /SigFlags

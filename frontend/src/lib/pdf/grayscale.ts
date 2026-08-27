@@ -1381,6 +1381,16 @@ class Converter {
       this.tally.skip('a JPEG, because this environment has no image decoder');
       return;
     }
+    // A /Decode array remaps each channel before the samples mean anything —
+    // [1 0 1 0 1 0] is an inverted image. The raw-sample path applies it and
+    // then drops the entry; the decoder used here does not see it at all, so
+    // converting would compute greys from unmapped samples and then delete the
+    // array that said they were unmapped. The result looks like a photographic
+    // negative. Left in colour and counted instead.
+    if (image.dict.has(PDFName.of('Decode'))) {
+      this.tally.skip('a JPEG with a custom /Decode array, which this cannot apply');
+      return;
+    }
 
     const original = image.contents;
     let blob: Blob;
