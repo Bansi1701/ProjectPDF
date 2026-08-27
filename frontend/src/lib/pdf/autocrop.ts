@@ -133,7 +133,8 @@ const intersect = (a: Rect, b: Rect): Rect | null => {
  * falling back to the MediaBox when the CropBox is degenerate or misses it.
  * It has to mirror it, because the box we are about to trim was measured on a
  * pdf.js rendering; any disagreement between the two is a crop offset by the
- * difference. `verifyViewport` below checks the two agree rather than assuming.
+ * difference. The measuring loop below checks the two agree on a page's size
+ * rather than assuming it, and leaves the page alone when they do not.
  */
 const visibleBox = (page: PDFPage): Rect => {
   const media = page.getMediaBox();
@@ -529,6 +530,13 @@ export async function autoCrop(
 
   const measured: Measured[] = [];
 
+  // The coarsest pixel any page was actually measured at, in points. Usually
+  // 72/dpi, but an oversized page is rendered smaller to stay inside the canvas
+  // budget — and the note about how accurate an edge is has to quote the number
+  // that was really used, not the one that was asked for.
+  let coarsestPixel = 0;
+  let downscaledPages = 0;
+
   try {
     for (const number of targets) {
       const leaf = pdf.getPage(number - 1);
@@ -563,7 +571,9 @@ export async function autoCrop(
       let scale = dpi / 72;
       if (unit.width * scale * unit.height * scale > MAX_CANVAS_PIXELS) {
         scale = Math.sqrt(MAX_CANVAS_PIXELS / (unit.width * unit.height));
+        downscaledPages += 1;
       }
+      coarsestPixel = Math.max(coarsestPixel, 1 / scale);
 
       const viewport = page.getViewport({ scale });
       const width = Math.max(1, Math.floor(viewport.width));
@@ -639,15 +649,15 @@ export async function autoCrop(
     for (const page of measured) {
       if (!page.ink) continue;
       const key = sizeKey(page);
-      const so_far = unions.get(key);
+      const soFar = unions.get(key);
       unions.set(
         key,
-        so_far
+        soFar
           ? {
-              left: Math.min(so_far.left, page.ink.left),
-              top: Math.min(so_far.top, page.ink.top),
-              right: Math.max(so_far.right, page.ink.right),
-              bottom: Math.max(so_far.bottom, page.ink.bottom),
+              left: Math.min(soFar.left, page.ink.left),
+              top: Math.min(soFar.top, page.ink.top),
+              right: Math.max(soFar.right, page.ink.right),
+              bottom: Math.max(soFar.bottom, page.ink.bottom),
             }
           : { ...page.ink }
       );
@@ -811,11 +821,15 @@ export async function autoCrop(
   const notes: string[] = [];
 
   notes.push(
-    `Each page was rendered at ${Math.round(dpi)} DPI purely to find its edges, and the rendering was thrown away. Only the page boxes changed: the text, images and fonts in the file you get back are byte-for-byte the ones that went in. One pixel is ${(72 / dpi).toFixed(2)} pt, so an edge can be out by up to that much — well inside the ${Math.round(padding)} pt of padding.`
+    `Each page was rendered at ${Math.round(dpi)} DPI purely to find its edges, and the rendering was thrown away. Only the page boxes changed — nothing was rasterised or re-encoded, and the text, images and fonts are byte-for-byte what they were. (The file may still come out smaller: it is rewritten with compressed object streams, which is where that difference comes from, not from anything being dropped.)`
   );
 
   notes.push(
-    `The background colour was measured from each page's own border pixels rather than assumed to be white, and a pixel counts as content when a colour channel is more than ${BASE_TOLERANCE}–${MAX_TOLERANCE} levels away from it — the looser end on a noisy scan, scaled to how much the border pixels vary among themselves.`
+    `A measured edge can be out by up to ${coarsestPixel.toFixed(2)} pt — one pixel at the resolution used${downscaledPages > 0 ? `, and ${downscaledPages} page${downscaledPages === 1 ? ' was' : 's were'} too large to render at the full ${Math.round(dpi)} DPI and were measured coarser` : ''}. That is well inside the ${Math.round(padding)} pt of padding left around the content.`
+  );
+
+  notes.push(
+    `The background colour was measured from each page's own border pixels rather than assumed to be white, and a pixel counts as content when a colour channel is more than ${BASE_TOLERANCE}–${MAX_TOLERANCE} levels away from it — the looser end on a noisy scan, scaled to how much the border pixels vary among themselves. The limit of that: a flat band of colour at the edge of a picture is indistinguishable from a margin, so a photograph with a plain strip down one side can have that strip trimmed.`
   );
 
   notes.push(
