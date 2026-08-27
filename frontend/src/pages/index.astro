@@ -2,7 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import Lens from '../components/Lens.astro';
-import { CATEGORIES, SERVER_ONLY_REASONS, SITE, toolsByCategory } from '../config/site';
+import { CATEGORIES, SERVER_ONLY_REASONS, SITE, TOOLS, toolsByCategory } from '../config/site';
 
 const steps = [
   { n: '1', title: 'You pick a file', body: 'The browser hands the tool a copy in memory. No request is made.' },
@@ -23,8 +23,17 @@ const promises = [
   { figure: '0', label: 'bytes uploaded' },
   { figure: '0', label: 'files stored' },
   { figure: '0', label: 'accounts required' },
-  { figure: '0', label: 'reasons to trust us' },
 ];
+
+/* Spelled from the array, so the prose can never drift from the list again —
+   it already had, claiming six where four were printed. */
+const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
+const serverOnlyCount = NUMBER_WORDS[SERVER_ONLY_REASONS.length] ?? String(SERVER_ONLY_REASONS.length);
+
+/* The five people actually arrive wanting. Everything else is one tap further. */
+const SHORTCUTS = ['merge-pdf', 'compress-pdf', 'edit-pdf', 'sign-pdf', 'scan-pdf'];
+const shortcuts = SHORTCUTS.map((slug) => TOOLS.find((tool) => tool.slug === slug)!).filter(Boolean);
+const liveTools = TOOLS.filter((tool) => tool.status === 'live');
 
 const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
@@ -59,24 +68,64 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
           browser, and every result is ready to inspect before you save it.
         </p>
 
-        <ul class="hero__proof" aria-label="PDFCraft benefits">
+        <ul class="hero__proof" aria-label={`${SITE.name} benefits`}>
           <li><span>01</span> Browser-side processing</li>
           <li><span>02</span> Visible page controls</li>
           <li><span>03</span> Ready-to-save results</li>
         </ul>
 
-        <div class="hero__actions">
-          <a class="btn btn--primary" href="#tools">Explore tools</a>
-          <a class="btn btn--quiet" href="#how">How privacy works</a>
+        <!-- Search that answers where you type it. Filtering a grid a thousand
+             pixels further down is a search box that appears to do nothing. -->
+        <div class="quickfind">
+          <label class="quickfind__field">
+            <span class="sr-only">Search tools</span>
+            <svg class="quickfind__icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="9" cy="9" r="6"></circle><path d="m13.5 13.5 4 4" stroke-linecap="round"></path>
+            </svg>
+            <input
+              type="search"
+              data-tool-search
+              placeholder={`Search ${liveTools.length} tools — merge, sign, redact…`}
+              autocomplete="off"
+              role="combobox"
+              aria-expanded="false"
+              aria-controls="quickfind-results"
+            />
+          </label>
+
+          <ul class="quickfind__results" id="quickfind-results" data-tool-search-results hidden>
+            {
+              liveTools.map((tool) => (
+                <li data-search={`${tool.name} ${tool.blurb} ${tool.category}`.toLowerCase()} hidden>
+                  <a href={`${baseUrl}${tool.slug}/`}>
+                    <strong>{tool.name}</strong>
+                    <span>{tool.blurb}</span>
+                  </a>
+                </li>
+              ))
+            }
+            <li class="quickfind__empty" data-tool-search-empty hidden>No tool matches that yet.</li>
+          </ul>
         </div>
 
-        <p class="hero__meta">Free · No account · Your files stay on this device</p>
+        <nav class="shortcuts" aria-label="Popular tools">
+          {
+            shortcuts.map((tool) => (
+              <a class="shortcuts__item" href={`${baseUrl}${tool.slug}/`}>
+                {tool.name}
+              </a>
+            ))
+          }
+          <a class="shortcuts__all" href="#tools">All {liveTools.length} tools →</a>
+        </nav>
+
+        <p class="hero__meta">Free · No account · Your files stay on this device · <a href="#how">How that works</a></p>
       </div>
 
       <!-- The metaphor: a sheet of paper with a glass lens laid across it -->
       <figure class="hero__desk" aria-hidden="true">
         <div class="sheet page">
-          <div class="page__topline"><span>PDFCRAFT / DOCUMENT STUDIO</span><i></i></div>
+          <div class="page__topline"><span>{SITE.name.toUpperCase()} / DOCUMENT STUDIO</span><i></i></div>
           <div class="page__rule page__rule--title"></div>
           <div class="page__rule" style="width: 92%"></div>
           <div class="page__rule" style="width: 86%"></div>
@@ -115,6 +164,10 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
               </li>
             ))
           }
+          <li class="receipt__verdict">
+            <span class="receipt__verdict-line">Privacy you can verify</span>
+            <span class="receipt__label">not a promise — a thing you can check</span>
+          </li>
         </ul>
         <p class="receipt__note">
           Not a badge we award ourselves. When a tool ships, open your browser's Network
@@ -148,11 +201,6 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
           Start with a clear outcome. Every tool labelled <em>in your browser</em> handles the
           document on your machine.
         </p>
-        <label class="tool-search">
-          <span class="sr-only">Search tools</span>
-          <input type="search" data-tool-search placeholder="Search merge, watermark, protect…" autocomplete="off" />
-        </label>
-        <p class="tool-search__empty" data-tool-search-empty hidden>No tool matches that search yet.</p>
       </header>
 
       {
@@ -220,8 +268,8 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
       <div class="limits__intro">
         <h2>What we can't do in your browser</h2>
         <p class="lede">
-          Six things genuinely need a server. We would rather name them than quietly route
-          your file somewhere and hope you don't check.
+          {serverOnlyCount} things genuinely need a server. We would rather name them than quietly
+          route your file somewhere and hope you don't check.
         </p>
         <p class="limits__closing">
           These are labelled wherever they appear. The file is deleted the moment the job
@@ -292,17 +340,68 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 <script>
   const search = document.querySelector<HTMLInputElement>('[data-tool-search]');
   const cards = [...document.querySelectorAll<HTMLElement>('[data-tool-card]')];
+  const results = document.querySelector<HTMLElement>('[data-tool-search-results]');
   const empty = document.querySelector<HTMLElement>('[data-tool-search-empty]');
+  const options = results ? [...results.querySelectorAll<HTMLElement>('li[data-search]')] : [];
+
+  /* Six is what fits above the fold on a phone without the list becoming the
+     page. Anything longer is better answered by the grid below. */
+  const SHOWN = 6;
+
+  const links = () => options.filter((option) => !option.hidden).map((o) => o.querySelector('a')!);
+
+  function close() {
+    if (results) results.hidden = true;
+    search?.setAttribute('aria-expanded', 'false');
+  }
 
   search?.addEventListener('input', () => {
     const query = search.value.trim().toLowerCase();
-    let visible = 0;
+
+    // The grid stays in step, so scrolling down after a search is not confusing.
     cards.forEach((card) => {
-      const match = !query || card.dataset.search?.includes(query);
-      card.hidden = !match;
-      if (match) visible += 1;
+      card.hidden = Boolean(query) && !card.dataset.search?.includes(query);
     });
-    if (empty) empty.hidden = visible !== 0;
+
+    if (!query) {
+      options.forEach((option) => { option.hidden = true; });
+      if (empty) empty.hidden = true;
+      close();
+      return;
+    }
+
+    let shown = 0;
+    options.forEach((option) => {
+      const match = option.dataset.search?.includes(query) ?? false;
+      option.hidden = !match || shown >= SHOWN;
+      if (match && shown < SHOWN) shown += 1;
+    });
+
+    if (empty) empty.hidden = shown !== 0;
+    if (results) results.hidden = false;
+    search.setAttribute('aria-expanded', 'true');
+  });
+
+  // A combobox people can drive from the keyboard, not just the mouse.
+  search?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') { close(); return; }
+    if (event.key === 'ArrowDown') {
+      const first = links()[0];
+      if (first) { event.preventDefault(); first.focus(); }
+    }
+  });
+
+  results?.addEventListener('keydown', (event) => {
+    const all = links();
+    const at = all.indexOf(document.activeElement as HTMLAnchorElement);
+    if (at < 0) return;
+    if (event.key === 'ArrowDown') { event.preventDefault(); (all[at + 1] ?? all[0]).focus(); }
+    if (event.key === 'ArrowUp') { event.preventDefault(); (at === 0 ? search : all[at - 1])?.focus(); }
+    if (event.key === 'Escape') { close(); search?.focus(); }
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!(event.target as HTMLElement).closest('.quickfind')) close();
   });
 </script>
 
@@ -745,6 +844,21 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     color: var(--ink-2);
   }
 
+  /* The conclusion the three zeros add up to, so it reads as the end of the
+     row rather than a fourth measurement. */
+  .receipt__verdict {
+    background: color-mix(in oklab, var(--ok) 9%, var(--paper-sunk));
+    box-shadow: inset 3px 0 0 var(--ok);
+  }
+
+  .receipt__verdict-line {
+    font-size: var(--step-0);
+    font-weight: 600;
+    line-height: 1.15;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
   .receipt__note {
     margin-top: 1.5rem;
     max-width: var(--measure);
@@ -829,6 +943,10 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     color: var(--ok);
   }
 
+  @media (max-width: 48em) {
+    .hero__desk { display: none; }
+  }
+
   @media (max-width: 30em) {
     .hero__desk { padding: 1rem 1rem 4rem; }
     .hero__tool-orbit { left: 0.25rem; bottom: 0.65rem; }
@@ -836,31 +954,124 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     .orbit-card span { display: none; }
   }
 
-  .tool-search {
-    display: block;
-    max-width: 36rem;
-    margin-top: 1.25rem;
+  /* ── Quickfind ──────────────────────────────────────────────────────
+     One search box, at the top, that answers in place. */
+  .quickfind {
+    position: relative;
+    max-width: 32rem;
+    margin-top: 1.75rem;
   }
 
-  .tool-search input {
-    width: 100%;
-    min-height: 3rem;
-    padding: 0.75rem 1rem;
-    color: var(--ink);
+  .quickfind__field {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-left: 0.9rem;
     background: var(--paper-raised);
     border: 1px solid var(--line-strong);
     border-radius: 12px;
     box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+  }
+
+  .quickfind__field:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 16%, transparent);
+  }
+
+  .quickfind__icon { width: 1.05rem; height: 1.05rem; color: var(--muted); flex: none; }
+
+  .quickfind__field input {
+    flex: 1;
+    min-width: 0;
+    min-height: 3rem;
+    padding: 0.75rem 1rem 0.75rem 0;
+    border: 0;
+    background: none;
+    color: var(--ink);
     font: inherit;
   }
 
-  .tool-search input::placeholder { color: var(--muted); }
+  .quickfind__field input:focus { outline: none; }
+  .quickfind__field input::placeholder { color: var(--muted); }
+  .quickfind__field input::-webkit-search-cancel-button { cursor: pointer; }
 
-  .tool-search__empty {
-    margin-top: 0.75rem;
+  .quickfind__results {
+    position: absolute;
+    z-index: 12;
+    inset-inline: 0;
+    top: calc(100% + 0.4rem);
+    margin: 0;
+    padding: 0.3rem;
+    list-style: none;
+    background: var(--paper-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    box-shadow: 0 24px 48px -28px rgb(15 23 42 / 0.45);
+  }
+
+  .quickfind__results a {
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 8px;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .quickfind__results a:hover,
+  .quickfind__results a:focus-visible {
+    background: color-mix(in oklab, var(--accent) 8%, transparent);
+    outline: none;
+  }
+
+  .quickfind__results strong { font-size: var(--step--1); font-weight: 600; }
+  .quickfind__results span {
+    font-size: var(--step--2);
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .quickfind__empty {
+    padding: 0.6rem 0.7rem;
     color: var(--muted);
     font-size: var(--step--1);
   }
+
+  /* ── Shortcuts ──────────────────────────────────────────────────────
+     Named destinations, not a generic "explore". Above the fold on a phone. */
+  .shortcuts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+
+  .shortcuts__item,
+  .shortcuts__all {
+    padding: 0.5rem 0.9rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font-size: var(--step--1);
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .shortcuts__item:hover,
+  .shortcuts__all:hover { border-color: var(--accent); color: var(--accent); }
+
+  .shortcuts__all {
+    border-style: dashed;
+    background: none;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .hero__meta a { color: var(--ink-2); }
 
   .tools,
   .limits {
