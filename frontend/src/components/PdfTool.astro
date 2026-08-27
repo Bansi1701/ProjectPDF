@@ -310,11 +310,83 @@ const dropTitle = takesExcel
 
     {
       mode === 'watermark' && (
-        <label class="field">
-          <span>Watermark text</span>
-          <input data-text placeholder="DRAFT" />
-          <small>Drawn diagonally across every page at low opacity.</small>
-        </label>
+        <div class="wm">
+          <div class="wm__tabs" role="group" aria-label="What to stamp">
+            <button type="button" data-wm-kind="text" class="is-on" aria-pressed="true">Text</button>
+            <button type="button" data-wm-kind="image" aria-pressed="false">Image</button>
+          </div>
+
+          <div data-wm-panel="text">
+            <label class="field">
+              <span>Words to stamp</span>
+              <input data-text placeholder="DRAFT" />
+            </label>
+            <div class="wm__inline">
+              <label class="wm__swatch">
+                <span>Colour</span>
+                <input type="color" data-wm-color value="#b81f24" />
+              </label>
+              <label class="wm__check">
+                <input type="checkbox" data-wm-bold checked />
+                <span>Bold</span>
+              </label>
+            </div>
+          </div>
+
+          <div data-wm-panel="image" hidden>
+            <label class="field">
+              <span>Image to stamp</span>
+              <input type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" data-wm-image />
+              <small>
+                A PNG keeps its transparency, which is what a logo usually wants. A JPG has no
+                transparent pixels, so it stamps a rectangle of background with it.
+              </small>
+            </label>
+          </div>
+
+          <fieldset class="field wm__place">
+            <legend>Where it goes</legend>
+            <div class="wm__grid" role="group" aria-label="Position on the page">
+              <button type="button" data-wm-pos="top-left" aria-label="Top left" aria-pressed="false">↖</button>
+              <button type="button" data-wm-pos="top" aria-label="Top" aria-pressed="false">↑</button>
+              <button type="button" data-wm-pos="top-right" aria-label="Top right" aria-pressed="false">↗</button>
+              <button type="button" data-wm-pos="left" aria-label="Left" aria-pressed="false">←</button>
+              <button type="button" data-wm-pos="center" aria-label="Centre" aria-pressed="true" class="is-on">◆</button>
+              <button type="button" data-wm-pos="right" aria-label="Right" aria-pressed="false">→</button>
+              <button type="button" data-wm-pos="bottom-left" aria-label="Bottom left" aria-pressed="false">↙</button>
+              <button type="button" data-wm-pos="bottom" aria-label="Bottom" aria-pressed="false">↓</button>
+              <button type="button" data-wm-pos="bottom-right" aria-label="Bottom right" aria-pressed="false">↘</button>
+            </div>
+            <label class="wm__check">
+              <input type="checkbox" data-wm-tile />
+              <span>Tile it across the whole page</span>
+            </label>
+          </fieldset>
+
+          <div class="wm__sliders">
+            <label class="field">
+              <span>Size <b data-wm-out="scale">60% of the page</b></span>
+              <input type="range" min="5" max="150" step="5" value="60" data-wm-scale />
+            </label>
+            <label class="field">
+              <span>Angle <b data-wm-out="rotation">35°</b></span>
+              <input type="range" min="-90" max="90" step="5" value="35" data-wm-rotation />
+            </label>
+            <label class="field">
+              <span>Opacity <b data-wm-out="opacity">22%</b></span>
+              <input type="range" min="5" max="100" step="1" value="22" data-wm-opacity />
+            </label>
+          </div>
+
+          <label class="field">
+            <span>Pages</span>
+            <input data-wm-pages placeholder="all, or 1-4, 9, odd" />
+            <small>
+              Empty means every page. <code>odd</code>, <code>even</code>, <code>last</code> and
+              open ranges like <code>5-</code> all work.
+            </small>
+          </label>
+        </div>
       )
     }
 
@@ -1336,6 +1408,80 @@ const dropTitle = takesExcel
 
     changeFileBtn.addEventListener('click', () => input.click());
 
+    /* ── Watermark controls ────────────────────────────────────────────── */
+    let watermarkPosition = 'center';
+    let watermarkImage: { bytes: ArrayBuffer; type: string } | null = null;
+
+    if (mode === 'watermark') {
+      const setKind = (kind: string) => {
+        for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-wm-kind]')) {
+          const on = tab.dataset.wmKind === kind;
+          tab.classList.toggle('is-on', on);
+          tab.setAttribute('aria-pressed', String(on));
+        }
+        for (const panel of root.querySelectorAll<HTMLElement>('[data-wm-panel]')) {
+          panel.hidden = panel.dataset.wmPanel !== kind;
+        }
+        root.dataset.wmKind = kind;
+        updateLiveOverlay();
+      };
+      root.dataset.wmKind = 'text';
+      for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-wm-kind]')) {
+        tab.addEventListener('click', () => setKind(tab.dataset.wmKind ?? 'text'));
+      }
+
+      for (const spot of root.querySelectorAll<HTMLButtonElement>('[data-wm-pos]')) {
+        spot.addEventListener('click', () => {
+          watermarkPosition = spot.dataset.wmPos ?? 'center';
+          for (const other of root.querySelectorAll<HTMLButtonElement>('[data-wm-pos]')) {
+            const on = other === spot;
+            other.classList.toggle('is-on', on);
+            other.setAttribute('aria-pressed', String(on));
+          }
+          updateLiveOverlay();
+        });
+      }
+
+      // Tiling makes the nine-way position meaningless, so say so rather than
+      // leaving a control that silently stops doing anything.
+      const tile = root.querySelector<HTMLInputElement>('[data-wm-tile]');
+      const grid = root.querySelector<HTMLElement>('.wm__grid');
+      const syncTile = () => {
+        const tiled = tile?.checked ?? false;
+        grid?.toggleAttribute('data-off', tiled);
+        for (const spot of root.querySelectorAll<HTMLButtonElement>('[data-wm-pos]')) {
+          spot.disabled = tiled;
+        }
+      };
+      tile?.addEventListener('change', syncTile);
+      syncTile();
+
+      const readouts: Record<string, (value: number) => string> = {
+        scale: (value) => `${value}% of the page`,
+        rotation: (value) => `${value}°`,
+        opacity: (value) => `${value}%`,
+      };
+      for (const [name, format] of Object.entries(readouts)) {
+        const slider = root.querySelector<HTMLInputElement>(`[data-wm-${name}]`);
+        const output = root.querySelector<HTMLElement>(`[data-wm-out="${name}"]`);
+        const sync = () => {
+          if (output && slider) output.textContent = format(Number(slider.value));
+        };
+        slider?.addEventListener('input', sync);
+        sync();
+      }
+
+      const picker = root.querySelector<HTMLInputElement>('[data-wm-image]');
+      picker?.addEventListener('change', async () => {
+        const chosen = picker.files?.[0];
+        if (!chosen) {
+          watermarkImage = null;
+          return;
+        }
+        watermarkImage = { bytes: await chosen.arrayBuffer(), type: chosen.type };
+      });
+    }
+
     const sampleBtn = root.querySelector<HTMLButtonElement>('[data-sample]');
     sampleBtn?.addEventListener('click', async () => {
       sampleBtn.disabled = true;
@@ -1973,6 +2119,27 @@ const dropTitle = takesExcel
         };
       } else if (mode === 'grayscale') {
         request.grayscaleOptions = { jpegQuality: num('[data-gs-q]', 0.82) };
+      } else if (mode === 'watermark') {
+        const kind = root.dataset.wmKind === 'image' ? 'image' : 'text';
+        if (kind === 'image' && !watermarkImage) {
+          fail('Choose the image you want stamped across the pages.');
+          runBtn.disabled = false;
+          status.textContent = '';
+          return;
+        }
+        request.watermarkOptions = {
+          kind,
+          text: val('[data-text]'),
+          image: kind === 'image' ? watermarkImage ?? undefined : undefined,
+          opacity: num('[data-wm-opacity]', 22) / 100,
+          rotation: num('[data-wm-rotation]', 35),
+          scale: num('[data-wm-scale]', 60),
+          position: watermarkPosition as import('../lib/pdf/watermark').WatermarkPosition,
+          tile: on('[data-wm-tile]'),
+          pages: val('[data-wm-pages]'),
+          color: val('[data-wm-color]') || '#b81f24',
+          bold: on('[data-wm-bold]'),
+        };
       } else if (mode === 'crop') {
         const top = Math.min(Math.max(num('[data-crop-top]', 0), 0), 45) / 100;
         const side = Math.min(Math.max(num('[data-crop-side]', 0), 0), 45) / 100;
@@ -2658,4 +2825,64 @@ const dropTitle = takesExcel
   .try button:hover:not(:disabled) { color: var(--accent-bright); }
   .try button:disabled { color: var(--muted); cursor: progress; text-decoration: none; }
   .try small { flex-basis: 100%; font-size: var(--step--2); }
+
+  /* ── Watermark ────────────────────────────────────────────────────────── */
+  .wm { display: grid; gap: 1rem; }
+
+  .wm__tabs {
+    display: inline-flex; gap: 0.25rem; padding: 0.2rem;
+    border: 1px solid var(--line); border-radius: 999px; justify-self: start;
+  }
+  .wm__tabs button {
+    padding: 0.35rem 1rem; border: 0; border-radius: 999px;
+    background: transparent; color: var(--muted); font: inherit;
+    font-size: var(--step--1); cursor: pointer;
+  }
+  .wm__tabs button.is-on { background: var(--accent); color: #fff; }
+
+  .wm__inline { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.6rem; }
+
+  .wm__swatch { display: inline-flex; align-items: center; gap: 0.5rem; font-size: var(--step--1); }
+  .wm__swatch input[type='color'] {
+    width: 2.4rem; height: 1.8rem; padding: 0; border: 1px solid var(--line-strong);
+    border-radius: 6px; background: none; cursor: pointer;
+  }
+
+  .wm__check { display: inline-flex; align-items: center; gap: 0.45rem; font-size: var(--step--1); }
+
+  .wm__place { display: grid; gap: 0.7rem; }
+
+  /* Nine cells shaped like the page they describe, so the control looks like
+     the thing it controls. */
+  .wm__grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 3px; width: 8.4rem; aspect-ratio: 1 / 1.414;
+    padding: 3px; border: 1px solid var(--line-strong);
+    border-radius: 6px; background: var(--paper-sunk);
+  }
+  .wm__grid[data-off] { opacity: 0.4; }
+
+  .wm__grid button {
+    display: grid; place-items: center; border: 0; border-radius: 3px;
+    background: var(--paper-raised); color: var(--muted);
+    font: inherit; font-size: var(--step--2); line-height: 1; cursor: pointer;
+  }
+  .wm__grid button:hover:not(:disabled) { color: var(--accent); }
+  .wm__grid button.is-on { background: var(--accent); color: #fff; }
+  .wm__grid button:disabled { cursor: not-allowed; }
+
+  .wm__sliders { display: grid; gap: 0.9rem; }
+  .wm__sliders .field span { display: flex; justify-content: space-between; gap: 1rem; }
+  .wm__sliders b { font-weight: 500; font-family: var(--font-mono); color: var(--muted); font-size: var(--step--2); }
+  .wm__sliders input[type='range'] { width: 100%; accent-color: var(--accent); }
+
+  .wm code {
+    padding: 0.05rem 0.3rem; border-radius: 4px;
+    background: var(--paper-sunk); font-family: var(--font-mono); font-size: 0.9em;
+  }
+
+  @media (min-width: 40em) {
+    .wm__place { grid-template-columns: auto 1fr; align-items: start; column-gap: 1.25rem; }
+    .wm__place legend { grid-column: 1 / -1; }
+  }
 </style>

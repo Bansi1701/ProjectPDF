@@ -435,6 +435,7 @@ export interface WorkerRequest {
   headerFooterOptions?: HeaderFooterOptions;
   splitByOptions?: SplitByOptions;
   grayscaleOptions?: GrayscaleOptions;
+  watermarkOptions?: import('./watermark').WatermarkOptions;
   autoCropOptions?: AutoCropOptions;
   /** Reorder only: zero-based page indexes in their new order. */
   pageOrder?: number[];

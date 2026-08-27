@@ -306,20 +306,6 @@ export async function addText(files: InputFile[], text: string, targetPage: numb
   return { ok: true, files: [{ name: `${baseName(file.name)}-edited.pdf`, bytes }], bytesIn: file.bytes.byteLength, bytesOut: bytes.length, pages: doc.getPageCount(), durationMs: performance.now() - started, summary: `Added text to page ${targetPage}` };
 }
 
-export async function watermark(files: InputFile[], text: string): Promise<OpResult> {
-  const file = files[0];
-  if (!file) return { ok: false, error: 'Choose a PDF to watermark.' };
-  if (!text.trim()) return { ok: false, error: 'Enter watermark text.' };
-  const started = performance.now();
-  const doc = await load(file);
-  doc.getPages().forEach((page) => {
-    const { width, height } = page.getSize();
-    page.drawText(text.trim(), { x: width * 0.14, y: height * 0.42, size: Math.min(width, height) / 10, rotate: degrees(-35), opacity: 0.22, color: rgb(0.72, 0.12, 0.14) });
-  });
-  const bytes = await doc.save({ useObjectStreams: true, addDefaultPage: false });
-  return { ok: true, files: [{ name: `${baseName(file.name)}-watermarked.pdf`, bytes }], bytesIn: file.bytes.byteLength, bytesOut: bytes.length, pages: doc.getPageCount(), durationMs: performance.now() - started, summary: `Watermarked ${doc.getPageCount()} pages` };
-}
-
 export async function pageNumbers(files: InputFile[], start: number, prefix: string): Promise<OpResult> {
   const file = files[0];
   if (!file) return { ok: false, error: 'Choose a PDF to number.' };

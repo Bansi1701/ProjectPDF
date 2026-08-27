@@ -24,7 +24,8 @@ import { pdfToWord } from './pdftoword';
 import { scanToPdf } from './scan';
 import { renderThumbnails } from './preview';
 import { closeSession, openSession, renderThumbs } from './thumbs';
-import { applyEdits, compare, editDocument, pageNumbers, watermark } from './edit';
+import { applyEdits, compare, editDocument, pageNumbers } from './edit';
+import { watermark } from './watermark';
 import { deletePages, extract, merge, reorder, rotate, split } from './organise';
 import { repair, toPdfA } from './archive';
 import { fillForm, probeForm } from './forms';
@@ -120,7 +121,10 @@ async function run(request: WorkerRequest): Promise<OpResult> {
     case 'edit':
       return editDocument(request.files, request.edits ?? []);
     case 'watermark':
-      return watermark(request.files, request.text ?? '');
+      return watermark(request.files, {
+        ...request.watermarkOptions,
+        text: request.watermarkOptions?.text ?? request.text ?? '',
+      });
     case 'page-numbers':
       return pageNumbers(request.files, request.startNumber ?? 1, request.prefix ?? '');
     case 'compare':
