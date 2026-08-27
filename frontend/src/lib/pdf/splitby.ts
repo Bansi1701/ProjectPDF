@@ -2,13 +2,15 @@
  * Splitting by something other than a typed range.
  *
  * The typed-range split in `organise.ts` answers the question "which pages do
- * you want?". This file answers four questions people ask far more often and
+ * you want?". This file answers six questions people ask far more often and
  * cannot answer in page numbers:
  *
  *   - every N pages          — a stack of scanned two-page forms
  *   - into N equal parts     — hand chapters to N reviewers
  *   - at a target file size  — an attachment limit
- *   - at every bookmark      — the one that is worth the trouble
+ *   - at every bookmark      — chapters already named by the author
+ *   - at blank sheets        — separator paper in a scanned batch
+ *   - at page-start words    — repeated document titles or labels
  *
  * None of these is a new way to copy pages. `pageplan.ts` already owns that,
  * and it takes a plan plus CUT INDEXES and emits one file per group. So this
@@ -16,8 +18,8 @@
  * the cuts go, hand them to `compose`, and name the results. Nothing here
  * touches a page.
  *
- * Two of the four are honest arithmetic. The other two are estimates wearing
- * different disguises, and both say so in `notes`:
+ * Two are arithmetic; the others inspect the actual document. The size and
+ * bookmark modes carry caveats that are surfaced in `notes`:
  *
  *   - A size split cannot be exact. A PDF is not a stack of independent
  *     pages: fonts, images and colour spaces are shared objects, so ten pages
@@ -46,10 +48,11 @@ import {
 import type { PDFObject } from '@cantoo/pdf-lib';
 
 import { compose } from './pageplan';
+import { documentOptions, loadPdfjs } from './pdfjs';
 import type { InputFile, OpResult, OpSuccess, PagePlan } from './types';
 
 /** Which question the user is answering. */
-export type SplitByMode = 'every' | 'parts' | 'size' | 'bookmarks';
+export type SplitByMode = 'every' | 'parts' | 'size' | 'bookmarks' | 'blank' | 'text';
 
 export interface SplitByOptions {
   mode: SplitByMode;
@@ -59,6 +62,16 @@ export interface SplitByOptions {
   parts?: number;
   /** `size` only: the size to aim at, in bytes. Approximate by nature — see the notes. */
   targetBytes?: number;
+  /** `size` only: run ProjectPDF's lossless optimizer over every piece. */
+  optimize?: boolean;
+  /** `blank` only: how much non-white ink a separator page may contain. */
+  blankSensitivity?: 'strict' | 'balanced' | 'loose';
+  /** `blank` only: whether separator sheets are kept and on which side. */
+  blankHandling?: 'drop' | 'previous' | 'next';
+  /** `text` only: comma-separated literal words or phrases that start a new file. */
+  keywords?: string;
+  /** `text` only: preserve case while matching. */
+  caseSensitive?: boolean;
 }
 
 const baseName = (name: string): string => name.replace(/\.pdf$/i, '');
@@ -90,6 +103,174 @@ const MIN_TARGET_BYTES = 10 * 1024;
  * measuring stopped.
  */
 const MEASURE_BUDGET = 240;
+
+const BLANK_INK_LIMIT = {
+  strict: 0.0005,
+  balanced: 0.005,
+  loose: 0.02,
+} as const;
+
+/**
+ * Finds separator sheets by looking at the rendered page rather than only at
+ * its text layer. That matters for scanners: a blank sheet is often one large
+ * pale image and therefore has no useful text to inspect. The 220px preview is
+ * deliberately small — enough to distinguish ink from scanner dust without
+ * doing full-resolution rendering merely to choose cut points.
+ */
+async function blankPages(
+  file: InputFile,
+  sensitivity: keyof typeof BLANK_INK_LIMIT
+): Promise<{ pages: number[]; ratios: number[] }> {
+  const api = await loadPdfjs();
+  const source = await api.getDocument({
+    data: new Uint8Array(file.bytes.slice(0)),
+    ...documentOptions(),
+  }).promise;
+  const found: number[] = [];
+  const ratios: number[] = [];
+  const limit = BLANK_INK_LIMIT[sensitivity];
+
+  try {
+    for (let number = 1; number <= source.numPages; number += 1) {
+      const page = await source.getPage(number);
+      const unit = page.getViewport({ scale: 1 });
+      const scale = Math.min(1, 220 / Math.max(unit.width, 1));
+      const viewport = page.getViewport({ scale });
+      const canvas = new OffscreenCanvas(
+        Math.max(1, Math.ceil(viewport.width)),
+        Math.max(1, Math.ceil(viewport.height))
+      );
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('This browser could not inspect the separator pages.');
+
+      context.fillStyle = '#ffffff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      await page.render({
+        canvasContext: context as unknown as CanvasRenderingContext2D,
+        viewport,
+        canvas,
+      }).promise;
+
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let ink = 0;
+      for (let offset = 0; offset < pixels.length; offset += 4) {
+        // A luminance threshold tolerates ordinary off-white paper while still
+        // counting faint pencil and scanner shadows as visible content.
+        const luminance = pixels[offset] * 0.2126 + pixels[offset + 1] * 0.7152 + pixels[offset + 2] * 0.0722;
+        if (pixels[offset + 3] > 8 && luminance < 245) ink += 1;
+      }
+      const ratio = ink / Math.max(1, canvas.width * canvas.height);
+      ratios.push(ratio);
+      if (ratio <= limit) found.push(number - 1);
+      page.cleanup();
+    }
+  } finally {
+    await source.loadingTask.destroy();
+  }
+
+  return { pages: found, ratios };
+}
+
+/** Literal page-start matching: predictable, fast, and safe from regex traps. */
+async function pagesStartingWith(
+  file: InputFile,
+  rawKeywords: string,
+  caseSensitive: boolean
+): Promise<{ pages: number[]; keywords: string[] }> {
+  const keywords = rawKeywords
+    .split(',')
+    .map((word) => word.trim())
+    .filter(Boolean);
+  if (keywords.length === 0) return { pages: [], keywords: [] };
+
+  const normalise = (value: string) => caseSensitive ? value : value.toLocaleLowerCase();
+  const needles = keywords.map(normalise);
+  const api = await loadPdfjs();
+  const source = await api.getDocument({
+    data: new Uint8Array(file.bytes.slice(0)),
+    ...documentOptions(),
+  }).promise;
+  const pages: number[] = [];
+
+  try {
+    for (let number = 1; number <= source.numPages; number += 1) {
+      const page = await source.getPage(number);
+      const content = await page.getTextContent();
+      // The beginning is intentionally bounded. A word in a footer or midway
+      // through a report is not evidence that a new document begins there.
+      const start = normalise(
+        content.items
+          .map((item) => String((item as { str?: string }).str ?? ''))
+          .join(' ')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .slice(0, 900)
+      );
+      if (needles.some((needle) => start.includes(needle))) pages.push(number - 1);
+      page.cleanup();
+    }
+  } finally {
+    await source.loadingTask.destroy();
+  }
+
+  return { pages, keywords };
+}
+
+function groupsAroundBlankPages(
+  pageCount: number,
+  blank: Set<number>,
+  handling: 'drop' | 'previous' | 'next'
+): number[][] {
+  if (handling === 'drop') {
+    const groups: number[][] = [];
+    let current: number[] = [];
+    for (let page = 0; page < pageCount; page += 1) {
+      if (blank.has(page)) {
+        if (current.length > 0) groups.push(current);
+        current = [];
+      } else {
+        current.push(page);
+      }
+    }
+    if (current.length > 0) groups.push(current);
+    return groups;
+  }
+
+  const groups: number[][] = [];
+  let current: number[] = [];
+  let hasContent = false;
+  const contentAfter = Array(pageCount).fill(false) as boolean[];
+  let seenContent = false;
+  for (let page = pageCount - 1; page >= 0; page -= 1) {
+    contentAfter[page] = seenContent;
+    if (!blank.has(page)) seenContent = true;
+  }
+
+  for (let page = 0; page < pageCount; page += 1) {
+    if (handling === 'next' && blank.has(page) && hasContent && contentAfter[page]) {
+      groups.push(current);
+      current = [];
+      hasContent = false;
+    }
+
+    current.push(page);
+    if (!blank.has(page)) hasContent = true;
+
+    if (
+      handling === 'previous' &&
+      blank.has(page) &&
+      hasContent &&
+      page + 1 < pageCount &&
+      !blank.has(page + 1)
+    ) {
+      groups.push(current);
+      current = [];
+      hasContent = false;
+    }
+  }
+  if (current.length > 0) groups.push(current);
+  return groups.filter((group) => group.length > 0);
+}
 
 // ─── file names ────────────────────────────────────────────────────────────
 
@@ -456,12 +637,14 @@ async function planBySize(
 // ─── the tool ──────────────────────────────────────────────────────────────
 
 /**
- * Splits one PDF by page count, part count, target size or bookmark.
+ * Splits one PDF by page count, part count, target size, bookmark, blank
+ * separator page, or literal words near the start of a page.
  *
  * Returns whatever `compose` returns, with the file names, the summary and the
  * notes replaced by ones that describe *this* split rather than a generic one.
  */
 export async function splitBy(files: InputFile[], options: SplitByOptions): Promise<OpResult> {
+  const started = performance.now();
   const file = files[0];
   if (!file) return { ok: false, error: 'Choose a PDF to split.' };
 
@@ -488,6 +671,7 @@ export async function splitBy(files: InputFile[], options: SplitByOptions): Prom
 
   const stem = baseName(file.name);
   let cuts: number[] = [];
+  let planOverride: PagePlan[] | null = null;
   let names: string[] | null = null;
   let summary = '';
   const notes: string[] = [];
@@ -580,6 +764,69 @@ export async function splitBy(files: InputFile[], options: SplitByOptions): Prom
         `Cuts up to page ${planned.estimatedFrom} were measured. From there on they were estimated from the average measured so far, because measuring every remaining candidate would have taken longer than the split — those later files may miss the target by more.`
       );
     }
+  } else if (options.mode === 'blank') {
+    const sensitivity = options.blankSensitivity ?? 'balanced';
+    const handling = options.blankHandling ?? 'drop';
+    const detected = await blankPages(file, sensitivity);
+    if (detected.pages.length === 0) {
+      return {
+        ok: false,
+        error: `No blank separator pages were found with ${sensitivity} sensitivity. Try a looser setting or split by ranges instead.`,
+      };
+    }
+
+    const groups = groupsAroundBlankPages(pageCount, new Set(detected.pages), handling);
+    if (groups.length < 2) {
+      return {
+        ok: false,
+        error:
+          handling === 'drop'
+            ? 'Blank pages were found, but removing them leaves fewer than two document sections.'
+            : 'Blank pages were found, but they do not separate two non-blank sections.',
+      };
+    }
+
+    const plannedPages = groups.flat();
+    planOverride = plannedPages.map((page) => ({ file: 0, page: page + 1, rotate: 0 }));
+    let at = 0;
+    for (const group of groups.slice(0, -1)) {
+      at += group.length;
+      cuts.push(at);
+    }
+    summary = `Split at ${plural(detected.pages.length, 'blank separator page')} into ${groups.length} files`;
+    notes.push(
+      `${plural(detected.pages.length, 'page')} matched the ${sensitivity} blank-page threshold after a low-resolution local render.`
+    );
+    notes.push(
+      handling === 'drop'
+        ? 'Separator pages were intentionally left out of the outputs.'
+        : handling === 'previous'
+          ? 'Each separator page stayed at the end of the section before it.'
+          : 'Each separator page stayed at the start of the section after it.'
+    );
+  } else if (options.mode === 'text') {
+    const detected = await pagesStartingWith(
+      file,
+      options.keywords ?? '',
+      options.caseSensitive ?? false
+    );
+    if (detected.keywords.length === 0) {
+      return { ok: false, error: 'Enter at least one page-start word or phrase.' };
+    }
+    cuts = [...new Set(detected.pages.filter((page) => page > 0))].sort((a, b) => a - b);
+    if (cuts.length === 0) {
+      return {
+        ok: false,
+        error: `The page-start words were not found after page 1. Try a shorter phrase or turn off exact uppercase/lowercase matching.`,
+      };
+    }
+    summary = `Split where page-start words matched into ${cuts.length + 1} files`;
+    notes.push(
+      `${plural(cuts.length, 'new section')} began on a page whose first 900 text characters contained ${detected.keywords.map((word) => `“${word}”`).join(', ')}.`
+    );
+    notes.push(
+      'This is literal text-layer matching, not an AI guess. Image-only scans need OCR first; words in the middle or footer of a page are deliberately ignored.'
+    );
   } else {
     const reading = readOutline(source);
 
@@ -665,7 +912,7 @@ export async function splitBy(files: InputFile[], options: SplitByOptions): Prom
     );
   }
 
-  const plan: PagePlan[] = Array.from({ length: pageCount }, (_, index) => ({
+  const plan: PagePlan[] = planOverride ?? Array.from({ length: pageCount }, (_, index) => ({
     file: 0,
     page: index + 1,
     rotate: 0,
@@ -678,6 +925,29 @@ export async function splitBy(files: InputFile[], options: SplitByOptions): Prom
   if (!result.ok || !('files' in result)) return result;
 
   const produced: OpSuccess = result;
+
+  if (options.optimize) {
+    const { compress } = await import('./compress');
+    let changed = 0;
+    for (const output of produced.files) {
+      const inputBytes = output.bytes.slice();
+      const optimized = await compress(
+        [{ name: output.name, bytes: inputBytes.buffer as ArrayBuffer }],
+        'lossless'
+      );
+      if (!optimized.ok || !('files' in optimized) || optimized.files.length === 0) continue;
+      const candidate = optimized.files[0].bytes;
+      if (candidate.length >= output.bytes.length) continue;
+      output.bytes = candidate;
+      changed += 1;
+    }
+    produced.bytesOut = produced.files.reduce((total, output) => total + output.bytes.length, 0);
+    notes.push(
+      changed > 0
+        ? `Lossless optimization made ${plural(changed, 'output file')} smaller without re-encoding visible page content.`
+        : 'Every output was already as small as the lossless optimizer could make it.'
+    );
+  }
 
   if (names) {
     produced.files.forEach((output, index) => {
@@ -711,6 +981,7 @@ export async function splitBy(files: InputFile[], options: SplitByOptions): Prom
 
   return {
     ...produced,
+    durationMs: performance.now() - started,
     summary: `${summary} · ${plural(pageCount, 'page')}`,
     notes: [
       ...notes,

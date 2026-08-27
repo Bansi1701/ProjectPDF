@@ -33,7 +33,7 @@ export const CATEGORIES: ToolCategory[] = ['Organize', 'Convert', 'Edit', 'Secur
 export const TOOLS: Tool[] = [
   // --- Organize ---
   { slug: 'merge-pdf', name: 'Merge', searchName: 'Merge PDF', category: 'Organize', runsWhere: 'local', status: 'live', blurb: 'Combine files and reorder pages before you export.' },
-  { slug: 'split-pdf', name: 'Split', searchName: 'Split PDF', category: 'Organize', runsWhere: 'local', status: 'live', blurb: 'Cut one document into many, at the pages you choose.' },
+  { slug: 'split-pdf', name: 'Split', searchName: 'Split PDF', category: 'Organize', runsWhere: 'local', status: 'live', blurb: 'Ranges, selected pages, size limits and smart separators.' },
   { slug: 'rotate-pdf', name: 'Rotate', searchName: 'Rotate PDF', category: 'Organize', runsWhere: 'local', status: 'live', blurb: 'Fix sideways scans. Lossless — only the page dictionary changes.' },
   { slug: 'organise-pdf', name: 'Reorder', searchName: 'Organize PDF pages', category: 'Organize', runsWhere: 'local', status: 'live', blurb: 'Drag pages into the order you actually wanted.' },
   { slug: 'extract-pages', name: 'Extract pages', searchName: 'Extract PDF pages', category: 'Organize', runsWhere: 'local', status: 'live', blurb: 'Pull a range out into its own file.' },

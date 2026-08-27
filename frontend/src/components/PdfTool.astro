@@ -6,6 +6,7 @@ import CropStage from './CropStage.astro';
 import LivePdfEditor from './LivePdfEditor.astro';
 import Breadcrumbs from './Breadcrumbs.astro';
 import ToolFooter from './ToolFooter.astro';
+import SplitStudio from './SplitStudio.astro';
 import { getCollection } from 'astro:content';
 import type { Operation } from '../lib/pdf/types';
 import { TOOLS } from '../config/site';
@@ -362,21 +363,7 @@ const dropTitle = takesExcel
 
     {supportsLiveEditor && <LivePdfEditor profile={editorProfile} />}
 
-    {
-      mode === 'split' && (
-        <label class="field">
-          <span>Page groups</span>
-          <input data-ranges value="1" placeholder="1-3, 4-6, 9" />
-          <small>Each comma-separated group becomes its own PDF.</small>
-          <span class="split-preset">
-            <button type="button" class="btn btn--quiet" data-split-every>
-              Split every page into its own PDF
-            </button>
-            <small>Creates one output file per page without clicking every cut marker.</small>
-          </span>
-        </label>
-      )
-    }
+    {mode === 'split' && <SplitStudio />}
 
     {
       mode === 'rotate' && (
@@ -1212,6 +1199,7 @@ const dropTitle = takesExcel
 <script>
   import type { WorkerRequest, WorkerResponse } from '../lib/pdf/types';
   import type { EditMark } from '../lib/pdf/types';
+  import { parsePageSet } from '../lib/pdf/pageset';
 
   const root = document.querySelector<HTMLElement>('[data-pdf-tool]');
 
@@ -2801,6 +2789,7 @@ const dropTitle = takesExcel
           .map((entry) => entry.page)
           .join(', ');
       }
+      refreshSplitStudio();
     }
 
     if (grid) {
@@ -2813,21 +2802,111 @@ const dropTitle = takesExcel
       });
     }
 
-    const splitEveryBtn = q<HTMLButtonElement>('[data-split-every]');
-    splitEveryBtn?.addEventListener('click', () => {
-      if (!grid || grid.hidden || grid.totalPages < 2 || !rangesInput) {
-        fail('Choose a PDF with at least two pages first.');
-        return;
-      }
+    type SplitTab = 'ranges' | 'pages' | 'size' | 'smart';
+    const splitStudio = root.querySelector<HTMLElement>('[data-split-studio]');
+    let splitTab: SplitTab = 'ranges';
 
-      // The typed groups and scissors edit the same page plan. Feeding one
-      // single-page group per source page gives the grid real cut points, so
-      // the normal compose/export path still owns validation and output.
-      const groups = Array.from({ length: grid.totalPages }, (_, index) => String(index + 1)).join(', ');
-      rangesInput.value = groups;
-      grid.applyRanges(groups);
-      status.textContent = `${grid.totalPages} output files ready`;
-    });
+    const splitRadio = (name: string, fallback: string) =>
+      root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value ?? fallback;
+
+    function splitPages(): number[] {
+      const count = grid?.totalPages ?? 0;
+      const pagesMode = splitRadio('split-pages-mode', 'all');
+      if (pagesMode === 'all') return Array.from({ length: count }, (_, index) => index + 1);
+      return parsePageSet(root.querySelector<HTMLInputElement>('[data-split-pages]')?.value, count).pages;
+    }
+
+    function refreshSplitStudio() {
+      if (!splitStudio) return;
+      const count = grid?.totalPages ?? 0;
+      const summary = root.querySelector<HTMLElement>('[data-split-plan-summary]');
+      const combineRanges = root.querySelector<HTMLInputElement>('[data-split-combine-ranges]')?.checked ?? false;
+      const combinePages = root.querySelector<HTMLInputElement>('[data-split-combine-pages]')?.checked ?? false;
+      const rangeMode = splitRadio('split-range-mode', 'custom');
+
+      root.querySelectorAll<HTMLElement>('[data-split-panel]').forEach((panel) => {
+        panel.hidden = panel.dataset.splitPanel !== splitTab;
+      });
+      root.querySelectorAll<HTMLButtonElement>('[data-split-tab]').forEach((button) => {
+        button.setAttribute('aria-selected', String(button.dataset.splitTab === splitTab));
+      });
+      root.querySelectorAll<HTMLElement>('[data-split-range-options]').forEach((panel) => {
+        panel.hidden = panel.dataset.splitRangeOptions !== rangeMode;
+      });
+
+      const pagesMode = splitRadio('split-pages-mode', 'all');
+      const selectedOptions = root.querySelector<HTMLElement>('[data-split-selected-options]');
+      if (selectedOptions) selectedOptions.hidden = pagesMode !== 'selected';
+
+      const smartMode = root.querySelector<HTMLSelectElement>('[data-split-smart-mode]')?.value ?? 'bookmarks';
+      root.querySelectorAll<HTMLElement>('[data-split-smart-options]').forEach((panel) => {
+        panel.hidden = panel.dataset.splitSmartOptions !== smartMode;
+      });
+
+      if (!summary) return;
+      if (splitTab === 'ranges') {
+        if (rangeMode === 'custom') {
+          const groups = (rangesInput?.value ?? '').split(',').filter((group) => group.trim()).length;
+          summary.textContent = combineRanges
+            ? `${groups || 'The selected'} page group${groups === 1 ? '' : 's'} will be combined into one PDF.`
+            : `${groups || 'Each'} page group${groups === 1 ? '' : 's'} will become a separate PDF.`;
+          runBtn.textContent = combineRanges ? 'Create combined PDF' : 'Split PDF';
+        } else if (rangeMode === 'fixed') {
+          const every = Math.max(1, Number(root.querySelector<HTMLInputElement>('[data-split-fixed]')?.value ?? 1));
+          const outputs = count > 0 ? Math.ceil(count / every) : 0;
+          const message = count > 0
+            ? `${outputs} PDF${outputs === 1 ? '' : 's'} will be created, with up to ${every} page${every === 1 ? '' : 's'} each.`
+            : `A new PDF will start every ${every} page${every === 1 ? '' : 's'}.`;
+          summary.textContent = message;
+          const fixedSummary = root.querySelector<HTMLElement>('[data-split-fixed-summary]');
+          if (fixedSummary) fixedSummary.textContent = message;
+          runBtn.textContent = 'Split into fixed ranges';
+        } else {
+          const parts = Math.max(2, Number(root.querySelector<HTMLInputElement>('[data-split-parts]')?.value ?? 2));
+          const message = count > 0
+            ? `${count} pages will be balanced across ${parts} output files.`
+            : `${parts} output files will be created with the most even page counts possible.`;
+          summary.textContent = message;
+          const partsSummary = root.querySelector<HTMLElement>('[data-split-parts-summary]');
+          if (partsSummary) partsSummary.textContent = message;
+          runBtn.textContent = 'Create equal parts';
+        }
+      } else if (splitTab === 'pages') {
+        const selected = splitPages();
+        summary.textContent = combinePages
+          ? `${selected.length || 'Selected'} page${selected.length === 1 ? '' : 's'} will be merged into one PDF.`
+          : `${selected.length || 'Selected'} page${selected.length === 1 ? '' : 's'} will become separate PDF files.`;
+        runBtn.textContent = combinePages ? 'Create extracted PDF' : 'Extract separate pages';
+      } else if (splitTab === 'size') {
+        const sizeInput = root.querySelector<HTMLInputElement>('[data-split-size]');
+        const unitValue = root.querySelector<HTMLSelectElement>('[data-split-size-unit]')?.value || 'kb';
+        if (sizeInput) sizeInput.min = unitValue === 'mb' ? '0.01' : '10';
+        const amount = sizeInput?.value || '500';
+        const unit = unitValue.toUpperCase();
+        summary.textContent = `Candidate files will be measured against a ${amount} ${unit} target.`;
+        runBtn.textContent = 'Split by file size';
+      } else {
+        const labels: Record<string, string> = {
+          bookmarks: 'Top-level bookmarks will start new files and supply their names.',
+          blank: 'Blank separator pages will be detected from rendered page pixels.',
+          text: 'A new file will begin where the chosen page-start words are found.',
+        };
+        summary.textContent = labels[smartMode] ?? labels.bookmarks;
+        runBtn.textContent = 'Detect and split';
+      }
+    }
+
+    if (splitStudio) {
+      root.querySelectorAll<HTMLButtonElement>('[data-split-tab]').forEach((button) => {
+        button.addEventListener('click', () => {
+          splitTab = (button.dataset.splitTab as SplitTab) || 'ranges';
+          refreshSplitStudio();
+        });
+      });
+      splitStudio.addEventListener('input', refreshSplitStudio);
+      splitStudio.addEventListener('change', refreshSplitStudio);
+      refreshSplitStudio();
+    }
 
     runBtn.addEventListener('click', async () => {
       if (!files.length) return;
@@ -2901,8 +2980,74 @@ const dropTitle = takesExcel
         return Number.isFinite(raw) ? raw : fallback;
       };
       const sel = (s2: string) => root.querySelector<HTMLSelectElement>(s2)?.value ?? '';
+      let useGridPlan = mode !== 'split';
+      let gridCutsOverride: number[] | null = null;
+      let allowNoGridCuts = false;
 
-      if (mode === 'auto-crop') {
+      if (mode === 'split') {
+        if (splitTab === 'ranges') {
+          const rangeMode = splitRadio('split-range-mode', 'custom');
+          if (rangeMode === 'custom') {
+            useGridPlan = true;
+            // A single custom range is a useful extraction even though it has
+            // no cut marker. This matches the range workflow people expect:
+            // 4-8 should produce one five-page PDF, not an error.
+            allowNoGridCuts = true;
+            const typed = val('[data-ranges]').trim();
+            if (!typed) {
+              runBtn.disabled = false;
+              status.textContent = '';
+              fail('Enter at least one page group, such as 1-3, 4-6.');
+              return;
+            }
+            if (on('[data-split-combine-ranges]')) {
+              gridCutsOverride = [];
+            }
+          } else {
+            request.op = 'split-by';
+            request.splitByOptions = rangeMode === 'fixed'
+              ? { mode: 'every', every: num('[data-split-fixed]', 1) }
+              : { mode: 'parts', parts: num('[data-split-parts]', 2) };
+          }
+        } else if (splitTab === 'pages') {
+          const selected = splitPages();
+          if (selected.length === 0) {
+            runBtn.disabled = false;
+            status.textContent = '';
+            fail('Choose at least one page to extract.');
+            return;
+          }
+          const groups = selected.join(', ');
+          grid?.applyRanges(groups);
+          request.ranges = groups;
+          request.op = on('[data-split-combine-pages]') ? 'extract' : 'split';
+        } else if (splitTab === 'size') {
+          const amount = num('[data-split-size]', 500);
+          const multiplier = sel('[data-split-size-unit]') === 'mb' ? 1024 * 1024 : 1024;
+          request.op = 'split-by';
+          request.splitByOptions = {
+            mode: 'size',
+            targetBytes: Math.round(amount * multiplier),
+            optimize: on('[data-split-optimize]'),
+          };
+        } else {
+          const smartMode = sel('[data-split-smart-mode]') as 'bookmarks' | 'blank' | 'text';
+          request.op = 'split-by';
+          request.splitByOptions = smartMode === 'blank'
+            ? {
+                mode: 'blank',
+                blankSensitivity: sel('[data-split-blank-sensitivity]') as 'strict' | 'balanced' | 'loose',
+                blankHandling: sel('[data-split-blank-handling]') as 'drop' | 'previous' | 'next',
+              }
+            : smartMode === 'text'
+              ? {
+                  mode: 'text',
+                  keywords: val('[data-split-keywords]'),
+                  caseSensitive: on('[data-split-case-sensitive]'),
+                }
+              : { mode: 'bookmarks' };
+        }
+      } else if (mode === 'auto-crop') {
         request.autoCropOptions = {
           mode: sel('[data-ac-mode]') === 'per-page' ? 'per-page' : 'uniform',
           padding: num('[data-ac-pad]', 6),
@@ -3089,9 +3234,9 @@ const dropTitle = takesExcel
 
       // A grid tool always exports what the grid holds. The typed box feeds
       // the same plan, so there is one path here rather than two that drift.
-      if (grid && !grid.hidden) {
+      if (grid && !grid.hidden && useGridPlan) {
         const plan = grid.getPlan();
-        const cuts = grid.getCuts();
+        const cuts = gridCutsOverride ?? grid.getCuts();
         if (plan.length === 0) {
           runBtn.disabled = false;
           status.textContent = '';
@@ -3108,7 +3253,7 @@ const dropTitle = takesExcel
           fail('Choose at least one page to delete. Your original remains untouched.');
           return;
         }
-        if (mode === 'split' && cuts.length === 0) {
+        if (mode === 'split' && cuts.length === 0 && !allowNoGridCuts) {
           runBtn.disabled = false;
           status.textContent = '';
           fail('Add at least one cut between pages so the result contains two or more files.');
@@ -3331,17 +3476,6 @@ const dropTitle = takesExcel
     font-family: var(--font-mono); font-size: var(--step--1);
   }
   .field small { color: var(--muted); font-size: var(--step--2); }
-
-  .split-preset {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.55rem 0.75rem;
-    margin-top: 0.35rem;
-  }
-
-  .split-preset .btn { min-height: 2.75rem; }
-  .split-preset small { flex: 1 1 15rem; }
 
   .field select {
     padding: 0.6rem 0.75rem; border: 1px solid var(--line-strong);

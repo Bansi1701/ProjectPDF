@@ -4,9 +4,13 @@ import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
 ---
 
-<BaseLayout title="Split PDF — ProjectPDF" description="Cut one document into several, at the pages you choose.">
+<BaseLayout title="Split PDF — ProjectPDF" description="Split by ranges, selected pages, file size, bookmarks, blank sheets or page-start words.">
   <Masthead />
   <main id="main">
-    <PdfTool mode="split" title="Split PDF" description="Cut one document into several, at the pages you choose." />
+    <PdfTool
+      mode="split"
+      title="Split PDF"
+      description="Ranges, pages, size limits and smart separators — all processed in your browser."
+    />
   </main>
 </BaseLayout>

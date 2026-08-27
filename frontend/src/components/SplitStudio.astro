@@ -1,0 +1,268 @@
+<section class="split-studio" data-split-studio aria-labelledby="split-studio-title">
+  <header class="split-studio__head">
+    <div>
+      <p class="split-studio__eyebrow">Split workspace</p>
+      <h2 id="split-studio-title">Choose how this document should be separated</h2>
+    </div>
+    <span class="split-studio__privacy">Runs locally</span>
+  </header>
+
+  <div class="split-tabs" role="tablist" aria-label="Split method">
+    <button type="button" role="tab" aria-selected="true" data-split-tab="ranges">
+      <span aria-hidden="true">↔</span>
+      <strong>Ranges</strong>
+      <small>Groups or equal parts</small>
+    </button>
+    <button type="button" role="tab" aria-selected="false" data-split-tab="pages">
+      <span aria-hidden="true">▤</span>
+      <strong>Pages</strong>
+      <small>All or selected pages</small>
+    </button>
+    <button type="button" role="tab" aria-selected="false" data-split-tab="size">
+      <span aria-hidden="true">◇</span>
+      <strong>File size</strong>
+      <small>Stay under a limit</small>
+    </button>
+    <button type="button" role="tab" aria-selected="false" data-split-tab="smart">
+      <span aria-hidden="true">✦</span>
+      <strong>Smart</strong>
+      <small>Structure or separators</small>
+    </button>
+  </div>
+
+  <section class="split-panel" role="tabpanel" data-split-panel="ranges">
+    <fieldset class="split-methods">
+      <legend>Range mode</legend>
+      <label>
+        <input type="radio" name="split-range-mode" value="custom" checked />
+        <span><strong>Custom groups</strong><small>Choose exact pages for each output.</small></span>
+      </label>
+      <label>
+        <input type="radio" name="split-range-mode" value="fixed" />
+        <span><strong>Fixed length</strong><small>Create a new file every N pages.</small></span>
+      </label>
+      <label>
+        <input type="radio" name="split-range-mode" value="parts" />
+        <span><strong>Equal parts</strong><small>Balance the pages across N files.</small></span>
+      </label>
+    </fieldset>
+
+    <div class="split-options" data-split-range-options="custom">
+      <label class="field">
+        <span>Page groups</span>
+        <input data-ranges value="1" placeholder="1-3, 4-6, 9" />
+        <small>Separate groups with commas. Reversed ranges such as 8-5 are supported.</small>
+      </label>
+      <label class="split-check">
+        <input type="checkbox" data-split-combine-ranges />
+        <span><strong>Combine all groups into one PDF</strong><small>Keep the group order, but create one output file.</small></span>
+      </label>
+    </div>
+
+    <div class="split-options" data-split-range-options="fixed" hidden>
+      <label class="field">
+        <span>Pages per file</span>
+        <input data-split-fixed type="number" min="1" value="1" />
+        <small data-split-fixed-summary>One PDF will be created for every page.</small>
+      </label>
+    </div>
+
+    <div class="split-options" data-split-range-options="parts" hidden>
+      <label class="field">
+        <span>Number of files</span>
+        <input data-split-parts type="number" min="2" value="2" />
+        <small data-split-parts-summary>Pages are distributed as evenly as possible.</small>
+      </label>
+    </div>
+  </section>
+
+  <section class="split-panel" role="tabpanel" data-split-panel="pages" hidden>
+    <fieldset class="split-methods split-methods--two">
+      <legend>Extract mode</legend>
+      <label>
+        <input type="radio" name="split-pages-mode" value="all" checked />
+        <span><strong>Every page</strong><small>One separate PDF per page.</small></span>
+      </label>
+      <label>
+        <input type="radio" name="split-pages-mode" value="selected" />
+        <span><strong>Selected pages</strong><small>Extract only the pages you name.</small></span>
+      </label>
+    </fieldset>
+    <div class="split-options" data-split-selected-options hidden>
+      <label class="field">
+        <span>Pages to extract</span>
+        <input data-split-pages placeholder="1, 3, 6-9, last" />
+        <small>Use page numbers, ranges, odd, even, first or last.</small>
+      </label>
+    </div>
+    <label class="split-check">
+      <input type="checkbox" data-split-combine-pages />
+      <span><strong>Merge extracted pages into one PDF</strong><small>Otherwise every selected page becomes its own file.</small></span>
+    </label>
+  </section>
+
+  <section class="split-panel" role="tabpanel" data-split-panel="size" hidden>
+    <div class="split-size">
+      <label class="field">
+        <span>Maximum size per file</span>
+        <span class="split-size__row">
+        <input data-split-size type="number" min="10" step="0.01" value="500" />
+          <select data-split-size-unit aria-label="Size unit">
+            <option value="kb" selected>KB</option>
+            <option value="mb">MB</option>
+          </select>
+        </span>
+        <small>The engine builds and measures candidate files instead of estimating from page count.</small>
+      </label>
+      <label class="split-check">
+        <input type="checkbox" data-split-optimize />
+        <span><strong>Losslessly optimize each piece</strong><small>Can remove unused data; visible page content is not recompressed.</small></span>
+      </label>
+    </div>
+  </section>
+
+  <section class="split-panel" role="tabpanel" data-split-panel="smart" hidden>
+    <label class="field">
+      <span>Detect new documents from</span>
+      <select data-split-smart-mode>
+        <option value="bookmarks" selected>Top-level bookmarks or chapters</option>
+        <option value="blank">Blank separator pages</option>
+        <option value="text">Words near the start of a page</option>
+      </select>
+    </label>
+
+    <div class="split-options" data-split-smart-options="bookmarks">
+      <p class="split-note">
+        Each top-level bookmark starts a new PDF. Files are named from bookmark titles and kept in reading order.
+      </p>
+    </div>
+
+    <div class="split-options" data-split-smart-options="blank" hidden>
+      <div class="split-pair">
+        <label class="field">
+          <span>Blank-page sensitivity</span>
+          <select data-split-blank-sensitivity>
+            <option value="strict">Strict — almost perfectly white</option>
+            <option value="balanced" selected>Balanced — allows scanner dust</option>
+            <option value="loose">Loose — allows faint marks</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Separator pages</span>
+          <select data-split-blank-handling>
+            <option value="drop" selected>Remove from the outputs</option>
+            <option value="previous">Keep at the end of the previous file</option>
+            <option value="next">Keep at the start of the next file</option>
+          </select>
+        </label>
+      </div>
+      <p class="split-note">Pages are rendered at low resolution and measured locally, so scanned blank sheets can be found too.</p>
+    </div>
+
+    <div class="split-options" data-split-smart-options="text" hidden>
+      <label class="field">
+        <span>Page-start words</span>
+        <input data-split-keywords placeholder="Invoice, Chapter, Agreement" />
+        <small>Comma-separated words or phrases. A matching page starts a new output file.</small>
+      </label>
+      <label class="split-check">
+        <input type="checkbox" data-split-case-sensitive />
+        <span><strong>Match uppercase and lowercase exactly</strong><small>Off is usually safer for scanned or converted documents.</small></span>
+      </label>
+    </div>
+  </section>
+
+  <p class="split-studio__summary" data-split-plan-summary aria-live="polite">
+    Custom page groups will create separate PDF files.
+  </p>
+</section>
+
+<style>
+  .split-studio {
+    display: grid;
+    gap: 1rem;
+    margin: 0 0 1.25rem;
+    padding: clamp(1rem, 2vw, 1.35rem);
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 1.15);
+    background:
+      radial-gradient(circle at 95% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 28%),
+      var(--paper-raised);
+    box-shadow: var(--shadow-paper);
+  }
+
+  .split-studio__head,
+  .split-size__row,
+  .split-check,
+  .split-tabs button {
+    display: flex;
+    align-items: center;
+  }
+
+  .split-studio__head { justify-content: space-between; gap: 1rem; }
+  .split-studio__head h2 { margin: 0.12rem 0 0; font-size: var(--step-1); line-height: 1.2; }
+  .split-studio__eyebrow { margin: 0; color: var(--accent); font: 700 var(--step--2)/1 var(--sans); letter-spacing: 0.12em; text-transform: uppercase; }
+  .split-studio__privacy { padding: 0.42rem 0.7rem; border-radius: 999px; background: color-mix(in srgb, var(--ok) 13%, transparent); color: var(--ok); font-size: var(--step--2); font-weight: 700; white-space: nowrap; }
+
+  .split-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.55rem; }
+  .split-tabs button {
+    min-width: 0;
+    gap: 0.55rem;
+    padding: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 0.72);
+    background: var(--paper);
+    color: var(--muted);
+    text-align: left;
+    cursor: pointer;
+  }
+  .split-tabs button > span { display: grid; flex: 0 0 2rem; width: 2rem; aspect-ratio: 1; place-items: center; border-radius: 0.65rem; background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); font-weight: 800; }
+  .split-tabs button strong,
+  .split-tabs button small { display: block; }
+  .split-tabs button strong { color: var(--ink); font-size: var(--step--1); }
+  .split-tabs button small { margin-top: 0.1rem; font-size: 0.68rem; line-height: 1.25; }
+  .split-tabs button[aria-selected='true'] { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 7%, var(--paper)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent); }
+
+  .split-panel { display: grid; gap: 0.9rem; padding-top: 0.15rem; }
+  .split-methods { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.55rem; padding: 0; border: 0; }
+  .split-methods--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .split-methods legend { margin-bottom: 0.45rem; color: var(--muted); font-size: var(--step--2); font-weight: 700; }
+  .split-methods label,
+  .split-check { gap: 0.6rem; padding: 0.72rem; border: 1px solid var(--line); border-radius: calc(var(--radius) * 0.68); background: var(--paper); cursor: pointer; }
+  .split-methods label:has(input:checked) { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 5%, var(--paper)); }
+  .split-methods input,
+  .split-check input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); flex: 0 0 auto; }
+  .split-methods strong,
+  .split-methods small,
+  .split-check strong,
+  .split-check small { display: block; }
+  .split-methods small,
+  .split-check small { margin-top: 0.12rem; color: var(--muted); font-size: 0.72rem; line-height: 1.35; }
+
+  .split-options,
+  .split-size { display: grid; gap: 0.75rem; }
+  .split-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+  .split-size__row { gap: 0.5rem; }
+  .split-size__row input { flex: 1; }
+  .split-size__row select { flex: 0 0 5.5rem; }
+  .split-note,
+  .split-studio__summary { margin: 0; color: var(--muted); font-size: var(--step--1); line-height: 1.5; }
+  .split-note { padding: 0.75rem; border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  .split-studio__summary { padding-top: 0.85rem; border-top: 1px solid var(--line); color: var(--ink); font-weight: 650; }
+
+  @media (max-width: 50rem) {
+    .split-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 36rem) {
+    .split-studio { padding: 0.8rem; }
+    .split-studio__head { align-items: flex-start; }
+    .split-studio__privacy { display: none; }
+    .split-tabs button { min-height: 3.9rem; padding: 0.62rem; }
+    .split-tabs button small { display: none; }
+    .split-methods,
+    .split-methods--two,
+    .split-pair { grid-template-columns: 1fr; }
+    .split-check { align-items: flex-start; }
+  }
+</style>
