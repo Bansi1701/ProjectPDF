@@ -2,6 +2,8 @@
 import '../styles/global.css';
 
 import Seo from '../components/Seo.astro';
+import ProofCounter from '../components/ProofCounter.astro';
+import SpeedNote from '../components/SpeedNote.astro';
 import { TOOLS } from '../config/site';
 
 interface Props {
@@ -52,6 +54,8 @@ const noindex = TOOLS.some((tool) => tool.slug === pageSlug && tool.status !== '
   <body>
     <a class="skip" href="#main">Skip to content</a>
     <slot />
+    <ProofCounter />
+    <SpeedNote />
   </body>
 </html>
 

@@ -1,0 +1,72 @@
+<template data-speed-note-template>
+  <aside class="speed-note" hidden>
+    <span class="speed-note__mark" aria-hidden="true">↯</span>
+    <div><strong data-speed-here></strong><p data-speed-upload></p></div>
+  </aside>
+</template>
+
+<script>
+  interface NetworkInformationLike { downlink?: number; effectiveType?: string; }
+  interface NavigatorWithConnection extends Navigator { connection?: NetworkInformationLike; }
+
+  const speedTemplate = document.querySelector<HTMLTemplateElement>('[data-speed-note-template]');
+
+  function bytesFrom(text: string): number | null {
+    const match = text.match(/([\d.]+)\s*(B|KB|MB|GB)/i);
+    if (!match) return null;
+    const value = Number(match[1]);
+    const power = { B: 0, KB: 1, MB: 2, GB: 3 }[match[2].toUpperCase() as 'B' | 'KB' | 'MB' | 'GB'];
+    return Number.isFinite(value) ? value * (1024 ** power) : null;
+  }
+
+  function secondsLabel(seconds: number) {
+    if (seconds < 1) return `${Math.max(0.1, seconds).toFixed(1)}s`;
+    if (seconds < 10) return `${seconds.toFixed(1)}s`;
+    return `${Math.round(seconds)}s`;
+  }
+
+  function mountSpeed(result: HTMLElement) {
+    if (!speedTemplate || result.querySelector('.speed-note')) return;
+    result.append(speedTemplate.content.cloneNode(true));
+  }
+
+  function paintSpeed(result: HTMLElement) {
+    mountSpeed(result);
+    const note = result.querySelector<HTMLElement>('.speed-note');
+    const here = result.querySelector<HTMLElement>('[data-speed-here]');
+    const upload = result.querySelector<HTMLElement>('[data-speed-upload]');
+    const size = bytesFrom(result.querySelector<HTMLElement>('[data-sizes], .result__sizes')?.textContent ?? '');
+    const durationMatch = (result.querySelector<HTMLElement>('[data-receipt], .result__receipt')?.textContent ?? '').match(/([\d.]+)ms/);
+    if (!note || !here || !upload || !size || !durationMatch) return;
+
+    const duration = Number(durationMatch[1]) / 1000;
+    const connection = (navigator as NavigatorWithConnection).connection;
+    const signature = `${size}:${duration}:${connection?.downlink ?? 'unknown'}`;
+    if (note.dataset.speedSignature === signature) return;
+    here.textContent = `${secondsLabel(duration)} here — measured on this device`;
+    if (connection?.downlink && connection.downlink > 0) {
+      const estimated = (size * 8) / (connection.downlink * 1_000_000);
+      upload.textContent = `The browser reports ${connection.downlink} Mbps downlink, not upload capacity. At that rate, the upload leg alone would take at least about ${secondsLabel(estimated)} before remote processing began.`;
+    } else {
+      upload.textContent = 'This browser does not expose connection speed, so ProjectPDF will not invent an upload-time comparison.';
+    }
+    note.dataset.speedSignature = signature;
+    note.hidden = false;
+  }
+
+  const attachSpeed = () => {
+    for (const result of document.querySelectorAll<HTMLElement>('[data-result]')) {
+      if (!result.hidden) paintSpeed(result);
+    }
+  };
+  attachSpeed();
+  new MutationObserver(attachSpeed).observe(document.body, { subtree: true, attributes: true, childList: true, attributeFilter: ['hidden'] });
+</script>
+
+<style>
+  .speed-note { display: flex; align-items: flex-start; gap: 0.8rem; padding: 0.9rem 1rem; border-left: 3px solid var(--accent); border-radius: 0 var(--radius) var(--radius) 0; background: color-mix(in srgb, var(--accent) 6%, var(--paper-raised)); }
+  .speed-note[hidden] { display: none; }
+  .speed-note__mark { color: var(--accent); font-size: var(--step-2); line-height: 1; }
+  .speed-note strong { font-size: var(--step--1); }
+  .speed-note p { margin: 0.25rem 0 0; color: var(--muted); font-size: var(--step--2); line-height: 1.5; }
+</style>
