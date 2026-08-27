@@ -1,210 +1,324 @@
 ---
 import Lens from './Lens.astro';
 import Logo from './Logo.astro';
-import { CATEGORIES, SITE, toolsByCategory } from '../config/site';
+import { SITE } from '../config/site';
+import {
+  CONVERSION_GROUPS,
+  LIVE_NAVIGATION_TOOL_COUNT,
+  NAVIGATION_GROUPS,
+  POPULAR_TOOLS,
+  QUICK_TOOLS,
+} from '../config/navigation';
+
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const currentSlug = Astro.url.pathname.split('/').filter(Boolean).at(-1) ?? '';
+const toolHref = (slug: string) => `${base}/${slug}/`;
+const menuLabelOverrides: Record<string, string> = {
+  'header-footer': 'Header, footer & Bates',
+  'split-by': 'Split by size or bookmark',
+  'text-to-pdf': 'Text, CSV or Markdown to PDF',
+};
+const glyphs: Record<string, string> = {
+  'merge-pdf': 'M', 'split-pdf': 'S', 'rotate-pdf': '↻', 'organise-pdf': '↕',
+  'extract-pages': 'E', 'delete-pages': '×', 'split-by': '⋮', 'scan-pdf': '⌑',
+  'compress-pdf': '↘', 'repair-pdf': '+', 'grayscale-pdf': '◐', 'auto-crop': 'A',
+  'crop-pdf': 'C', 'flatten-pdf': 'F', 'jpg-to-pdf': 'J', 'word-to-pdf': 'W',
+  'excel-to-pdf': 'X', 'powerpoint-to-pdf': 'P', 'text-to-pdf': 'T', 'pdf-to-jpg': 'J',
+  'pdf-to-word': 'W', 'pdf-to-excel': 'X', 'pdf-to-markdown': 'M', 'extract-images': 'I',
+  'edit-pdf': 'E', 'watermark-pdf': 'W', 'page-numbers': '#', 'impose-pdf': 'B',
+  'overlay-pdf': 'O', 'header-footer': 'H', 'compare-pdf': '≠', 'ocr-pdf': 'O',
+  'pdf-forms': 'F', 'metadata-pdf': 'M', 'protect-pdf': 'P', 'unlock-pdf': 'U',
+  'redact-pdf': 'R', 'sign-pdf': 'S', 'pdf-a': 'A',
+};
+const menuLabel = (slug: string, fallback: string) => menuLabelOverrides[slug] ?? fallback;
 ---
 
 <div class="masthead-slot">
   <Lens variant="rail" as="header" class="rail">
-    <a class="brand" href={`${base}/`}>
-      <Logo size="2.5rem" />
+    <a class="brand" href={`${base}/`} aria-label={`${SITE.name} home`}>
+      <Logo size="2.65rem" />
       <span>{SITE.name}</span>
     </a>
 
-    <details class="tools-menu">
-      <summary>All PDF tools <span aria-hidden="true">⌄</span></summary>
-      <div class="tools-menu__panel">
-        <div class="tools-menu__head">
-          <div><strong>Choose the job</strong><span>Every live tool, reachable from every page.</span></div>
-          <a href={`${base}/how-to/`}>Connected recipes →</a>
+    <nav class="quick-nav" aria-label="Popular PDF tools">
+      {QUICK_TOOLS.map((tool) => (
+        <a href={toolHref(tool.slug)} aria-current={tool.slug === currentSlug ? 'page' : undefined}>{tool.searchName}</a>
+      ))}
+    </nav>
+
+    <details class="nav-menu convert-menu" data-nav-menu>
+      <summary aria-controls="convert-menu-panel" aria-expanded="false">
+        <span>Convert PDF</span>
+        <svg class="caret" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+      </summary>
+      <div class="convert-panel menu-surface" id="convert-menu-panel">
+        <div class="convert-panel__intro">
+          <span class="eyebrow">Convert</span>
+          <strong>Change the format, not the privacy.</strong>
         </div>
-        <div class="tools-menu__groups">
-          {CATEGORIES.map((category) => (
-            <section aria-labelledby={`menu-${category.toLowerCase()}`}>
-              <h2 id={`menu-${category.toLowerCase()}`}>{category}</h2>
+        <div class="convert-groups">
+          {CONVERSION_GROUPS.map((group) => (
+            <section class={`nav-group nav-group--${group.tone}`} aria-labelledby={`convert-${group.tone}`}>
+              <h2 id={`convert-${group.tone}`}>{group.label}</h2>
               <ul>
-                {toolsByCategory(category).filter((tool) => tool.status === 'live').map((tool) => (
-                  <li><a href={`${base}/${tool.slug}/`} data-menu-tool={tool.slug}>{tool.searchName}</a></li>
+                {group.tools.map((tool) => (
+                  <li>
+                    <a class="menu-tool" href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
+                      <span class={`tool-icon tool-icon--${group.tone}`} aria-hidden="true">{glyphs[tool.slug] ?? 'P'}</span>
+                      <span>{menuLabel(tool.slug, tool.searchName)}</span>
+                    </a>
+                  </li>
                 ))}
               </ul>
             </section>
           ))}
         </div>
-        <div class="tools-menu__foot">
-          <span>No account · no daily limit</span>
-          <nav aria-label="Project information"><a href={`${base}/privacy/`}>Privacy</a><a href={`${base}/about/`}>About</a></nav>
+      </div>
+    </details>
+
+    <details class="nav-menu all-menu" data-nav-menu>
+      <summary aria-controls="all-tools-menu-panel" aria-expanded="false">
+        <span>All PDF tools</span>
+        <svg class="caret" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+      </summary>
+      <div class="all-panel menu-surface" id="all-tools-menu-panel">
+        <div class="all-panel__head">
+          <div>
+            <span class="eyebrow">Tool library</span>
+            <strong>Choose what you need to do</strong>
+            <p>{LIVE_NAVIGATION_TOOL_COUNT} working tools, organized by task.</p>
+          </div>
+          <a class="panel-search" href={`${base}/?focus=search`}>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.25" /><path d="m12.5 12.5 4 4" /></svg>
+            <span>Search all tools</span><kbd>/</kbd>
+          </a>
+        </div>
+
+        <div class="mobile-popular" aria-labelledby="mobile-popular-heading">
+          <h2 id="mobile-popular-heading">Popular</h2>
+          <div>
+            {POPULAR_TOOLS.map((tool) => (
+              <a href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
+                <span>{glyphs[tool.slug] ?? 'P'}</span>{tool.name}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div class="desktop-tool-groups">
+          {NAVIGATION_GROUPS.map((group) => (
+            <section class={`nav-group nav-group--${group.tone}`} aria-labelledby={`desktop-${group.tone}`}>
+              <h2 id={`desktop-${group.tone}`}><span aria-hidden="true"></span>{group.label}</h2>
+              <ul>
+                {group.tools.map((tool) => (
+                  <li>
+                    <a class="menu-tool" href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
+                      <span class={`tool-icon tool-icon--${group.tone}`} aria-hidden="true">{glyphs[tool.slug] ?? 'P'}</span>
+                      <span>{menuLabel(tool.slug, tool.searchName)}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+
+        <div class="mobile-tool-groups">
+          {NAVIGATION_GROUPS.map((group, index) => (
+            <details class={`mobile-group mobile-group--${group.tone}`} open={index === 0}>
+              <summary>
+                <span class="mobile-group__dot" aria-hidden="true"></span><span>{group.label}</span><small>{group.tools.length}</small>
+                <svg class="caret" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+              </summary>
+              <ul>
+                {group.tools.map((tool) => (
+                  <li>
+                    <a class="menu-tool" href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
+                      <span class={`tool-icon tool-icon--${group.tone}`} aria-hidden="true">{glyphs[tool.slug] ?? 'P'}</span>
+                      <span>{menuLabel(tool.slug, tool.searchName)}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ))}
+        </div>
+
+        <div class="all-panel__foot">
+          <span class="privacy-note"><i aria-hidden="true"></i>Your files stay on this device</span>
+          <nav aria-label="Project information"><a href={`${base}/how-to/`}>Guides</a><a href={`${base}/privacy/`}>Privacy</a><a href={`${base}/about/`}>About</a></nav>
         </div>
       </div>
     </details>
 
     <div class="rail__actions">
+      <a class="rail-search" href={`${base}/?focus=search`} aria-label="Find a PDF tool; keyboard shortcut slash">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.25" /><path d="m12.5 12.5 4 4" /></svg>
+        <span>Find a tool</span><kbd>/</kbd>
+      </a>
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">
-        <span aria-hidden="true">◐</span>
+        <svg class="theme-icon theme-icon--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.8 12.7A6.4 6.4 0 0 1 7.3 4.2 6.6 6.6 0 1 0 15.8 12.7Z" /></svg>
+        <svg class="theme-icon theme-icon--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3" /><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4" /></svg>
       </button>
-      <a class="rail-cta" href={`${base}/?focus=search`} aria-label="Find a PDF tool; keyboard shortcut slash">Find a tool <kbd>/</kbd></a>
     </div>
   </Lens>
 </div>
 
 <style>
-  .masthead-slot {
-    position: sticky;
-    top: 0.75rem;
-    z-index: 20;
-    width: min(100% - (var(--gutter) * 2), var(--content));
-    margin-inline: auto;
-    padding-top: 0.75rem;
-  }
-
-  /* The element is rendered by <Lens>, so the parent's scoped selector never
-     lands on it. Constrain :global() under .masthead-slot instead. */
-  .masthead-slot :global(.rail) {
-    padding: 0.5rem 0.5rem 0.5rem 1.125rem;
-    min-height: 3.5rem;
-    /* The reusable glass surface normally clips its paint. This rail owns a
-       real <details> flyout, so its panel must be allowed beyond the pill. */
-    contain: none;
-  }
-
-  /* Lens wraps its slot in .lens__body, so the row lives one level down. */
-  .masthead-slot :global(.rail .lens__body) {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    min-height: 2.5rem;
-  }
-
-  .brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--ink);
-    text-decoration: none;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-right: auto;
-  }
-
-  .tools-menu { position: static; }
-  .tools-menu summary {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    min-height: 2.35rem;
-    padding: 0 0.85rem;
-    border-radius: 10px;
-    color: var(--ink-2);
-    font-size: var(--step--1);
-    font-weight: 600;
-    cursor: pointer;
-    list-style: none;
-  }
-  .tools-menu summary::-webkit-details-marker { display: none; }
-  .tools-menu summary:hover, .tools-menu[open] summary { color: var(--ink); background: var(--paper-sunk); }
-  .tools-menu[open] summary span { transform: rotate(180deg); }
-  .tools-menu__panel {
-    position: absolute;
-    z-index: 30;
-    top: calc(100% + 0.55rem);
-    left: 0;
-    right: 0;
-    padding: 1rem;
-    border: 1px solid var(--line-strong);
-    border-radius: var(--lens-radius);
-    background: color-mix(in srgb, var(--paper-raised) 96%, transparent);
-    box-shadow: 0 28px 60px -32px rgb(15 23 42 / 0.48);
-    backdrop-filter: blur(18px);
-  }
-  .tools-menu__head, .tools-menu__foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
-  .tools-menu__head { padding: 0.25rem 0.35rem 0.9rem; border-bottom: 1px solid var(--line); }
-  .tools-menu__head > div { display: grid; gap: 0.15rem; }
-  .tools-menu__head span, .tools-menu__foot { color: var(--muted); font-size: var(--step--2); }
-  .tools-menu__head a, .tools-menu__foot a { color: var(--accent); font-size: var(--step--1); font-weight: 700; text-decoration: none; }
-  .tools-menu__groups { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; padding: 1rem 0.35rem; }
-  .tools-menu__groups h2 { margin: 0 0 0.55rem; color: var(--muted); font-size: var(--step--2); letter-spacing: 0.1em; text-transform: uppercase; }
-  .tools-menu__groups ul { display: grid; gap: 0.15rem; margin: 0; padding: 0; list-style: none; }
-  .tools-menu__groups a { display: block; padding: 0.28rem 0; color: var(--ink-2); font-size: var(--step--1); text-decoration: none; }
-  .tools-menu__groups a:hover { color: var(--accent); }
-  .tools-menu__foot { padding: 0.8rem 0.35rem 0.2rem; border-top: 1px solid var(--line); }
-  .tools-menu__foot nav { display: flex; gap: 1rem; }
-
-  .rail__actions {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-  }
-
-  .theme-toggle,
-  .rail-cta {
-    padding: 0.5rem 1rem;
-    border-radius: 12px;
-    border: 1px solid var(--line-strong);
-    color: var(--ink);
-    text-decoration: none;
-    font-size: var(--step--1);
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .theme-toggle {
-    display: inline-grid;
-    place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    padding: 0;
-    background: transparent;
-    cursor: pointer;
-  }
-
-  .rail-cta:hover {
-    color: var(--ink);
-    border-color: var(--ink-2);
-  }
-
-  .rail-cta kbd { margin-left: 0.3rem; color: var(--muted); font: 600 var(--step--2)/1 var(--font-mono); }
-
-  @media (min-width: 48em) {
-    .brand {
-      margin-right: 0;
-    }
-  }
-
+  .masthead-slot { position: sticky; top: 0.75rem; z-index: 50; width: min(calc(100% - (var(--gutter) * 2)), 88rem); margin-inline: auto; padding-top: 0.75rem; }
+  .masthead-slot :global(.rail) { position: relative; min-height: 4rem; padding: 0.42rem 0.5rem 0.42rem 0.72rem; contain: none; }
+  .masthead-slot :global(.rail .lens__body) { display: flex; align-items: center; min-width: 0; min-height: 3.15rem; gap: 0.25rem; }
+  .brand { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0.65rem; margin-right: 0.45rem; color: var(--ink); font-family: var(--font-brand); font-size: 0.96rem; font-weight: 700; letter-spacing: -0.025em; text-decoration: none; }
+  .quick-nav { display: flex; align-items: center; align-self: stretch; gap: 0.1rem; }
+  .quick-nav a, .nav-menu > summary { display: inline-flex; align-items: center; justify-content: center; min-height: 2.55rem; padding-inline: 0.72rem; border-radius: 11px; color: var(--ink-2); font-size: 0.76rem; font-weight: 650; letter-spacing: 0.005em; text-decoration: none; white-space: nowrap; transition: color 150ms ease, background 150ms ease; }
+  .quick-nav a:hover, .quick-nav a[aria-current='page'], .nav-menu > summary:hover, .nav-menu[open] > summary { color: var(--ink); background: color-mix(in srgb, var(--accent) 8%, var(--paper-sunk)); }
+  .quick-nav a[aria-current='page'] { box-shadow: inset 0 -2px 0 var(--accent); }
+  .nav-menu { margin: 0; }
+  .nav-menu > summary { gap: 0.32rem; cursor: pointer; list-style: none; }
+  .nav-menu > summary::-webkit-details-marker { display: none; }
+  .caret { width: 0.9rem; height: 0.9rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 160ms ease; }
+  .nav-menu[open] > summary .caret, .mobile-group[open] > summary .caret { transform: rotate(180deg); }
+  .menu-surface { border: 1px solid var(--line-strong); border-radius: 20px; background: color-mix(in srgb, var(--paper-raised) 97%, transparent); box-shadow: 0 26px 70px -34px rgb(15 23 42 / 0.48), 0 8px 24px -18px rgb(15 23 42 / 0.22); -webkit-backdrop-filter: blur(22px) saturate(1.25); backdrop-filter: blur(22px) saturate(1.25); }
+  .convert-menu { position: relative; }
+  .convert-panel { position: absolute; z-index: 60; top: calc(100% + 0.72rem); left: 50%; width: min(38rem, calc(100vw - 2rem)); padding: 1.05rem; transform: translateX(-50%); }
+  .convert-panel__intro { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.15rem 0.35rem 0.85rem; border-bottom: 1px solid var(--line); }
+  .convert-panel__intro strong { color: var(--ink-2); font-size: var(--step--1); font-weight: 500; }
+  .eyebrow { color: var(--accent); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.11em; text-transform: uppercase; }
+  .convert-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding-top: 0.95rem; }
+  .all-menu { position: static; }
+  .all-panel { position: absolute; z-index: 60; top: calc(100% + 0.72rem); left: 50%; width: min(88rem, calc(100vw - 2rem)); max-height: calc(100vh - 6.5rem); padding: 1.2rem; overflow-y: auto; transform: translateX(-50%); }
+  .all-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; padding: 0.1rem 0.2rem 1rem; border-bottom: 1px solid var(--line); }
+  .all-panel__head > div { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0.25rem 0.65rem; }
+  .all-panel__head strong { font-family: var(--font-brand); font-size: var(--step-1); letter-spacing: -0.025em; }
+  .all-panel__head p { grid-column: 2; margin: 0; color: var(--muted); font-size: var(--step--2); }
+  .panel-search, .rail-search { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.55rem; border: 1px solid var(--line-strong); border-radius: 12px; color: var(--ink-2); font-size: var(--step--1); font-weight: 600; text-decoration: none; white-space: nowrap; }
+  .panel-search { padding: 0.48rem 0.65rem 0.48rem 0.75rem; background: var(--paper-sunk); }
+  .panel-search svg, .rail-search svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+  .panel-search kbd, .rail-search kbd { color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
+  .desktop-tool-groups { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: clamp(0.7rem, 1.3vw, 1.4rem); padding: 1.15rem 0.15rem 1rem; }
+  .nav-group { --group-color: #f97316; }
+  .nav-group--organize, .tool-icon--organize, .mobile-group--organize { --group-color: #f97316; }
+  .nav-group--optimize, .tool-icon--optimize, .mobile-group--optimize { --group-color: #65a30d; }
+  .nav-group--to-pdf, .tool-icon--to-pdf, .mobile-group--to-pdf { --group-color: #eab308; }
+  .nav-group--from-pdf, .tool-icon--from-pdf, .mobile-group--from-pdf { --group-color: #3b82f6; }
+  .nav-group--compose, .tool-icon--compose, .mobile-group--compose { --group-color: #c026d3; }
+  .nav-group--review, .tool-icon--review, .mobile-group--review { --group-color: #7c3aed; }
+  .nav-group--secure, .tool-icon--secure, .mobile-group--secure { --group-color: #0f766e; }
+  .nav-group h2 { display: flex; align-items: center; gap: 0.45rem; min-height: 2rem; margin: 0 0 0.38rem; color: var(--muted); font: 700 0.66rem/1.2 var(--font-sans); letter-spacing: 0.075em; text-transform: uppercase; }
+  .nav-group h2 > span { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--group-color); box-shadow: 0 0 0 4px color-mix(in srgb, var(--group-color) 12%, transparent); }
+  .nav-group ul, .mobile-group ul { display: grid; gap: 0.08rem; margin: 0; padding: 0; list-style: none; }
+  .menu-tool { display: grid; grid-template-columns: 1.55rem minmax(0, 1fr); align-items: center; gap: 0.45rem; min-height: 2.25rem; padding: 0.18rem 0.22rem; border-radius: 9px; color: var(--ink-2); font-size: 0.72rem; font-weight: 520; line-height: 1.25; text-decoration: none; transition: color 140ms ease, background 140ms ease, transform 140ms ease; }
+  .menu-tool:hover, .menu-tool[aria-current='page'] { color: var(--ink); background: color-mix(in srgb, var(--group-color) 9%, var(--paper-sunk)); transform: translateX(2px); }
+  .menu-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tool-icon { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border: 1px solid color-mix(in srgb, var(--group-color) 38%, transparent); border-radius: 7px; background: color-mix(in srgb, var(--group-color) 12%, var(--paper-raised)); color: var(--group-color); font: 750 0.67rem/1 var(--font-brand); }
+  .all-panel__foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 0.25rem 0.1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
+  .privacy-note { display: inline-flex; align-items: center; gap: 0.45rem; }
+  .privacy-note i { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 12%, transparent); }
+  .all-panel__foot nav { display: flex; gap: 1rem; }
+  .all-panel__foot a { color: var(--ink-2); font-weight: 600; text-decoration: none; }
+  .all-panel__foot a:hover { color: var(--accent); }
+  .mobile-popular, .mobile-tool-groups { display: none; }
+  .rail__actions { display: flex; flex: 0 0 auto; align-items: center; gap: 0.4rem; margin-left: auto; }
+  .rail-search { padding: 0.45rem 0.65rem; }
+  .rail-search:hover, .panel-search:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 42%, var(--line-strong)); }
+  .theme-toggle { display: inline-grid; flex: 0 0 auto; width: 2.55rem; height: 2.55rem; place-items: center; padding: 0; border: 1px solid var(--line-strong); border-radius: 12px; background: transparent; color: var(--ink); cursor: pointer; }
+  .theme-toggle:hover { border-color: color-mix(in srgb, var(--accent) 42%, var(--line-strong)); background: var(--paper-sunk); }
+  .theme-icon { grid-area: 1 / 1; width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .theme-icon--sun { display: none; }
+  :global(:root[data-theme='dark']) .theme-icon--moon { display: none; }
+  :global(:root[data-theme='dark']) .theme-icon--sun { display: block; }
+  @media (max-width: 78em) { .quick-nav { display: none; } .brand { margin-right: 0.25rem; } }
+  @media (max-width: 61em) and (min-width: 48.01em) { .desktop-tool-groups { grid-template-columns: repeat(4, minmax(0, 1fr)); } .all-panel { max-height: calc(100vh - 6rem); } }
   @media (max-width: 48em) {
-    .masthead-slot :global(.rail) { padding-left: 0.65rem; }
-    .brand span { display: none; }
-    .tools-menu { margin-right: auto; }
-    .tools-menu summary { padding-inline: 0.6rem; }
-    .tools-menu__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: min(63vh, 31rem); overflow-y: auto; }
-    .tools-menu__head span, .tools-menu__foot > span { display: none; }
-    .rail-cta { width: 2.25rem; overflow: hidden; padding: 0; color: transparent; }
-    .rail-cta kbd { display: grid; width: 100%; height: 100%; place-items: center; margin: 0; color: var(--ink); }
+    .masthead-slot { top: 0.35rem; width: calc(100% - 1rem); padding-top: 0.35rem; }
+    .masthead-slot :global(.rail) { min-height: 3.65rem; padding: 0.3rem 0.38rem 0.3rem 0.45rem; }
+    .masthead-slot :global(.rail .lens__body) { min-height: 3rem; }
+    .brand { gap: 0.45rem; margin-right: auto; font-size: 0.86rem; }
+    .convert-menu { display: none; }
+    .nav-menu > summary { min-height: 2.55rem; padding-inline: 0.7rem; }
+    .all-menu > summary span { font-size: 0; }
+    .all-menu > summary span::after { content: 'Tools'; font-size: 0.76rem; }
+    .rail-search { width: 2.55rem; justify-content: center; padding: 0; }
+    .rail-search span, .rail-search kbd { display: none; }
+    .rail__actions { margin-left: 0; }
+    .all-panel { position: fixed; top: 4.65rem; right: 0.5rem; bottom: max(0.5rem, env(safe-area-inset-bottom)); left: 0.5rem; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; width: auto; max-height: none; padding: 1rem; overflow: hidden; transform: none; }
+    .all-panel__head { padding: 0.1rem 0.05rem 0.85rem; }
+    .all-panel__head > div { display: grid; grid-template-columns: 1fr; gap: 0.2rem; }
+    .all-panel__head p { grid-column: auto; }
+    .panel-search { width: 2.7rem; justify-content: center; padding: 0; }
+    .panel-search span, .panel-search kbd { display: none; }
+    .desktop-tool-groups { display: none; }
+    .mobile-popular { display: grid; gap: 0.55rem; padding: 0.85rem 0 0.75rem; }
+    .mobile-popular h2 { margin: 0; color: var(--muted); font: 700 0.67rem/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; }
+    .mobile-popular > div { display: flex; gap: 0.45rem; overflow-x: auto; padding: 0.15rem 0.05rem 0.35rem; scrollbar-width: thin; }
+    .mobile-popular a { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0.42rem; min-height: 2.75rem; padding: 0.4rem 0.7rem 0.4rem 0.45rem; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-sunk); color: var(--ink); font-size: 0.75rem; font-weight: 650; text-decoration: none; }
+    .mobile-popular a > span { display: grid; width: 1.75rem; height: 1.75rem; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--accent) 12%, var(--paper-raised)); color: var(--accent); font: 750 0.72rem/1 var(--font-brand); }
+    .mobile-popular a[aria-current='page'] { border-color: color-mix(in srgb, var(--accent) 48%, var(--line)); }
+    .mobile-tool-groups { display: block; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--line); scrollbar-width: thin; }
+    .mobile-group { border-bottom: 1px solid var(--line); }
+    .mobile-group > summary { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 0.65rem; min-height: 3.25rem; padding: 0.35rem 0.18rem; color: var(--ink); font-size: 0.81rem; font-weight: 700; cursor: pointer; list-style: none; }
+    .mobile-group > summary::-webkit-details-marker { display: none; }
+    .mobile-group > summary small { color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
+    .mobile-group__dot { width: 0.62rem; height: 0.62rem; border-radius: 50%; background: var(--group-color); box-shadow: 0 0 0 4px color-mix(in srgb, var(--group-color) 12%, transparent); }
+    .mobile-group ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.2rem 0.35rem; padding: 0 0 0.7rem; }
+    .mobile-group .menu-tool { min-height: 2.75rem; padding: 0.3rem; font-size: 0.73rem; }
+    .all-panel__foot { padding-top: 0.75rem; }
+    .all-panel__foot nav { gap: 0.8rem; }
   }
+  @media (max-width: 28em) { .brand span { display: none; } .mobile-group ul { grid-template-columns: 1fr; } .privacy-note { font-size: 0; } .privacy-note::after { content: 'Files stay here'; font-size: var(--step--2); } }
+  @media (prefers-reduced-motion: reduce) { .caret, .menu-tool { transition: none; } }
+  @media (forced-colors: active) { .menu-surface { background: Canvas; } .tool-icon, .mobile-group__dot, .privacy-note i { forced-color-adjust: none; } }
 </style>
 
 <script>
-  const toggle = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
-
-  const paintToggle = () => {
-    if (!toggle) return;
+  const navMenus = Array.from(document.querySelectorAll<HTMLDetailsElement>('[data-nav-menu]'));
+  const themeToggle = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+  const mobileNav = window.matchMedia('(max-width: 48em)');
+  const paintThemeToggle = () => {
+    if (!themeToggle) return;
     const dark = document.documentElement.dataset.theme === 'dark';
-    toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
-    toggle.firstElementChild!.textContent = dark ? '☀' : '◐';
+    themeToggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
   };
-
-  paintToggle();
-  toggle?.addEventListener('click', () => {
+  const syncMenuState = () => {
+    navMenus.forEach((menu) => menu.querySelector<HTMLElement>(':scope > summary')?.setAttribute('aria-expanded', String(menu.open)));
+    document.documentElement.classList.toggle('nav-drawer-open', mobileNav.matches && navMenus.some((menu) => menu.open));
+  };
+  paintThemeToggle();
+  themeToggle?.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem('pdfcraft-theme', next); } catch {}
-    paintToggle();
+    paintThemeToggle();
   });
-
-  /* Visiting a tool is the preference signal. It stays in this browser and
-     lets the homepage become useful on visit two without asking for an email. */
+  navMenus.forEach((menu) => {
+    menu.addEventListener('toggle', () => {
+      if (menu.open) navMenus.filter((candidate) => candidate !== menu).forEach((candidate) => { candidate.open = false; });
+      syncMenuState();
+    });
+    menu.querySelectorAll<HTMLAnchorElement>('a').forEach((link) => link.addEventListener('click', () => { menu.open = false; }));
+  });
+  document.addEventListener('pointerdown', (event) => {
+    const target = event.target as Node | null;
+    if (!target || navMenus.some((menu) => menu.contains(target))) return;
+    navMenus.forEach((menu) => { menu.open = false; });
+  });
+  document.addEventListener('keydown', (event) => {
+    const target = event.target as HTMLElement | null;
+    if (event.key === 'Escape') {
+      const openMenu = navMenus.find((menu) => menu.open);
+      if (openMenu) { openMenu.open = false; openMenu.querySelector<HTMLElement>(':scope > summary')?.focus(); }
+      return;
+    }
+    if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey || target?.closest('input, textarea, select, [contenteditable]')) return;
+    event.preventDefault();
+    const search = document.querySelector<HTMLInputElement>('[data-tool-search]');
+    if (search) search.focus();
+    else location.href = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/?focus=search`;
+  });
+  mobileNav.addEventListener('change', syncMenuState);
+  syncMenuState();
   const slug = location.pathname.split('/').filter(Boolean).at(-1) ?? '';
-  const currentTool = slug ? document.querySelector<HTMLAnchorElement>(`[data-menu-tool="${CSS.escape(slug)}"]`) : null;
-  if (currentTool) {
+  if (slug && document.querySelector(`[data-nav-tool="${CSS.escape(slug)}"]`)) {
     try {
       const key = 'projectpdf-tool-usage';
       const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? '{}');
@@ -213,13 +327,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       localStorage.setItem(key, JSON.stringify(usage));
     } catch {}
   }
-
-  document.addEventListener('keydown', (event) => {
-    const target = event.target as HTMLElement | null;
-    if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey || target?.closest('input, textarea, select, [contenteditable]')) return;
-    event.preventDefault();
-    const search = document.querySelector<HTMLInputElement>('[data-tool-search]');
-    if (search) search.focus();
-    else location.href = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/?focus=search`;
-  });
 </script>
+
+<style is:global>
+  html.nav-drawer-open, html.nav-drawer-open body { overflow: hidden; }
+</style>
