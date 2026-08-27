@@ -714,7 +714,7 @@ export async function splitBy(files: InputFile[], options: SplitByOptions): Prom
     summary: `${summary} · ${plural(pageCount, 'page')}`,
     notes: [
       ...notes,
-      'Each piece is a new document: the bookmarks, the document title and author, and any attachments stayed behind. Links that pointed at a page now in another file no longer lead anywhere.',
+      'Each piece is a new document. Bookmarks whose destination is inside that piece are retained and remapped; bookmarks and internal links that point to pages in another piece cannot follow it. Attachments stay behind.',
       ...(produced.notes ?? []),
     ],
   };

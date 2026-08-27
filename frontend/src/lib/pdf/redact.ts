@@ -7,17 +7,16 @@
  * that. Every "redact" feature that draws a box is a liability wearing a
  * feature's clothing.
  *
- * This takes the approach that cannot leak: the page is RASTERISED. Each page
- * is rendered to pixels, the redacted areas are painted over those pixels, and
- * the resulting image replaces the page entirely. There is no text layer, no
- * vector content, no metadata behind the mark — because there is nothing
- * behind it at all. Whatever was under the box is not hidden; it no longer
- * exists in the output.
+ * This takes the approach that cannot leak: every page carrying a redaction is
+ * RASTERISED. The marked areas are painted over those pixels and that image
+ * replaces the page entirely. Pages without a redaction are copied losslessly,
+ * so a mark on page 40 does not make the other 399 pages unsearchable.
  *
- * The cost is real and stated plainly: the result is images, so the text is no
- * longer selectable or searchable and the file is larger. That is the trade
- * for a guarantee, and the guarantee is verified rather than asserted — the
- * output is re-opened and checked to contain no extractable text at all.
+ * The cost on those pages is real and stated plainly: they become images, so
+ * their text is no longer selectable or searchable and the file can become
+ * larger. That is the trade for a guarantee, and the guarantee is verified
+ * rather than asserted — the output is re-opened and every redacted page is
+ * checked to contain no extractable text at all.
  */
 import { PDFDocument } from '@cantoo/pdf-lib';
 
@@ -43,15 +42,56 @@ export async function redact(files: InputFile[], boxes: RedactionBox[]): Promise
   const bytesIn = file.bytes.byteLength;
   const api = await loadPdfjs();
 
+  let original: PDFDocument;
+  try {
+    original = await PDFDocument.load(file.bytes.slice(0), {
+      ignoreEncryption: true,
+      updateMetadata: false,
+    });
+  } catch {
+    return {
+      ok: false,
+      error: 'That PDF could not be read. If it is password-protected, remove the password first with Unlock.',
+    };
+  }
+
   const source = await api.getDocument({
-    data: new Uint8Array(file.bytes),
+    // pdf.js may take ownership of and detach the buffer it receives. Keep the
+    // original bytes available to pdf-lib for untouched pages.
+    data: new Uint8Array(file.bytes.slice(0)),
     ...documentOptions(),
   }).promise;
 
   const output = await PDFDocument.create();
+  const redactedPages = new Set(boxes.map((box) => box.page));
+
+  for (const box of boxes) {
+    if (!Number.isInteger(box.page) || box.page < 1 || box.page > source.numPages) {
+      await source.loadingTask.destroy();
+      return { ok: false, error: `A redaction refers to page ${box.page}, but this PDF has ${source.numPages} pages.` };
+    }
+    if (
+      ![box.x, box.y, box.width, box.height].every(Number.isFinite) ||
+      box.x < 0 ||
+      box.y < 0 ||
+      box.width <= 0 ||
+      box.height <= 0 ||
+      box.x + box.width > 1.000001 ||
+      box.y + box.height > 1.000001
+    ) {
+      await source.loadingTask.destroy();
+      return { ok: false, error: 'One redaction box falls outside its page. Draw that box again before saving.' };
+    }
+  }
 
   try {
     for (let n = 1; n <= source.numPages; n += 1) {
+      if (!redactedPages.has(n)) {
+        const [copied] = await output.copyPages(original, [n - 1]);
+        output.addPage(copied);
+        continue;
+      }
+
       const page = await source.getPage(n);
       const unit = page.getViewport({ scale: 1 });
 
@@ -103,13 +143,14 @@ export async function redact(files: InputFile[], boxes: RedactionBox[]): Promise
   const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false });
 
   // ── prove it ──────────────────────────────────────────────────────────
-  // Re-open the result and try to extract text. A rasterised page has none;
-  // anything found here would mean content survived, and the file must not
-  // be handed over.
+  // Re-open the result and try to extract text from every redacted page. A
+  // rasterised page has none; anything found there means content survived and
+  // the file must not be handed over. Untouched pages intentionally stay text.
   let leaked = '';
   try {
     const check = await api.getDocument({ data: bytes.slice(), ...documentOptions() }).promise;
     for (let n = 1; n <= check.numPages; n += 1) {
+      if (!redactedPages.has(n)) continue;
       const page = await check.getPage(n);
       const content = await page.getTextContent();
       leaked += content.items.map((item) => String((item as { str?: string }).str ?? '')).join('');
@@ -128,7 +169,8 @@ export async function redact(files: InputFile[], boxes: RedactionBox[]): Promise
     };
   }
 
-  const pageCount = boxes.reduce((set, box) => set.add(box.page), new Set<number>()).size;
+  const pageCount = redactedPages.size;
+  const untouched = output.getPageCount() - pageCount;
 
   return {
     ok: true,
@@ -139,9 +181,12 @@ export async function redact(files: InputFile[], boxes: RedactionBox[]): Promise
     durationMs: performance.now() - started,
     summary: `Redacted ${boxes.length} area${boxes.length === 1 ? '' : 's'} on ${pageCount} page${pageCount === 1 ? '' : 's'}`,
     notes: [
-      'Every page was rasterised. What was under a black box is not hidden — it is gone, because the text and vector layers no longer exist in this file.',
-      'Verified: the result was re-opened and contains no extractable text at all. If it had, you would have got an error instead of a file.',
-      'The trade is that the document is now images. The text cannot be selected or searched, and the file is larger. Keep your original somewhere safe.',
+      `${pageCount} redacted page${pageCount === 1 ? ' was' : 's were'} rasterised. What was under a black box is not hidden — it is gone because that page's text and vector layers no longer exist in this file.`,
+      `Verified: ${pageCount === 1 ? 'the redacted page contains' : 'all redacted pages contain'} no extractable text. If any text had survived there, you would have got an error instead of a file.`,
+      untouched > 0
+        ? `${untouched} untouched page${untouched === 1 ? ' stayed' : 's stayed'} searchable and selectable, with no re-encoding.`
+        : 'Every page was redacted, so the whole document is now images and its text is no longer searchable or selectable.',
+      'The output is rebuilt without document metadata, bookmarks or attachments. Keep your original somewhere safe.',
     ],
   };
 }

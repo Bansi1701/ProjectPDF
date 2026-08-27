@@ -178,6 +178,7 @@ const takesWord = mode === 'word-to-pdf';
 const takesExcel = mode === 'excel-to-pdf';
 const takesSlides = mode === 'powerpoint-to-pdf';
 const takesText = mode === 'text-to-pdf';
+const acceptsMany = multiple || mode === 'reorder';
 
 /**
  * The live editor belongs on Edit PDF, while Sign PDF gets a narrower signing
@@ -209,7 +210,7 @@ const dropTitle = takesExcel
   ? 'Choose a Word document, or drop one here'
   : takesImages
   ? 'Choose images, or drop them here'
-  : multiple
+  : acceptsMany
     ? 'Choose PDFs, or drop them here'
     : 'Choose a PDF, or drop one here';
 ---
@@ -294,7 +295,7 @@ const dropTitle = takesExcel
 
   <Lens variant="loupe" class="drop">
     <label class="drop__zone" data-drop>
-      <input class="sr-only" data-input type="file" accept={accept} multiple={multiple} />
+      <input class="sr-only" data-input type="file" accept={accept} multiple={acceptsMany} />
       <span class="drop__icon" aria-hidden="true">
         <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M8 3h11l6 6v20a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke-linejoin="round"></path>
@@ -324,6 +325,29 @@ const dropTitle = takesExcel
 
   <div class="workspace" data-workspace hidden>
     <ol class="files" data-files></ol>
+
+    {
+      mode === 'reorder' && (
+        <section class="organise-add" aria-labelledby="organise-add-title">
+          <div>
+            <strong id="organise-add-title">Add pages to this document</strong>
+            <small>New pages appear at the end. Drag them into place in the page grid.</small>
+          </div>
+          <div class="organise-add__actions">
+            <button type="button" class="btn btn--quiet" data-add-pdf>Add pages from another PDF</button>
+            <label class="organise-add__size">
+              <span>Blank page size</span>
+              <select data-blank-size>
+                <option value="letter">Letter</option>
+                <option value="a4">A4</option>
+                <option value="legal">Legal</option>
+              </select>
+            </label>
+            <button type="button" class="btn btn--quiet" data-add-blank>Add blank page</button>
+          </div>
+        </section>
+      )
+    }
 
     {gridMode && <PageGrid mode={gridMode} />}
 
@@ -374,19 +398,6 @@ const dropTitle = takesExcel
             {mode === 'extract'
               ? 'These pages are pulled into a new document. The original is untouched.'
               : 'These pages are removed. Everything else is kept, in order.'}
-          </small>
-        </label>
-      )
-    }
-
-    {
-      mode === 'reorder' && (
-        <label class="field">
-          <span>New page order</span>
-          <input data-order placeholder="3, 1, 2" />
-          <small>
-            Every page number, once each, in the order you want them. Leave empty to keep the
-            current order.
           </small>
         </label>
       )
@@ -800,7 +811,7 @@ const dropTitle = takesExcel
               <option value="poster">Poster — one page across many sheets</option>
             </select>
           </label>
-          <label class="field">
+          <label class="field" data-imp-panel="n-up">
             <span>Pages per sheet</span>
             <select data-imp-per>
               <option value="2" selected>2</option>
@@ -812,15 +823,53 @@ const dropTitle = takesExcel
             </select>
             <small>Ignored for a booklet, which is always two to a side.</small>
           </label>
+          <div class="pair">
+            <label class="field" data-imp-panel="n-up">
+              <span>Page order</span>
+              <select data-imp-order>
+                <option value="row" selected>Across, then down</option>
+                <option value="column">Down, then across</option>
+                <option value="row-rtl">Across right-to-left</option>
+                <option value="column-rtl">Down right-to-left</option>
+              </select>
+            </label>
+            <label class="field" data-imp-orientation-field>
+              <span>Orientation</span>
+              <select data-imp-orientation>
+                <option value="auto" selected>Best fit automatically</option>
+                <option value="portrait">Portrait</option>
+                <option value="landscape">Landscape</option>
+              </select>
+            </label>
+          </div>
           <label class="field">
             <span>Sheet</span>
             <select data-imp-sheet>
               <option value="a4" selected>A4</option>
-              <option value="letter">Letter</option>
               <option value="a3">A3</option>
+              <option value="a5">A5</option>
+              <option value="letter">Letter</option>
+              <option value="legal">Legal</option>
+              <option value="tabloid">Tabloid</option>
+              <option value="source">Match the source page</option>
             </select>
           </label>
-          <label class="field"><input type="checkbox" data-imp-sep /> Draw a hairline between pages</label>
+          <div class="pair">
+            <label class="field"><span>Outer margin (pt)</span><input data-imp-margin type="number" min="0" step="1" value="18" /></label>
+            <label class="field"><span>Space between pages (pt)</span><input data-imp-gutter type="number" min="0" step="1" value="0" /></label>
+          </div>
+          <label class="field"><input type="checkbox" data-imp-sep /> Draw guide lines between pages</label>
+          <div data-imp-panel="poster" hidden>
+            <div class="pair">
+              <label class="field"><span>Source page</span><input data-imp-poster-page type="number" min="1" value="1" /></label>
+              <label class="field"><span>Repeat overlap (pt)</span><input data-imp-overlap type="number" min="0" step="1" value="18" /></label>
+            </div>
+            <div class="pair">
+              <label class="field"><span>Sheets across</span><input data-imp-across type="number" min="1" max="10" value="2" /></label>
+              <label class="field"><span>Sheets down</span><input data-imp-down type="number" min="1" max="10" value="2" /></label>
+            </div>
+            <label class="field"><input type="checkbox" data-imp-marks checked /> Print trim and alignment guides</label>
+          </div>
         </Fragment>
       )
     }
@@ -859,6 +908,40 @@ const dropTitle = takesExcel
             <span>Opacity</span>
             <input data-ov-opacity type="number" min="0.05" max="1" step="0.05" value="1" />
           </label>
+          <div class="pair">
+            <label class="field">
+              <span>Fit</span>
+              <select data-ov-fit>
+                <option value="actual" selected>Original size</option>
+                <option value="contain">Fit inside the page</option>
+                <option value="cover">Fill the page</option>
+                <option value="stretch">Stretch to page</option>
+              </select>
+            </label>
+            <label class="field"><span>Scale</span><input data-ov-scale type="number" min="0.05" max="10" step="0.05" value="1" /></label>
+          </div>
+          <label class="field">
+            <span>Position</span>
+            <select data-ov-anchor>
+              <option value="top-left">Top left</option>
+              <option value="top">Top centre</option>
+              <option value="top-right">Top right</option>
+              <option value="left">Middle left</option>
+              <option value="centre" selected>Centre</option>
+              <option value="right">Middle right</option>
+              <option value="bottom-left">Bottom left</option>
+              <option value="bottom">Bottom centre</option>
+              <option value="bottom-right">Bottom right</option>
+            </select>
+          </label>
+          <div class="pair">
+            <label class="field"><span>Move right (pt)</span><input data-ov-x type="number" step="1" value="0" /></label>
+            <label class="field"><span>Move down (pt)</span><input data-ov-y type="number" step="1" value="0" /></label>
+          </div>
+          <div class="pair">
+            <label class="field"><span>Stamp page</span><input data-ov-stamp-page type="number" min="1" value="1" /></label>
+            <label class="field"><span>Base pages</span><input data-ov-pages placeholder="all, or 1-4, odd" /></label>
+          </div>
           <small>Drop the base document first, then the one to lay over it.</small>
         </Fragment>
       )
@@ -924,17 +1007,40 @@ const dropTitle = takesExcel
             </span>
             <small>Tokens: {'{page}'}, {'{pages}'}, {'{date}'}, {'{filename}'}.</small>
           </label>
-          <label class="field">
-            <span>Bates prefix</span>
-            <input data-hf-bates placeholder="ABC" />
+          <div class="pair">
+            <label class="field"><span>Bates prefix</span><input data-hf-bates placeholder="ABC-" /></label>
+            <label class="field"><span>Bates suffix</span><input data-hf-bates-suffix placeholder="-CONF" /></label>
+          </div>
+          <div class="field">
+            <span>Bates numbering</span>
             <small>
               A fixed prefix and a padded number running across the whole document, for legal
-              and discovery work. It takes the footer's right slot, so clear that first.
+              and discovery work. Leave the prefix blank to turn Bates numbering off.
             </small>
-          </label>
-          <label class="field"><span>Start numbering at</span><input data-hf-start type="number" min="1" value="1" /></label>
-          <label class="field"><span>Leave the first N pages alone</span><input data-hf-skip type="number" min="0" value="0" /></label>
+          </div>
+          <div class="pair">
+            <label class="field"><span>Bates starts at</span><input data-hf-bates-start type="number" min="0" value="1" /></label>
+            <label class="field"><span>Bates digits</span><input data-hf-bates-padding type="number" min="1" max="20" value="6" /></label>
+          </div>
+          <div class="pair">
+            <label class="field"><span>Bates row</span><select data-hf-bates-place><option value="footer" selected>Footer</option><option value="header">Header</option></select></label>
+            <label class="field"><span>Bates position</span><select data-hf-bates-slot><option value="left">Left</option><option value="center">Centre</option><option value="right" selected>Right</option></select></label>
+          </div>
+          <div class="pair">
+            <label class="field"><span>Page number starts at</span><input data-hf-start type="number" min="1" value="1" /></label>
+            <label class="field"><span>Leave the first N pages bare</span><input data-hf-skip type="number" min="0" value="0" /></label>
+          </div>
+          <div class="pair">
+            <label class="field"><span>Text size</span><input data-hf-size type="number" min="6" max="48" value="9" /></label>
+            <label class="field"><span>Edge margin (pt)</span><input data-hf-margin type="number" min="0" value="36" /></label>
+          </div>
+          <div class="pair">
+            <label class="field"><span>Text colour</span><input data-hf-colour type="color" value="#333333" /></label>
+            <label class="field"><span>Date token</span><select data-hf-date><option value="locale" selected>Local format</option><option value="iso">YYYY-MM-DD</option></select></label>
+          </div>
+          <label class="field"><input type="checkbox" data-hf-bold /> Bold text</label>
           <label class="field"><input type="checkbox" data-hf-mirror /> Mirror on odd and even pages</label>
+          <label class="field"><input type="checkbox" data-hf-shrink /> Shrink page content to keep headers and footers clear</label>
         </Fragment>
       )
     }
@@ -1202,7 +1308,16 @@ const dropTitle = takesExcel
       getRanges(): string;
       applyRanges(text: string): void;
       turnPages(spec: string, by: number): number;
+      getState(): {
+        order: { file: number; page: number; rotate: number; removed: boolean }[];
+        cuts: number[];
+      };
+      restoreState(state: {
+        order: { file: number; page: number; rotate: number; removed: boolean }[];
+        cuts: number[];
+      }): void;
       readonly touched: boolean;
+      readonly totalPages: number;
     }
 
     const grid = root.querySelector('page-grid') as GridElement | null;
@@ -1247,7 +1362,7 @@ const dropTitle = takesExcel
     });
 
     const takesImages = mode === 'images-to-pdf';
-    const takesMany = mode === 'merge' || mode === 'compare' || mode === 'overlay' || takesImages;
+    const takesMany = mode === 'merge' || mode === 'compare' || mode === 'overlay' || mode === 'reorder' || takesImages;
 
     const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
     const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : kb(n));
@@ -1617,10 +1732,12 @@ const dropTitle = takesExcel
               return button;
             };
 
-            controls.append(
-              move(index - 1, '\u2191', 'Move up'),
-              move(index + 1, '\u2193', 'Move down')
-            );
+            if (mode !== 'reorder') {
+              controls.append(
+                move(index - 1, '\u2191', 'Move up'),
+                move(index + 1, '\u2193', 'Move down')
+              );
+            }
 
             const drop = document.createElement('button');
             drop.type = 'button';
@@ -1644,6 +1761,8 @@ const dropTitle = takesExcel
     }
 
     function showFiles(next: File[], append = false) {
+      const previousGridState =
+        mode === 'reorder' && append && grid && !grid.hidden ? grid.getState() : null;
       const kept = next.filter(usable);
 
       if (takesMany && append && files.length > 0) {
@@ -1651,8 +1770,14 @@ const dropTitle = takesExcel
         // too". Replacing the lot was the old behaviour and it silently threw
         // away an order somebody had just arranged. Same name and size twice
         // is a double-click on the picker, not a deliberate duplicate.
-        const seen = new Set(files.map((file) => `${file.name}:${file.size}`));
-        files = files.concat(kept.filter((file) => !seen.has(`${file.name}:${file.size}`)));
+        if (mode === 'reorder') {
+          // Importing the same source twice is meaningful here: its pages may
+          // be needed in two different places in the assembled document.
+          files = files.concat(kept);
+        } else {
+          const seen = new Set(files.map((file) => `${file.name}:${file.size}`));
+          files = files.concat(kept.filter((file) => !seen.has(`${file.name}:${file.size}`)));
+        }
       } else {
         files = takesMany ? kept : kept.slice(0, 1);
       }
@@ -1684,10 +1809,13 @@ const dropTitle = takesExcel
           : '';
       }
       if (hasFiles) {
-        fileBarLabel.textContent =
-          files.length === 1 ? files[0].name : `${files.length} files, in this order`;
+        fileBarLabel.textContent = files.length === 1
+          ? files[0].name
+          : mode === 'reorder'
+            ? `${files.length} source files`
+            : `${files.length} files, in this order`;
         if (changeFileBtn) {
-          changeFileBtn.textContent = takesMany ? 'Add more' : 'Change file';
+          changeFileBtn.textContent = mode === 'reorder' ? 'Add PDF pages' : takesMany ? 'Add more' : 'Change file';
         }
       }
 
@@ -1698,13 +1826,48 @@ const dropTitle = takesExcel
       // A tool with a grid gets the grid instead of the thumbnail strip: the
       // strip shows the first eight pages, the grid shows all of them and
       // lets you act on what you see.
-      if (grid) void openGrid();
+      if (grid) void openGrid(previousGridState);
       else if (cropStage && files[0]) void cropStage.open(files[0]);
       else if (liveEditor && files[0]) void liveEditor.open(files[0]).then(updateLiveOverlay);
       else if (previewable && files[0]) void preview(files[0]);
     }
 
     changeFileBtn.addEventListener('click', () => input.click());
+
+    const addPdfBtn = root.querySelector<HTMLButtonElement>('[data-add-pdf]');
+    const addBlankBtn = root.querySelector<HTMLButtonElement>('[data-add-blank]');
+    const blankSize = root.querySelector<HTMLSelectElement>('[data-blank-size]');
+    let blankPageNumber = 0;
+
+    addPdfBtn?.addEventListener('click', () => input.click());
+    addBlankBtn?.addEventListener('click', async () => {
+      addBlankBtn.disabled = true;
+      const original = addBlankBtn.textContent;
+      addBlankBtn.textContent = 'Adding…';
+      try {
+        const { PDFDocument } = await import('@cantoo/pdf-lib');
+        const dimensions: Record<string, [number, number]> = {
+          letter: [612, 792],
+          a4: [595.28, 841.89],
+          legal: [612, 1008],
+        };
+        const chosen = blankSize?.value ?? 'letter';
+        const doc = await PDFDocument.create();
+        doc.addPage(dimensions[chosen] ?? dimensions.letter);
+        doc.setTitle('Blank page');
+        const bytes = await doc.save({ useObjectStreams: true, addDefaultPage: false });
+        blankPageNumber += 1;
+        const blank = new File([bytes as BlobPart], `blank-page-${blankPageNumber}.pdf`, {
+          type: 'application/pdf',
+        });
+        showFiles([blank], true);
+      } catch {
+        fail('The blank page could not be created here. Your current arrangement is unchanged.');
+      } finally {
+        addBlankBtn.disabled = false;
+        addBlankBtn.textContent = original;
+      }
+    });
 
     /* ── Watermark controls ────────────────────────────────────────────── */
     let watermarkPosition = 'center';
@@ -1841,6 +2004,26 @@ const dropTitle = takesExcel
       syncSplit();
     }
 
+    /* Imposition is three related layouts, but each has different controls.
+       Keep the sheet and spacing visible while hiding fields the chosen
+       layout would otherwise ignore. */
+    const imposeMode = root.querySelector<HTMLSelectElement>('[data-imp-kind]');
+    if (imposeMode) {
+      const syncImpose = () => {
+        for (const panel of root.querySelectorAll<HTMLElement>('[data-imp-panel]')) {
+          panel.hidden = panel.dataset.impPanel !== imposeMode.value;
+        }
+        const gutter = root.querySelector<HTMLInputElement>('[data-imp-gutter]')?.closest('label');
+        const separators = root.querySelector<HTMLInputElement>('[data-imp-sep]')?.closest('label');
+        const orientation = root.querySelector<HTMLElement>('[data-imp-orientation-field]');
+        if (gutter) gutter.hidden = imposeMode.value === 'poster';
+        if (separators) separators.hidden = imposeMode.value === 'poster';
+        if (orientation) orientation.hidden = imposeMode.value === 'booklet';
+      };
+      imposeMode.addEventListener('change', syncImpose);
+      syncImpose();
+    }
+
     /* Rotate: the typed selection acts on the grid, which is what actually gets
        exported — so what you see is what you save. */
     const rotApply = root.querySelector<HTMLButtonElement>('[data-rot-apply]');
@@ -1911,7 +2094,15 @@ const dropTitle = takesExcel
       sampleBtn.textContent = 'Building it…';
       try {
         const { sampleDocument } = await import('../lib/sample');
-        showFiles([await sampleDocument()]);
+        const sample = await sampleDocument();
+        if (mode === 'merge' || mode === 'compare' || mode === 'overlay' || mode === 'reorder') {
+          const bytes = await sample.arrayBuffer();
+          const first = new File([bytes.slice(0)], 'sample-a.pdf', { type: 'application/pdf' });
+          const second = new File([bytes.slice(0)], 'sample-b.pdf', { type: 'application/pdf' });
+          showFiles([first, second]);
+        } else {
+          showFiles([sample]);
+        }
       } catch {
         fail('The sample could not be built here. Choosing a file still works.');
       } finally {
@@ -2390,88 +2581,6 @@ const dropTitle = takesExcel
     if (mode === 'url-to-pdf') {
       fileUi.hidden = true;
 
-      /**
-     * Hands the grid a way to talk to the worker.
-     *
-     * The file bytes are copied rather than transferred here: the grid keeps
-     * its documents open for the whole session, and the run afterwards needs
-     * the same bytes again. Transferring would detach them and the export
-     * would find an empty buffer.
-     */
-    async function openGrid(): Promise<void> {
-      if (!grid) return;
-
-      // Whatever was open belongs to the file that just went away. Releasing
-      // first matters: the worker holds a parsed document per session, and
-      // swapping files without closing would keep every one of them alive.
-      await grid.release();
-      if (files.length === 0) return;
-
-      gridSession += 1;
-
-      const payload = await Promise.all(
-        files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
-      );
-
-      // Until the grid has its pages, running would silently fall back to the
-      // typed box and give a different answer for the same click. Better to
-      // wait the moment it takes than to be non-deterministic.
-      runBtn.disabled = true;
-
-      grid.attach({
-        request(message) {
-          return new Promise<OpResult>((resolve) => {
-            const id = ++jobId;
-            gridWaiting.set(id, resolve);
-            ensureWorker().postMessage({
-              id,
-              op: mode,
-              sessionId: gridSession,
-              // Only opening needs the bytes; later messages name the session.
-              files: message.session === 'open' ? payload : [],
-              ...message,
-            });
-          });
-        },
-      });
-
-      const failure = await grid.load();
-      runBtn.disabled = false;
-
-      if (failure) {
-        // The grid failing is not the tool failing — the typed box still works.
-        grid.hidden = true;
-        return;
-      }
-
-      syncRangesFromGrid();
-    }
-
-    const rangesInput = q<HTMLInputElement>('[data-ranges]');
-    const orderInput = q<HTMLInputElement>('[data-order]');
-
-    /** Grid edited → mirror it into whichever text box this tool shows. */
-    function syncRangesFromGrid() {
-      if (!grid) return;
-      if (rangesInput) rangesInput.value = grid.getRanges();
-      if (orderInput) {
-        orderInput.value = grid
-          .getPlan()
-          .map((entry) => entry.page)
-          .join(', ');
-      }
-    }
-
-    if (grid) {
-      grid.addEventListener('gridchange', syncRangesFromGrid);
-
-      // Text box edited → mirror it into the grid. Both edit one plan, so
-      // neither can quietly disagree with the other.
-      rangesInput?.addEventListener('input', () => {
-        if (document.activeElement === rangesInput) grid.applyRanges(rangesInput.value);
-      });
-    }
-
     runBtn.addEventListener('click', async () => {
         if (mode !== 'url-to-pdf') return;
         const url = root.querySelector<HTMLInputElement>('[data-url]')?.value?.trim() ?? '';
@@ -2541,9 +2650,13 @@ const dropTitle = takesExcel
       });
     }
 
-    input.addEventListener('change', () =>
-      showFiles(Array.from(input.files ?? []), takesMany && files.length > 0)
-    );
+    input.addEventListener('change', () => {
+      const chosen = Array.from(input.files ?? []);
+      showFiles(chosen, takesMany && files.length > 0);
+      // Resetting guarantees that choosing the same file later still fires
+      // `change` in every browser.
+      input.value = '';
+    });
     clearBtn.addEventListener('click', () => {
       input.value = '';
       showFiles([]);
@@ -2573,7 +2686,7 @@ const dropTitle = takesExcel
      * the same bytes again. Transferring would detach them and the export
      * would find an empty buffer.
      */
-    async function openGrid(): Promise<void> {
+    async function openGrid(previousState: ReturnType<GridElement['getState']> | null = null): Promise<void> {
       if (!grid) return;
 
       // Whatever was open belongs to the file that just went away. Releasing
@@ -2619,6 +2732,8 @@ const dropTitle = takesExcel
         return;
       }
 
+      if (previousState) grid.restoreState(previousState);
+
       syncRangesFromGrid();
     }
 
@@ -2649,6 +2764,11 @@ const dropTitle = takesExcel
 
     runBtn.addEventListener('click', async () => {
       if (!files.length) return;
+
+      if (mode === 'merge' && files.length < 2) {
+        fail('Add at least one more PDF. Merge needs two or more files.');
+        return;
+      }
 
       runBtn.disabled = true;
       errorEl.hidden = true;
@@ -2775,16 +2895,33 @@ const dropTitle = takesExcel
         };
       } else if (mode === 'impose') {
         const kind = sel('[data-imp-kind]');
-        const sheet = sel('[data-imp-sheet]') as 'a4' | 'letter' | 'a3';
+        const sheet = sel('[data-imp-sheet]') as import('../lib/pdf/impose').SheetSize;
+        const margin = num('[data-imp-margin]', 18);
+        const gutter = num('[data-imp-gutter]', 0);
+        const orientation = sel('[data-imp-orientation]') as import('../lib/pdf/impose').SheetOrientation;
         request.imposeOptions =
           kind === 'booklet'
-            ? { kind: 'booklet', sheet }
+            ? { kind: 'booklet', sheet, margin, gutter, separators: on('[data-imp-sep]') }
             : kind === 'poster'
-              ? { kind: 'poster', sheet }
+              ? {
+                  kind: 'poster',
+                  sheet,
+                  orientation,
+                  margin,
+                  page: num('[data-imp-poster-page]', 1),
+                  across: num('[data-imp-across]', 2),
+                  down: num('[data-imp-down]', 2),
+                  overlap: num('[data-imp-overlap]', 18),
+                  marks: on('[data-imp-marks]'),
+                }
               : {
                   kind: 'n-up',
                   perSheet: num('[data-imp-per]', 2) as 2 | 4 | 6 | 8 | 9 | 16,
                   sheet,
+                  orientation,
+                  margin,
+                  gutter,
+                  order: sel('[data-imp-order]') as import('../lib/pdf/impose').NUpOrder,
                   separators: on('[data-imp-sep]'),
                 };
       } else if (mode === 'extract-images') {
@@ -2793,10 +2930,29 @@ const dropTitle = takesExcel
           includeMasks: on('[data-ext-masks]'),
         };
       } else if (mode === 'overlay') {
+        const pages = val('[data-ov-pages]').trim();
+        let selectedPages: number[] | undefined;
+        if (pages && !/^all$/i.test(pages)) {
+          const { parsePageSet } = await import('../lib/pdf/pageset');
+          selectedPages = parsePageSet(pages, 100000).pages;
+          if (selectedPages.length === 0) {
+            fail('Choose at least one valid base page, for example “1-4, odd”.');
+            runBtn.disabled = false;
+            status.textContent = '';
+            return;
+          }
+        }
         request.overlayOptions = {
           mode: sel('[data-ov-mode]') as 'repeat' | 'pairwise',
           layer: sel('[data-ov-layer]') as 'over' | 'under',
+          fit: sel('[data-ov-fit]') as import('../lib/pdf/overlay').OverlayFit,
+          anchor: sel('[data-ov-anchor]') as import('../lib/pdf/overlay').OverlayAnchor,
+          scale: num('[data-ov-scale]', 1),
           opacity: num('[data-ov-opacity]', 1),
+          offsetX: num('[data-ov-x]', 0),
+          offsetY: num('[data-ov-y]', 0),
+          stampPage: num('[data-ov-stamp-page]', 1),
+          pages: selectedPages,
         };
       } else if (mode === 'text-to-pdf') {
         request.textDocOptions = {
@@ -2822,18 +2978,35 @@ const dropTitle = takesExcel
         request.headerFooterOptions = {
           header: {
             left: val('[data-hf-hl]'),
-            centre: val('[data-hf-hc]'),
+            center: val('[data-hf-hc]'),
             right: val('[data-hf-hr]'),
           },
           footer: {
             left: val('[data-hf-fl]'),
-            centre: val('[data-hf-fc]'),
+            center: val('[data-hf-fc]'),
             right: val('[data-hf-fr]'),
           },
-          ...(bates ? { bates: { prefix: bates } } : {}),
+          ...(bates
+            ? {
+                bates: {
+                  prefix: bates,
+                  suffix: val('[data-hf-bates-suffix]'),
+                  start: num('[data-hf-bates-start]', 1),
+                  padding: num('[data-hf-bates-padding]', 6),
+                  place: sel('[data-hf-bates-place]') as 'header' | 'footer',
+                  slot: sel('[data-hf-bates-slot]') as 'left' | 'center' | 'right',
+                },
+              }
+            : {}),
           startNumber: num('[data-hf-start]', 1),
           skipPages: num('[data-hf-skip]', 0),
           mirror: on('[data-hf-mirror]'),
+          margin: num('[data-hf-margin]', 36),
+          fontSize: num('[data-hf-size]', 9),
+          bold: on('[data-hf-bold]'),
+          colour: val('[data-hf-colour]') || '#333333',
+          shrink: on('[data-hf-shrink]'),
+          dateFormat: sel('[data-hf-date]') as 'locale' | 'iso',
         };
       } else if (mode === 'split-by') {
         const how = sel('[data-sb-mode]') as 'every' | 'parts' | 'size' | 'bookmarks';
@@ -2849,6 +3022,7 @@ const dropTitle = takesExcel
       // the same plan, so there is one path here rather than two that drift.
       if (grid && !grid.hidden) {
         const plan = grid.getPlan();
+        const cuts = grid.getCuts();
         if (plan.length === 0) {
           runBtn.disabled = false;
           status.textContent = '';
@@ -2859,10 +3033,22 @@ const dropTitle = takesExcel
           );
           return;
         }
+        if (mode === 'delete' && plan.length === grid.totalPages) {
+          runBtn.disabled = false;
+          status.textContent = '';
+          fail('Choose at least one page to delete. Your original remains untouched.');
+          return;
+        }
+        if (mode === 'split' && cuts.length === 0) {
+          runBtn.disabled = false;
+          status.textContent = '';
+          fail('Add at least one cut between pages so the result contains two or more files.');
+          return;
+        }
 
         request.op = 'compose';
         request.plan = plan;
-        request.cuts = grid.getCuts();
+        request.cuts = cuts;
         request.label = (files[0]?.name ?? 'pages').replace(/\.pdf$/i, '');
       }
 
@@ -3045,6 +3231,29 @@ const dropTitle = takesExcel
     background: var(--paper-raised); font-size: var(--step--1);
   }
   .file-bar__label { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .organise-add {
+    display: grid;
+    gap: 0.85rem;
+    padding: 1rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--paper) 94%, var(--accent));
+  }
+  .organise-add > div:first-child { display: grid; gap: 0.2rem; }
+  .organise-add small { color: var(--muted); }
+  .organise-add__actions { display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: end; }
+  .organise-add__size { display: grid; gap: 0.25rem; min-width: 8rem; }
+  .organise-add__size span { font-size: 0.72rem; color: var(--muted); }
+  .organise-add__size select {
+    min-height: 2.65rem;
+    padding: 0.55rem 2rem 0.55rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 0.65);
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+  }
 
   .field { display: grid; gap: 0.4rem; font-size: var(--step--1); }
   .field input[type='text'], .field input:not([type]) {
