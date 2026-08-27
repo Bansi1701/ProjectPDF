@@ -261,3 +261,1227 @@ import Lens from './Lens.astro';
     border: 0;
   }
 </style>
+
+<script>
+  /**
+   * Capture side of Scan to PDF.
+   *
+   * The division of labour is deliberate. Everything that touches pixels for
+   * real — detection, unwarping, enhancement, PDF assembly — is `lib/pdf/scan.ts`
+   * running in the worker. This file owns the camera, the viewfinder outline and
+   * the list of shots, and nothing else. Two consequences worth stating up front:
+   *
+   *  - A shot is kept as the JPEG the camera produced, not as a processed
+   *    bitmap. scan.ts is built to take encoded bytes for exactly this reason:
+   *    twenty full-resolution bitmaps is a few hundred megabytes pinned, twenty
+   *    JPEGs is about eight, and bytes cannot be closed out from under a retake.
+   *  - The thumbnail under each shot is a rehearsal, not the output. It is the
+   *    same detect → unwarp → clean pipeline run at ~560 px so it costs tens of
+   *    milliseconds instead of seconds; the worker repeats it at full resolution
+   *    when the PDF is built. A thumbnail can therefore disagree with the final
+   *    page on a marginal frame, and the caption says which of the two found a
+   *    page edge rather than pretending they always agree.
+   *
+   * Nothing here uploads, records or stores a frame. The only bytes that leave
+   * this module go to the worker, which is the same tab.
+   */
+  import type { ImageLike, Quad, ScanMode } from '../lib/pdf/scan';
+  import type { OutputFile, WorkerRequest, WorkerResponse } from '../lib/pdf/types';
+
+  const root = document.querySelector<HTMLElement>('[data-scan]');
+
+  if (root) {
+    const q = <T extends HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
+
+    // `<Lens data-scan-start>` does not reach the DOM — an Astro component only
+    // renders the props it names, and Lens names `class` and `variant`. The
+    // class does come through, so that is what this hangs on.
+    const startBlock =
+      root.querySelector<HTMLElement>('[data-scan-start]') ?? q<HTMLElement>('.scan__start');
+    const hint = startBlock.querySelector<HTMLElement>('.scan__hint');
+    const hintText = hint?.textContent ?? '';
+    const openBtn = q<HTMLButtonElement>('[data-scan-open]');
+    const stage = q('[data-scan-stage]');
+    const video = q<HTMLVideoElement>('[data-scan-video]');
+    const overlay = q<HTMLCanvasElement>('[data-scan-overlay]');
+    const liveStatus = q('[data-scan-status]');
+    const shootBtn = q<HTMLButtonElement>('[data-scan-shoot]');
+    const autoBox = q<HTMLInputElement>('[data-scan-auto]');
+    const stopBtn = q<HTMLButtonElement>('[data-scan-stop]');
+
+    const shotsBlock = q('[data-scan-shots]');
+    const countEl = q('[data-scan-count]');
+    const clearBtn = q<HTMLButtonElement>('[data-scan-clear]');
+    const list = q<HTMLOListElement>('[data-scan-list]');
+    const enhanceBox = q<HTMLInputElement>('[data-scan-enhance]');
+    const searchableBox = q<HTMLInputElement>('[data-scan-searchable]');
+    const runBtn = q<HTMLButtonElement>('[data-scan-run]');
+    const progress = q('[data-scan-progress]');
+
+    const result = q('[data-result]');
+    const notesEl = q('[data-notes]');
+    const downloads = q('[data-downloads]');
+    const receipt = q('[data-receipt]');
+    const errorEl = q('[data-error]');
+
+    /* ---------------------------------------------------------------- *
+     * Budgets
+     * ---------------------------------------------------------------- */
+
+    /**
+     * The live outline analyses a frame this big on its long edge.
+     *
+     * Detection is a Sobel pass, an Otsu threshold, two flood fills and a hull
+     * search, all synchronous on the main thread. At 480 px that is single-digit
+     * milliseconds on a laptop and around 25 ms on a mid-range phone; at the
+     * sensor's own 1920 px it is most of a second, five times a second, which is
+     * a hot phone and a dead battery for an outline nobody can see move that
+     * precisely anyway.
+     */
+    const LIVE_EDGE = 480;
+
+    /** ~5 fps. Fast enough to feel attached to the page, slow enough to idle. */
+    const LIVE_INTERVAL_MS = 200;
+
+    /** Thumbnail rehearsal size. Big enough to see the crop, small enough to be free. */
+    const PREVIEW_EDGE = 560;
+
+    /**
+     * Auto-capture rule, stated once here so it is not folded out of the code:
+     *
+     *   Fire when a page has been found on every poll for AUTO_STEADY_MS and no
+     *   corner has drifted more than AUTO_STILL of the frame's long edge from
+     *   where that corner was when the hold began. After firing, do not fire
+     *   again until either the page is lost for AUTO_LOST_POLLS polls in a row,
+     *   or some corner has moved AUTO_RELEASE of the long edge away from where
+     *   the shot was taken.
+     *
+     * Measured against the anchor rather than the previous poll because a slow
+     * steady creep — a hand lowering the phone — passes a poll-to-poll test
+     * every time and still photographs a moving page.
+     *
+     * The re-arm half is the important half. Without it a phone propped over a
+     * document photographs the same page every second until the list is a
+     * hundred identical scans; with it, "turn the page" is the gesture that
+     * takes the next shot, which is what the hands are doing anyway.
+     */
+    const AUTO_STEADY_MS = 900;
+    const AUTO_STILL = 0.012;
+    const AUTO_RELEASE = 0.06;
+    const AUTO_LOST_POLLS = 3;
+
+    /* ---------------------------------------------------------------- *
+     * Lazily-loaded pixel engine
+     * ---------------------------------------------------------------- */
+
+    type Engine = typeof import('../lib/pdf/scan');
+
+    let engine: Engine | null = null;
+    let engineLoad: Promise<Engine> | null = null;
+
+    /**
+     * Deferred to the first camera click on purpose.
+     *
+     * scan.ts reaches the image helpers and through them pdf-lib. A tool page
+     * has to paint its heading and its buttons from static HTML with nothing on
+     * the critical path, so this chunk is fetched at the moment someone asks for
+     * the camera and not a moment earlier.
+     */
+    function loadEngine(): Promise<Engine> {
+      engineLoad ??= import('../lib/pdf/scan').then((module) => {
+        engine = module;
+        return module;
+      });
+      return engineLoad;
+    }
+
+    /* ---------------------------------------------------------------- *
+     * Canvas helpers
+     * ---------------------------------------------------------------- */
+
+    type AnyCanvas = OffscreenCanvas | HTMLCanvasElement;
+    type Any2D = OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+    interface Pad {
+      canvas: AnyCanvas;
+      ctx: Any2D;
+    }
+
+    /**
+     * A drawing surface that is never in the document.
+     *
+     * OffscreenCanvas where it exists — it skips the compositor entirely, which
+     * is the whole point when the surface is read back and thrown away five
+     * times a second. A detached `<canvas>` is the same pixels for older Safari.
+     */
+    function pad(width: number, height: number): Pad | null {
+      const w = Math.max(1, Math.round(width));
+      const h = Math.max(1, Math.round(height));
+      const canvas: AnyCanvas =
+        typeof OffscreenCanvas === 'function'
+          ? new OffscreenCanvas(w, h)
+          : document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = (canvas as HTMLCanvasElement).getContext('2d', {
+        willReadFrequently: true,
+      }) as Any2D | null;
+      return ctx ? { canvas, ctx } : null;
+    }
+
+    /** Draw a source down to `maxEdge` and read the pixels back as an ImageLike. */
+    function frameOf(
+      source: CanvasImageSource,
+      sourceWidth: number,
+      sourceHeight: number,
+      maxEdge: number,
+      surface?: Pad
+    ): ImageLike | null {
+      const scale = Math.min(1, maxEdge / Math.max(sourceWidth, sourceHeight));
+      const width = Math.max(1, Math.round(sourceWidth * scale));
+      const height = Math.max(1, Math.round(sourceHeight * scale));
+
+      const target = surface ?? pad(width, height);
+      if (!target) return null;
+      if (target.canvas.width !== width || target.canvas.height !== height) {
+        target.canvas.width = width;
+        target.canvas.height = height;
+      }
+
+      target.ctx.imageSmoothingEnabled = true;
+      target.ctx.imageSmoothingQuality = 'medium';
+      target.ctx.drawImage(source, 0, 0, width, height);
+      return target.ctx.getImageData(0, 0, width, height);
+    }
+
+    async function toBlob(canvas: AnyCanvas, type: string, quality?: number): Promise<Blob> {
+      if ('convertToBlob' in canvas) {
+        return canvas.convertToBlob(quality === undefined ? { type } : { type, quality });
+      }
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error('This browser could not encode the frame.'))),
+          type,
+          quality
+        );
+      });
+    }
+
+    /** Let the browser paint before a long synchronous stretch. */
+    const paint = (): Promise<void> =>
+      new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
+    /* ---------------------------------------------------------------- *
+     * Messages
+     * ---------------------------------------------------------------- */
+
+    function fail(message: string): void {
+      errorEl.textContent = message;
+      errorEl.hidden = false;
+    }
+
+    const clearError = (): void => {
+      errorEl.hidden = true;
+      errorEl.textContent = '';
+    };
+
+    /**
+     * The status line is `aria-live`, and the poll runs five times a second.
+     * Writing the same sentence into it repeatedly is silent for a sighted user
+     * and a stutter for a screen reader, so only real changes are written.
+     */
+    const say = (message: string): void => {
+      if (liveStatus.textContent !== message) liveStatus.textContent = message;
+    };
+
+    /**
+     * Offer the file picker as a way through.
+     *
+     * Appended rather than always present, because a permanent "or pick a file"
+     * next to a camera button is noise for the nine people in ten whose camera
+     * works. It is built once and reused.
+     */
+    let picker: HTMLInputElement | null = null;
+    let pickerBtn: HTMLButtonElement | null = null;
+
+    function offerPicker(label: string): void {
+      if (!picker) {
+        picker = document.createElement('input');
+        picker.type = 'file';
+        picker.accept = 'image/*';
+        picker.multiple = true;
+        picker.className = 'scan__picker-input';
+        picker.addEventListener('change', () => {
+          const chosen = Array.from(picker?.files ?? []);
+          if (picker) picker.value = '';
+          void addPhotos(chosen);
+        });
+
+        pickerBtn = document.createElement('button');
+        pickerBtn.type = 'button';
+        pickerBtn.className = 'btn btn--quiet scan__picker';
+        pickerBtn.addEventListener('click', () => picker?.click());
+
+        startBlock.append(picker, pickerBtn);
+      }
+      if (pickerBtn) pickerBtn.textContent = label;
+    }
+
+    /* ---------------------------------------------------------------- *
+     * Camera lifecycle
+     * ---------------------------------------------------------------- */
+
+    let stream: MediaStream | null = null;
+    let loop = 0;
+    let lastPoll = 0;
+    /** Has the camera ever been on? Only changes the wording of the button. */
+    let used = false;
+
+    /**
+     * Stop every track and forget the stream.
+     *
+     * Called from the stop button, from `pagehide`, from the tab going into the
+     * background and from a view-transition swap. A camera indicator still lit
+     * after someone has navigated away is unacceptable anywhere and absurd on a
+     * site whose entire claim is that nothing leaves the device, so this is
+     * deliberately over-subscribed: stopping twice costs nothing, stopping never
+     * costs trust.
+     */
+    function stopCamera(message = ''): void {
+      if (loop) cancelAnimationFrame(loop);
+      loop = 0;
+
+      for (const track of stream?.getTracks() ?? []) track.stop();
+      stream = null;
+
+      video.srcObject = null;
+      overlay.getContext('2d')?.clearRect(0, 0, overlay.width, overlay.height);
+
+      stage.hidden = true;
+      startBlock.hidden = false;
+      openBtn.disabled = false;
+      openBtn.textContent = used ? 'Turn the camera back on' : 'Turn on the camera';
+      say('');
+      // The stage is hidden by now, so anything said there would be said to
+      // nobody; the line under the button is the one still on screen.
+      if (hint) hint.textContent = message || hintText;
+
+      resetAuto();
+    }
+
+    async function startCamera(): Promise<void> {
+      clearError();
+      progress.textContent = '';
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        fail(
+          'This browser will not open a camera on this page. Cameras need a secure (https) connection — you can still pick photos you have already taken.'
+        );
+        offerPicker('Pick photos instead');
+        return;
+      }
+
+      openBtn.disabled = true;
+      openBtn.textContent = 'Waiting for permission…';
+
+      // The engine fetch and the permission prompt are independent; run them
+      // together so the outline is ready the moment the feed is.
+      const engineReady = loadEngine();
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            // `ideal`, never `exact`: a laptop has no rear camera and an `exact`
+            // facingMode there is an OverconstrainedError instead of a webcam.
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1920 },
+            height: { ideal: 1440 },
+          },
+        });
+      } catch (error) {
+        openBtn.disabled = false;
+        openBtn.textContent = 'Turn on the camera';
+        describeCameraFailure(error);
+        return;
+      }
+
+      // Reveal the stage BEFORE attaching the stream and BEFORE awaiting
+      // anything. The video sits inside it, `hidden` resolves to
+      // `display: none !important` here, and Chromium never settles play() on
+      // an element it is not rendering — so awaiting play() while the stage is
+      // still hidden waits for a reveal that the await itself is blocking.
+      // The camera came on, the feed never appeared, and the button stayed
+      // disabled saying "Waiting for permission…" forever.
+      used = true;
+      startBlock.hidden = true;
+      stage.hidden = false;
+      openBtn.disabled = false;
+      // Put the label back. The start block is hidden now, but it comes back
+      // when the camera is turned off, and a button reading "Waiting for
+      // permission…" when nothing is pending is a small lie.
+      openBtn.textContent = 'Turn on the camera';
+
+      video.srcObject = stream;
+      try {
+        await video.play();
+      } catch {
+        // Autoplay refusal on a muted inline video is rare but survivable: the
+        // element is in the document and will start on the next interaction.
+      }
+
+      // The outline needs the engine; the FEED does not. Loading it must never
+      // hold up the picture, and failing to load it must not take the tool
+      // down with it — capture without edge detection is still a scanner.
+      void engineReady.catch(() => {
+        say('Page detection is unavailable, so captures will use the whole frame.');
+      });
+      if (hint) hint.textContent = hintText;
+      say('Camera on. Nothing is being recorded or uploaded — looking for a page…');
+
+      fitOverlay();
+      resetAuto();
+      lastPoll = 0;
+      loop = requestAnimationFrame(tick);
+    }
+
+    /** Say which thing went wrong, and what can be done about that thing. */
+    function describeCameraFailure(error: unknown): void {
+      const name = error instanceof DOMException ? error.name : '';
+
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        fail(
+          'The camera stayed off because permission was refused. That is a fine answer — if you change your mind, allow the camera in the address bar and press the button again. Photos you have already taken work just as well.'
+        );
+        offerPicker('Pick photos instead');
+        return;
+      }
+
+      if (name === 'NotFoundError' || name === 'OverconstrainedError') {
+        fail(
+          'No camera was found on this device. You can still make a scan from photos you already have.'
+        );
+        offerPicker('Pick photos instead');
+        return;
+      }
+
+      if (name === 'NotReadableError' || name === 'AbortError' || name === 'TrackStartError') {
+        fail(
+          'Another app is holding the camera. Close whatever is using it — a video call is the usual culprit — and press the button again.'
+        );
+        offerPicker('Pick photos instead');
+        return;
+      }
+
+      fail('The camera would not start. Nothing was captured. You can pick photos instead.');
+      offerPicker('Pick photos instead');
+    }
+
+    /* ---------------------------------------------------------------- *
+     * The viewfinder outline
+     * ---------------------------------------------------------------- */
+
+    let livePad: Pad | null = null;
+    let outlineColour = '';
+
+    /**
+     * Match the overlay's backing store to the box it is stretched over.
+     *
+     * The canvas is `inset: 0` inside the viewport, so its CSS box is the video
+     * element's box. Its *pixel* size is a separate number, and if it is left at
+     * the 300×150 default the browser stretches those pixels over the box: the
+     * outline lands somewhere near the page and drifts as the layout changes.
+     */
+    function fitOverlay(): void {
+      const box = video.getBoundingClientRect();
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const width = Math.max(1, Math.round(box.width * dpr));
+      const height = Math.max(1, Math.round(box.height * dpr));
+      if (overlay.width !== width || overlay.height !== height) {
+        overlay.width = width;
+        overlay.height = height;
+      }
+    }
+
+    /**
+     * Where the picture actually sits inside the element.
+     *
+     * `object-fit: contain` plus `max-height` means the feed is letterboxed the
+     * moment a tall frame meets a short viewport. Drawing as though the picture
+     * filled the element puts the outline in the black bars.
+     */
+    function pictureBox(): { x: number; y: number; scale: number } | null {
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      if (!vw || !vh || !overlay.width || !overlay.height) return null;
+
+      const scale = Math.min(overlay.width / vw, overlay.height / vh);
+      return {
+        x: (overlay.width - vw * scale) / 2,
+        y: (overlay.height - vh * scale) / 2,
+        scale,
+      };
+    }
+
+    /** `analysisScale` is analysis pixels per video pixel, so its inverse maps back. */
+    function drawOutline(quad: Quad | null, analysisScale: number): void {
+      const ctx = overlay.getContext('2d');
+      if (!ctx) return;
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+
+      const box = pictureBox();
+      if (!quad || !box || analysisScale <= 0) return;
+
+      // Read from the tokens rather than picking a colour here — custom
+      // properties inherit, so the overlay resolves the same --accent the rest
+      // of the page uses. The literal is only reached if it has not resolved.
+      outlineColour ||= getComputedStyle(overlay).getPropertyValue('--accent').trim() || '#e11d48';
+
+      const to = (point: { x: number; y: number }) => ({
+        x: box.x + (point.x / analysisScale) * box.scale,
+        y: box.y + (point.y / analysisScale) * box.scale,
+      });
+
+      const corners = [to(quad[0]), to(quad[1]), to(quad[2]), to(quad[3])];
+
+      ctx.beginPath();
+      ctx.moveTo(corners[0].x, corners[0].y);
+      for (let i = 1; i < 4; i += 1) ctx.lineTo(corners[i].x, corners[i].y);
+      ctx.closePath();
+
+      ctx.fillStyle = 'rgb(255 255 255 / 0.14)';
+      ctx.fill();
+      ctx.lineWidth = Math.max(2, overlay.width / 320);
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = outlineColour;
+      ctx.stroke();
+
+      const dot = ctx.lineWidth * 1.8;
+      ctx.fillStyle = outlineColour;
+      for (const corner of corners) {
+        ctx.beginPath();
+        ctx.arc(corner.x, corner.y, dot, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    /* ---------------------------------------------------------------- *
+     * Auto-capture
+     * ---------------------------------------------------------------- */
+
+    /** Corners in fractions of the frame's long edge, so the rule is resolution-free. */
+    let steadyQuad: { x: number; y: number }[] | null = null;
+    let steadySince = 0;
+    let shotQuad: { x: number; y: number }[] | null = null;
+    let lostPolls = 0;
+
+    function resetAuto(): void {
+      steadyQuad = null;
+      steadySince = 0;
+      shotQuad = null;
+      lostPolls = 0;
+    }
+
+    const drift = (a: { x: number; y: number }[], b: { x: number; y: number }[]): number => {
+      let worst = 0;
+      for (let i = 0; i < 4; i += 1) worst = Math.max(worst, Math.hypot(a[i].x - b[i].x, a[i].y - b[i].y));
+      return worst;
+    };
+
+    /* ---------------------------------------------------------------- *
+     * The poll
+     * ---------------------------------------------------------------- */
+
+    let capturing = false;
+
+    /**
+     * requestAnimationFrame with a time gate, not setInterval.
+     *
+     * rAF stops when the tab is hidden, so a backgrounded tab does no detection
+     * work at all; setInterval would keep grinding a frame that nobody can see.
+     */
+    function tick(now: number): void {
+      loop = requestAnimationFrame(tick);
+      if (now - lastPoll < LIVE_INTERVAL_MS) return;
+      lastPoll = now;
+
+      if (!engine || !stream || video.readyState < 2 || !video.videoWidth) return;
+
+      fitOverlay();
+
+      livePad ??= pad(LIVE_EDGE, LIVE_EDGE);
+      if (!livePad) return;
+
+      const image = frameOf(video, video.videoWidth, video.videoHeight, LIVE_EDGE, livePad);
+      if (!image) return;
+
+      const analysisScale = image.width / video.videoWidth;
+      const found = engine.detectPageQuad(image);
+      drawOutline(found?.quad ?? null, analysisScale);
+
+      if (!found) {
+        say('Looking for a page — try a background a different shade from the paper.');
+        steadyQuad = null;
+        steadySince = 0;
+        lostPolls += 1;
+        // Losing the page for a moment is how someone signals they have moved on
+        // to the next sheet, so that is what re-arms auto-capture.
+        if (lostPolls >= AUTO_LOST_POLLS) shotQuad = null;
+        return;
+      }
+
+      lostPolls = 0;
+
+      const long = Math.max(image.width, image.height);
+      const corners = found.quad.map((point) => ({ x: point.x / long, y: point.y / long }));
+
+      if (shotQuad && drift(corners, shotQuad) > AUTO_RELEASE) shotQuad = null;
+
+      const still = steadyQuad !== null && drift(corners, steadyQuad) <= AUTO_STILL;
+      if (!still) {
+        steadyQuad = corners;
+        steadySince = now;
+      }
+
+      const heldFor = now - steadySince;
+      const ready = still && heldFor >= AUTO_STEADY_MS;
+
+      if (!autoBox.checked) {
+        say('Page found — press Capture when it looks right.');
+      } else if (shotQuad) {
+        say('Captured. Turn the page for the next one.');
+      } else if (ready) {
+        say('Capturing…');
+      } else {
+        say(still ? 'Hold steady…' : 'Page found — hold still.');
+      }
+
+      if (autoBox.checked && ready && !shotQuad && !capturing) {
+        shotQuad = corners;
+        void capture();
+      }
+    }
+
+    /* ---------------------------------------------------------------- *
+     * Shots
+     * ---------------------------------------------------------------- */
+
+    interface Shot {
+      id: number;
+      /** The frame as the camera encoded it. This is what the worker gets. */
+      bytes: ArrayBuffer;
+      type: string;
+      /** Preview object URL. Revoked when the shot goes. */
+      url: string;
+      /** Did the low-resolution rehearsal find a page edge? */
+      detected: boolean;
+      node: HTMLLIElement;
+    }
+
+    let shots: Shot[] = [];
+    let nextId = 1;
+
+    /** What the pipeline is asked for, from the one checkbox the markup offers. */
+    const mode = (): ScanMode => 'text';
+    const cleaning = (): boolean => enhanceBox.checked;
+
+    /**
+     * The rehearsal: detect, unwarp, clean, at thumbnail size.
+     *
+     * Detection here runs on a 560 px copy where the worker uses 1024, so this
+     * is the more pessimistic of the two — it will occasionally miss an edge the
+     * real pass finds. That is the right way round for a preview: it never
+     * promises a crop it cannot deliver.
+     */
+    async function rehearse(
+      source: CanvasImageSource,
+      width: number,
+      height: number
+    ): Promise<{ blob: Blob; detected: boolean } | null> {
+      const module = engine ?? (await loadEngine());
+
+      const image = frameOf(source, width, height, PREVIEW_EDGE);
+      if (!image) return null;
+
+      if (!cleaning()) {
+        // Cleaning off means the photograph goes into the PDF as it is, so the
+        // preview has to be the photograph as it is.
+        const plain = pad(image.width, image.height);
+        if (!plain) return null;
+        plain.ctx.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
+        return { blob: await toBlob(plain.canvas, 'image/jpeg', 0.82), detected: false };
+      }
+
+      await paint();
+
+      const found = module.detectPageQuad(image);
+      const page = found ? module.unwarp(image, found.quad) : null;
+      const flat = page ?? image;
+
+      await paint();
+
+      const cleaned =
+        mode() === 'text' ? module.sauvola(flat) : module.flattenIllumination(flat, mode() === 'colour');
+
+      const surface = pad(cleaned.width, cleaned.height);
+      if (!surface) return null;
+      surface.ctx.putImageData(new ImageData(cleaned.data, cleaned.width, cleaned.height), 0, 0);
+
+      // Bilevel output is runs of black and white: PNG is both smaller and
+      // exact, where JPEG would ring around every stroke.
+      const text = mode() === 'text';
+      return {
+        blob: await toBlob(surface.canvas, text ? 'image/png' : 'image/jpeg', text ? undefined : 0.82),
+        detected: page !== null,
+      };
+    }
+
+    function shotNode(shot: Shot): HTMLLIElement {
+      const li = document.createElement('li');
+      li.className = 'scan__shot';
+
+      const figure = document.createElement('figure');
+
+      const img = document.createElement('img');
+      img.src = shot.url;
+      img.alt = '';
+      img.decoding = 'async';
+
+      const caption = document.createElement('figcaption');
+
+      const label = document.createElement('span');
+      label.dataset.label = '';
+
+      const actions = document.createElement('span');
+      actions.className = 'scan__shot-actions';
+
+      const button = (text: string, title: string, run: () => void): HTMLButtonElement => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'scan__drop';
+        btn.textContent = text;
+        btn.title = title;
+        btn.setAttribute('aria-label', title);
+        btn.addEventListener('click', run);
+        return btn;
+      };
+
+      // Move buttons rather than drag-and-drop. This tool's primary device is a
+      // phone held in one hand: a drag target inside a scrolling grid fights the
+      // scroll, and the buttons are reachable by keyboard and screen reader for
+      // free, which a pointer drag is not.
+      const earlier = button('←', 'Move this page earlier', () => move(shot, -1, earlier));
+      const later = button('→', 'Move this page later', () => move(shot, 1, later));
+      const remove = button('Remove', 'Remove this page', () => drop(shot));
+
+      actions.append(earlier, later, remove);
+      caption.append(label, actions);
+      figure.append(img, caption);
+      li.append(figure);
+      return li;
+    }
+
+    function render(): void {
+      list.replaceChildren(...shots.map((shot) => shot.node));
+
+      shots.forEach((shot, index) => {
+        const label = shot.node.querySelector<HTMLElement>('[data-label]');
+        if (label) {
+          label.textContent = `${index + 1} · ${shot.detected ? 'edges found' : 'whole frame'}`;
+        }
+        const img = shot.node.querySelector('img');
+        if (img) img.alt = `Preview of captured page ${index + 1}`;
+      });
+
+      const n = shots.length;
+      countEl.textContent = n === 0 ? 'No pages yet' : `${n} page${n === 1 ? '' : 's'} captured`;
+      shotsBlock.hidden = n === 0;
+      runBtn.disabled = n === 0;
+    }
+
+    function move(shot: Shot, delta: number, focus: HTMLElement): void {
+      const from = shots.indexOf(shot);
+      const to = from + delta;
+      if (from < 0 || to < 0 || to >= shots.length) return;
+      shots.splice(from, 1);
+      shots.splice(to, 0, shot);
+      render();
+      // replaceChildren detaches and re-inserts, which drops focus. Put it back
+      // so a keyboard user can press the same key again.
+      focus.focus();
+    }
+
+    function drop(shot: Shot): void {
+      URL.revokeObjectURL(shot.url);
+      shots = shots.filter((item) => item !== shot);
+      render();
+    }
+
+    function discardAll(): void {
+      for (const shot of shots) URL.revokeObjectURL(shot.url);
+      shots = [];
+      result.hidden = true;
+      render();
+    }
+
+    /** One captured frame becomes one shot. Errors are the shot's, not the app's. */
+    async function keep(bytes: ArrayBuffer, type: string, source: CanvasImageSource, width: number, height: number): Promise<void> {
+      // A preview that cannot be built is a cosmetic failure. Falling back to
+      // the frame itself keeps the capture — throwing away a photograph of
+      // someone's passport because the thumbnail would not encode is not a
+      // trade this tool gets to make.
+      const preview = await rehearse(source, width, height).catch(() => null);
+      const blob = preview?.blob ?? new Blob([bytes], { type });
+
+      const shot: Shot = {
+        id: nextId++,
+        bytes,
+        type,
+        url: URL.createObjectURL(blob),
+        detected: preview?.detected ?? false,
+        node: document.createElement('li'),
+      };
+      shot.node = shotNode(shot);
+      shots.push(shot);
+      render();
+    }
+
+    async function capture(): Promise<void> {
+      if (capturing || !stream || !video.videoWidth) return;
+      capturing = true;
+      shootBtn.disabled = true;
+      clearError();
+
+      try {
+        const full = pad(video.videoWidth, video.videoHeight);
+        if (!full) throw new Error('no surface');
+        full.ctx.drawImage(video, 0, 0, full.canvas.width, full.canvas.height);
+
+        // 0.92 rather than lossless: the worker resamples and re-encodes anyway,
+        // and a 12 MP PNG per shot would be tens of megabytes held in the tab.
+        const blob = await toBlob(full.canvas, 'image/jpeg', 0.92);
+        const bytes = await blob.arrayBuffer();
+
+        say('Captured.');
+        await keep(bytes, 'image/jpeg', full.canvas, full.canvas.width, full.canvas.height);
+
+        // Release the full-resolution surface; on a phone it is 50 MB of RGBA.
+        full.canvas.width = full.canvas.height = 1;
+      } catch {
+        fail('That frame could not be captured. Nothing was kept — try again.');
+      } finally {
+        capturing = false;
+        shootBtn.disabled = false;
+      }
+    }
+
+    /** The permission-refused path: photos that already exist on the device. */
+    async function addPhotos(files: File[]): Promise<void> {
+      if (files.length === 0) return;
+      clearError();
+
+      let rejected = 0;
+
+      for (const file of files) {
+        let bitmap: ImageBitmap | null = null;
+        try {
+          bitmap = await createImageBitmap(file);
+          const bytes = await file.arrayBuffer();
+          await keep(bytes, file.type || 'image/jpeg', bitmap, bitmap.width, bitmap.height);
+        } catch {
+          // Counted, never named. A filename is document content under this
+          // project's privacy rule, and it does not belong in the interface any
+          // more than it belongs in a log.
+          rejected += 1;
+        } finally {
+          bitmap?.close();
+        }
+      }
+
+      if (rejected > 0) {
+        fail(
+          `${rejected} photo${rejected === 1 ? '' : 's'} could not be opened in this browser. HEIC photos from an iPhone usually need converting to JPEG first.`
+        );
+      }
+    }
+
+    /**
+     * Rebuild every thumbnail after the cleaning switch is flipped.
+     *
+     * A preview that no longer matches what the button will produce is worse
+     * than no preview. Rebuilt one at a time with a frame between each so a
+     * dozen pages does not freeze the page; a second flip cancels the first.
+     */
+    let restyleToken = 0;
+
+    async function restyleShots(): Promise<void> {
+      if (shots.length === 0) return;
+      const token = ++restyleToken;
+      progress.textContent = 'Updating the previews…';
+
+      for (const shot of shots.slice()) {
+        if (token !== restyleToken) return;
+        try {
+          const bitmap = await createImageBitmap(new Blob([shot.bytes], { type: shot.type }));
+          const preview = await rehearse(bitmap, bitmap.width, bitmap.height);
+          bitmap.close();
+          if (token !== restyleToken) return;
+          if (!preview) continue;
+
+          URL.revokeObjectURL(shot.url);
+          shot.url = URL.createObjectURL(preview.blob);
+          shot.detected = preview.detected;
+          const img = shot.node.querySelector('img');
+          if (img) img.src = shot.url;
+        } catch {
+          // A shot whose preview cannot be rebuilt keeps the old one. The bytes
+          // are untouched, so the PDF is unaffected either way.
+        }
+        await paint();
+      }
+
+      if (token === restyleToken) {
+        render();
+        progress.textContent = '';
+      }
+    }
+
+    /* ---------------------------------------------------------------- *
+     * Building the PDF
+     * ---------------------------------------------------------------- */
+
+    let worker: Worker | null = null;
+    let jobId = 0;
+    let stageOfJob: 'scan' | 'ocr' = 'scan';
+    let scanNotes: string[] = [];
+    let scanReceipt = { pages: 0, bytesIn: 0, durationMs: 0 };
+    /** Kept so a failed recognition pass can still hand over the scan. */
+    let scanOutput: OutputFile[] = [];
+    let scanBytesOut = 0;
+    let urls: string[] = [];
+    let ticker = 0;
+
+    function ensureWorker(): Worker {
+      if (!worker) {
+        worker = new Worker(new URL('../lib/pdf/worker.ts', import.meta.url), { type: 'module' });
+        worker.onmessage = (event: MessageEvent<WorkerResponse>) => onDone(event.data);
+        worker.onerror = () => {
+          stopProgress();
+          runBtn.disabled = shots.length === 0;
+          fail('The engine failed to start. Nothing was sent anywhere; reload and try again.');
+        };
+      }
+      return worker;
+    }
+
+    const size = (n: number): string =>
+      n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : `${(n / 1024).toFixed(1)} KB`;
+
+    /**
+     * An honest progress line.
+     *
+     * The worker reports nothing until it is finished, so there is no percentage
+     * to show that would not be invented. What can be shown truthfully is what
+     * is being done, to how many pages, and how long it has been going.
+     */
+    function startProgress(text: string): void {
+      stopProgress();
+      const began = performance.now();
+      const write = (): void => {
+        const seconds = Math.round((performance.now() - began) / 1000);
+        progress.textContent = seconds < 2 ? text : `${text} · ${seconds}s`;
+      };
+      write();
+      ticker = window.setInterval(write, 1000);
+    }
+
+    function stopProgress(): void {
+      if (ticker) window.clearInterval(ticker);
+      ticker = 0;
+      progress.textContent = '';
+    }
+
+    function build(): void {
+      if (shots.length === 0) return;
+      clearError();
+      result.hidden = true;
+      runBtn.disabled = true;
+
+      const clean = cleaning();
+      const n = shots.length;
+
+      // Copies, not the originals: postMessage transfers detach the buffers it
+      // is handed, and the shots have to survive so the list still works if the
+      // build fails or the user builds twice.
+      //
+      // The names are made up here rather than carried from the file picker.
+      // Both operations sniff the bytes and ignore the name, and a filename is
+      // document content that has no business crossing into the worker's
+      // receipt or anywhere else.
+      const files = shots.map((shot, index) => ({
+        name: `page-${String(index + 1).padStart(2, '0')}.${shot.type.split('/')[1] ?? 'jpg'}`,
+        bytes: shot.bytes.slice(0),
+      }));
+
+      jobId += 1;
+      stageOfJob = 'scan';
+      scanNotes = [];
+
+      const request: WorkerRequest = clean
+        ? {
+            id: jobId,
+            op: 'scan',
+            files,
+            scanMode: mode(),
+            // Each page keeps the shape of the sheet that was photographed.
+            // Forcing A4 would letterbox a receipt and crop nothing usefully.
+            pageSize: 'fit',
+            detectEdges: true,
+          }
+        : {
+            // Cleaning off is not "scan with the cleaning turned down" — every
+            // scan mode flattens or thresholds. It is "put these photographs in
+            // a PDF", which is a different operation, and the one that keeps the
+            // JPEG bytes verbatim.
+            id: jobId,
+            op: 'images-to-pdf',
+            files,
+            pageSize: 'fit',
+          };
+
+      startProgress(
+        clean
+          ? `Finding the page edges and cleaning up ${n} page${n === 1 ? '' : 's'} on this device…`
+          : `Assembling ${n} page${n === 1 ? '' : 's'} on this device…`
+      );
+
+      ensureWorker().postMessage(
+        request,
+        files.map((file) => file.bytes)
+      );
+    }
+
+    /** Second stage: recognition, run on the PDF the first stage produced. */
+    function runOcr(pdf: Uint8Array): void {
+      jobId += 1;
+      stageOfJob = 'ocr';
+
+      // A copy, because the buffer is transferred and the first stage's output
+      // is still the thing the user gets if recognition fails.
+      const bytes = new Uint8Array(pdf).buffer;
+      const request: WorkerRequest = {
+        id: jobId,
+        op: 'ocr',
+        files: [{ name: 'scan.pdf', bytes }],
+        searchable: true,
+      };
+
+      startProgress('Reading the text on each page…');
+      ensureWorker().postMessage(request, [bytes]);
+    }
+
+    /** Put a finished set of files on screen, whichever stage produced them. */
+    function present(files: OutputFile[], notes: string[], bytesOut: number, ms: number): void {
+      stopProgress();
+      runBtn.disabled = false;
+
+      notesEl.replaceChildren(
+        ...notes.map((note) => {
+          const li = document.createElement('li');
+          li.textContent = note;
+          return li;
+        })
+      );
+
+      for (const url of urls) URL.revokeObjectURL(url);
+      urls = [];
+
+      downloads.replaceChildren(
+        ...files.map((file, index) => {
+          const url = URL.createObjectURL(
+            new Blob([file.bytes as BlobPart], { type: file.type ?? 'application/pdf' })
+          );
+          urls.push(url);
+
+          const a = document.createElement('a');
+          a.className = index === 0 ? 'btn btn--primary' : 'btn btn--quiet';
+          a.href = url;
+          a.download = file.name;
+          a.textContent = file.name.endsWith('.txt') ? 'Save the text' : 'Save the PDF';
+          return a;
+        })
+      );
+
+      const pages = scanReceipt.pages;
+      receipt.textContent = `${pages} page${pages === 1 ? '' : 's'} · ${size(scanReceipt.bytesIn)} photographed → ${size(bytesOut)} · ${Math.round(ms)}ms · 0 bytes sent`;
+      result.hidden = false;
+    }
+
+    function onDone({ id, result: res }: WorkerResponse): void {
+      if (id !== jobId) return;
+
+      if (!res.ok) {
+        stopProgress();
+        runBtn.disabled = shots.length === 0;
+
+        // A failed second stage still leaves a perfectly good PDF behind.
+        // Throwing it away because the optional half failed would be the worst
+        // of both, so it is handed over with the reason attached.
+        if (stageOfJob === 'ocr' && scanOutput.length > 0) {
+          fail(`${res.error} The scan itself is fine and is ready to save below, just without searchable text.`);
+          present(
+            scanOutput,
+            [...scanNotes, 'Recognition did not finish, so this PDF has no searchable text layer.'],
+            scanBytesOut,
+            scanReceipt.durationMs
+          );
+          return;
+        }
+
+        fail(res.error);
+        return;
+      }
+
+      if (!('files' in res)) return;
+
+      if (stageOfJob === 'scan') {
+        scanNotes = res.notes ?? [];
+        scanReceipt = { pages: res.pages, bytesIn: res.bytesIn, durationMs: res.durationMs };
+        scanOutput = res.files;
+        scanBytesOut = res.bytesOut;
+
+        const pdf = res.files[0];
+        if (pdf && searchableBox.checked) {
+          runOcr(pdf.bytes);
+          return;
+        }
+
+        present(res.files, scanNotes, res.bytesOut, res.durationMs);
+        return;
+      }
+
+      present(
+        res.files,
+        [...scanNotes, ...(res.notes ?? [])],
+        res.bytesOut,
+        scanReceipt.durationMs + res.durationMs
+      );
+    }
+
+    /* ---------------------------------------------------------------- *
+     * Wiring
+     * ---------------------------------------------------------------- */
+
+    openBtn.addEventListener('click', () => void startCamera());
+    stopBtn.addEventListener('click', () => stopCamera('Camera off. Nothing was recorded.'));
+    shootBtn.addEventListener('click', () => void capture());
+    clearBtn.addEventListener('click', discardAll);
+    runBtn.addEventListener('click', build);
+    enhanceBox.addEventListener('change', () => void restyleShots());
+
+    autoBox.addEventListener('change', () => {
+      resetAuto();
+      if (autoBox.checked) say('Hold the page still and it will take itself.');
+    });
+
+    // The overlay's pixel size follows the video's box, which changes on rotate,
+    // on resize, and when the stream's own dimensions finally arrive.
+    const observer = new ResizeObserver(() => fitOverlay());
+    observer.observe(video);
+    window.addEventListener('resize', fitOverlay);
+    video.addEventListener('loadedmetadata', fitOverlay);
+
+    /**
+     * Leaving the tab turns the camera off.
+     *
+     * A background tab holding a live camera is precisely the behaviour this
+     * tool exists not to have, and rAF has already stopped the detection loop
+     * anyway, so the stream would only be a lit indicator doing nothing. Turning
+     * it back on is one button.
+     */
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && stream) stopCamera('Camera turned off when you left the tab.');
+    });
+
+    window.addEventListener('pagehide', () => stopCamera());
+    // Harmless without view transitions; the teardown hook if they are ever on.
+    document.addEventListener('astro:before-swap', () => stopCamera());
+
+    render();
+  }
+</script>
+
+<style is:global>
+  /*
+   * The shot list is built by the script above, at runtime.
+   *
+   * Astro scopes a component's styles by stamping a data attribute on the
+   * elements it compiles; an element created by `document.createElement` never
+   * gets that attribute, so the `.scan__shot` rules in the scoped block cannot
+   * reach these nodes. Hence `is:global` — every selector here is namespaced
+   * under `.scan` so "global" is a mechanism, not a blast radius.
+   */
+  .scan .scan__shot {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 0.6);
+    overflow: hidden;
+    background: var(--paper-raised);
+  }
+
+  .scan .scan__shot figure {
+    margin: 0;
+  }
+
+  .scan .scan__shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    background: var(--paper-sunk);
+  }
+
+  .scan .scan__shot figcaption {
+    font-size: var(--step--2);
+    color: var(--muted);
+    padding: 0.3rem 0.4rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .scan .scan__shot-actions {
+    display: inline-flex;
+    gap: 0.35rem;
+  }
+
+  .scan .scan__drop {
+    border: 0;
+    background: transparent;
+    color: var(--seal);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--step--2);
+    padding: 0.1rem 0.15rem;
+    border-radius: 4px;
+  }
+
+  .scan .scan__drop:hover {
+    background: var(--paper-sunk);
+  }
+
+  .scan .scan__picker {
+    margin-top: 0.25rem;
+  }
+
+  /* The picker is opened by the button next to it; it is never the target. */
+  .scan .scan__picker-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

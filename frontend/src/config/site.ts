@@ -30,6 +30,7 @@ export const CATEGORIES: ToolCategory[] = ['Organise', 'Convert', 'Edit', 'Secur
  */
 export const TOOLS: Tool[] = [
   // --- Organise ---
+  { slug: 'scan-pdf', name: 'Scan to PDF', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Photograph pages. Straightened and sharpened on your device.' },
   { slug: 'merge-pdf', name: 'Merge', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Combine files and reorder pages before you export.' },
   { slug: 'split-pdf', name: 'Split', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Cut one document into many, at the pages you choose.' },
   { slug: 'rotate-pdf', name: 'Rotate', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Fix sideways scans. Lossless — only the page dictionary changes.' },
