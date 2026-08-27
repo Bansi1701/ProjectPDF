@@ -265,6 +265,39 @@ const { mode } = Astro.props;
   .page-cell[data-drop='after']::before { right: -0.5rem; }
 
   /* Split marks sit between pages. */
+  /* Always visible: in delete and extract this is the primary action, and a
+     hover-only control does not exist at all on a touch screen. */
+  .page-cell__pick {
+    position: absolute;
+    top: 0.45rem;
+    left: 0.45rem;
+    width: 1.35rem;
+    height: 1.35rem;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1.5px solid var(--line-strong);
+    border-radius: 50%;
+    background: var(--paper, #fff);
+    color: transparent;
+    font-size: 0.8rem;
+    line-height: 1;
+    cursor: pointer;
+    z-index: 2;
+  }
+
+  .page-cell__pick::after { content: '✓'; }
+
+  .page-cell__pick:hover {
+    border-color: var(--accent);
+  }
+
+  .page-cell[data-marked='true'] .page-cell__pick {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
   .page-cell__cut {
     position: absolute;
     right: -0.55rem;
@@ -420,12 +453,12 @@ const { mode } = Astro.props;
   const LIVE_BITMAPS = 240;
 
   const MODE_HINTS: Record<GridMode, string> = {
-    organise: 'Drag a page to move it. Double-click to see it big. Hover for turn and remove. Arrow keys move the focus, [ and ] move the page, R turns it, V views it, Delete removes it.',
-    merge: 'Drag pages into the order you want — across files as well as within them. Hover for turn and remove. Double-click any page to see it big.',
-    rotate: 'Click a page to turn it right; hover for the other direction. R turns the focused page, Shift+R turns it back. Double-click to see it big.',
-    delete: 'Click the pages you want gone. They stay visible, struck through, until you export. Double-click to check one first.',
-    extract: 'Click the pages you want to keep. Everything unpicked is left behind. Double-click to check one first.',
-    split: 'Click the mark between two pages to cut there. Each run of pages becomes its own file. Double-click a page to see it big.',
+    organise: 'Click a page to see it full size. Drag to move it, and hover for turn and remove. Arrow keys move the focus, [ and ] move the page, R turns it, Delete removes it.',
+    merge: 'Click a page to see it full size. Drag pages into the order you want — across files as well as within them — and hover for turn and remove.',
+    rotate: 'Hover a page and use ⟲ or ⟳ to turn it, or press R on the focused page and Shift+R to turn it back. Click a page to see it full size.',
+    delete: 'Tick the pages you want gone — they stay visible, struck through, until you export. Click a page to see it full size first.',
+    extract: 'Tick the pages you want to keep; everything unticked is left behind. Click a page to see it full size first.',
+    split: 'Click the ✂ between two pages to cut there — each run becomes its own file. Click a page itself to see it full size.',
   };
 
   class PageGridElement extends HTMLElement {
@@ -443,6 +476,8 @@ const { mode } = Astro.props;
     private viewer: HTMLDialogElement | null = null;
     private viewing: Cell | null = null;
     private viewToken = 0;
+    /** Set when a drag just finished, so its release does not read as a click. */
+    private suppressClick = false;
     private sessionOpen = false;
 
     private pagesEl!: HTMLElement;
@@ -540,10 +575,6 @@ const { mode } = Astro.props;
       const tools = document.createElement('div');
       tools.className = 'page-cell__tools';
 
-      // Every mode gets this. Click already means something different in three
-      // of them — toggle, turn, cut — so checking a page cannot be click.
-      tools.append(this.makeTool('\u2315', 'View this page larger', 'view'));
-
       if (this.mode !== 'delete' && this.mode !== 'extract' && this.mode !== 'split') {
         tools.append(
           this.makeTool('⟲', 'Turn left', 'turn-left'),
@@ -553,6 +584,21 @@ const { mode } = Astro.props;
       if (this.mode === 'organise' || this.mode === 'merge') {
         tools.append(this.makeTool('✕', 'Remove this page', 'remove'));
       }
+
+      // Picking is the whole job in these two modes, so its control is always
+      // visible rather than appearing on hover: a control you have to discover
+      // is a poor primary action, and on a touch screen there is no hover at
+      // all.
+      if (this.mode === 'delete' || this.mode === 'extract') {
+        const pick = document.createElement('button');
+        pick.type = 'button';
+        pick.className = 'page-cell__pick';
+        pick.dataset.gridAction = 'pick';
+        el.append(pick);
+      }
+
+      // Rotate keeps its turn buttons and nothing else; turning used to be
+      // what a click did, and a click now opens the page instead.
 
       el.append(frame, label, tools);
 
@@ -870,6 +916,26 @@ const { mode } = Astro.props;
         cell.el.dataset.picked = String(
           (this.mode === 'extract' || this.mode === 'delete') && !cell.removed
         );
+
+        // The tick means the thing the tool is FOR: in delete, that the page
+        // goes; in extract, that it stays. Same control, opposite sense, so it
+        // has to say which out loud rather than leave it to be inferred.
+        const marked = this.mode === 'delete' ? cell.removed : !cell.removed;
+        cell.el.dataset.marked = String(marked);
+        const pick = cell.el.querySelector('.page-cell__pick');
+        if (pick) {
+          const label =
+            this.mode === 'delete'
+              ? marked
+                ? `Page ${cell.page} will be removed. Select to keep it.`
+                : `Page ${cell.page} will be kept. Select to remove it.`
+              : marked
+                ? `Page ${cell.page} will be pulled out. Select to leave it.`
+                : `Page ${cell.page} will be left behind. Select to pull it out.`;
+          pick.setAttribute('aria-pressed', String(marked));
+          pick.setAttribute('aria-label', label);
+          pick.setAttribute('title', label);
+        }
         cell.el.dataset.cut = String(this.cuts.has(index));
         delete cell.el.dataset.drop;
 
@@ -911,7 +977,7 @@ const { mode } = Astro.props;
           event.stopPropagation();
           const cell = this.cellOf(action);
           if (!cell) return;
-          if (action.dataset.gridAction === 'view') return void this.showPage(cell);
+          if (action.dataset.gridAction === 'pick') return void this.toggleRemoved(cell);
           if (action.dataset.gridAction === 'turn-left') this.turn(cell, -90);
           else if (action.dataset.gridAction === 'turn-right') this.turn(cell, 90);
           else if (action.dataset.gridAction === 'remove') this.toggleRemoved(cell);
@@ -964,21 +1030,22 @@ const { mode } = Astro.props;
           return;
         }
 
-        // A plain click on the page itself.
+        // A plain click on the page itself opens it, in every mode. The
+        // actions a click used to carry — toggle, turn, cut — all have their
+        // own controls now, because being able to check a page is worth more
+        // than saving a click, and it was the one thing the grid could not do.
         const cell = this.cellOf(target);
         if (!cell) return;
-        if (this.mode === 'delete' || this.mode === 'extract') this.toggleRemoved(cell);
-        else if (this.mode === 'rotate') this.turn(cell, 90);
+        // A click that ended a drag is not a click.
+        if (this.suppressClick) {
+          this.suppressClick = false;
+          return;
+        }
+        void this.showPage(cell);
       });
     }
 
-    /** Double-click is the shortcut; the magnifier is the discoverable one. */
     private wireViewer(): void {
-      this.pagesEl.addEventListener('dblclick', (event) => {
-        const cell = this.cellOf(event.target as HTMLElement);
-        if (cell) void this.showPage(cell);
-      });
-
       const dialog = this.viewer;
       if (!dialog) return;
 
@@ -1186,6 +1253,7 @@ const { mode } = Astro.props;
         if (!started || target < 0) return;
         started = false;
 
+        this.suppressClick = true;
         const from = this.cells.indexOf(dragged);
         let to = target;
         if (to > from) to -= 1;
