@@ -1,0 +1,7 @@
+---
+import WorkflowRecipe from '../../components/WorkflowRecipe.astro';
+import { recipeBySlug } from '../../config/recipes';
+const recipe = recipeBySlug('shrink-pdf-under-upload-limit');
+if (!recipe) throw new Error('Missing upload-size recipe');
+---
+<WorkflowRecipe {recipe} />

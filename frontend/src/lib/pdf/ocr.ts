@@ -163,7 +163,7 @@ export async function ocrPdf(
     }
   } catch (error) {
     await worker.terminate();
-    await source.destroy();
+    await source.loadingTask.destroy();
     return { ok: false, error: `OCR failed: ${(error as Error).message}` };
   }
 
@@ -172,7 +172,7 @@ export async function ocrPdf(
   reportProgress(chosen.length, chosen.length, 'Assembling the result…');
 
   await worker.terminate();
-  await source.destroy();
+  await source.loadingTask.destroy();
 
   const joined = text.join('\n\n').trim();
   if (!joined) {

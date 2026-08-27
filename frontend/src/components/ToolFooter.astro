@@ -1,0 +1,90 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import type { Tool } from '../config/site';
+import { faqLd, howToLd, softwareAppLd } from '../lib/seo';
+
+interface Props {
+  tool: Tool;
+  content: CollectionEntry<'tools'>['data'];
+  related: Tool[];
+}
+
+const { tool, content, related } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const howToSchema = howToLd(`How to ${tool.searchName.toLowerCase()}`, content.howTo);
+const faqSchema = faqLd(content.faqs);
+const appSchema = softwareAppLd(tool.searchName, content.intro, `/${tool.slug}/`);
+---
+
+<section class="tool-copy" aria-labelledby="tool-copy-title">
+  <header>
+    <p class="tool-copy__eyebrow">About this tool</p>
+    <h2 id="tool-copy-title">{tool.searchName}, without uploading your document</h2>
+    <p class="tool-copy__intro">{content.intro}</p>
+  </header>
+
+  <section class="tool-copy__how" aria-labelledby="tool-how-title">
+    <h3 id="tool-how-title">How to {tool.searchName.toLowerCase()}</h3>
+    <ol>
+      {content.howTo.map((step, index) => (
+        <li>
+          <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+          <div><h4>{step.name}</h4><p>{step.text}</p></div>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section class="tool-copy__faq" aria-labelledby="tool-faq-title">
+    <h3 id="tool-faq-title">Questions people ask</h3>
+    <div>
+      {content.faqs.map((faq) => (
+        <details>
+          <summary>{faq.question}</summary>
+          <p>{faq.answer}</p>
+        </details>
+      ))}
+    </div>
+  </section>
+
+  <nav class="tool-copy__related" aria-label={`Related tools for ${tool.searchName}`}>
+    <h3>Related PDF tools</h3>
+    <ul>
+      {related.map((item) => (
+        <li><a href={`${base}/${item.slug}/`}><strong>{item.searchName}</strong><span>{item.blurb}</span></a></li>
+      ))}
+    </ul>
+  </nav>
+</section>
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(appSchema)}></script>
+<script type="application/ld+json" is:inline set:html={JSON.stringify(howToSchema)}></script>
+<script type="application/ld+json" is:inline set:html={JSON.stringify(faqSchema)}></script>
+
+<style>
+  .tool-copy { display: grid; gap: 2.5rem; margin-top: 2rem; padding: clamp(1.25rem, 3vw, 2.3rem); border: 1px solid var(--line); border-radius: calc(var(--radius) * 1.15); background: var(--paper-raised); }
+  .tool-copy header { max-width: 54rem; }
+  .tool-copy__eyebrow { margin: 0 0 0.45rem; color: var(--accent); font: 600 var(--step--2)/1 var(--font-mono); letter-spacing: 0.11em; text-transform: uppercase; }
+  h2, h3, h4, p { margin-top: 0; }
+  h2 { max-width: 22ch; margin-bottom: 0.8rem; font-size: clamp(1.65rem, 4vw, 2.6rem); line-height: 1.05; }
+  h3 { margin-bottom: 0.85rem; font-size: var(--step-2); }
+  h4 { margin-bottom: 0.25rem; font-size: var(--step-0); }
+  .tool-copy__intro, li p, details p { color: var(--ink-2); line-height: 1.7; }
+  .tool-copy__intro { margin-bottom: 0; font-size: var(--step-1); }
+  .tool-copy__how ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+  .tool-copy__how li { display: grid; grid-template-columns: auto 1fr; gap: 0.75rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
+  .tool-copy__how li > span { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent); color: white; font: 600 var(--step--2)/1 var(--font-mono); }
+  .tool-copy__how p { margin: 0; font-size: var(--step--1); }
+  .tool-copy__faq > div { display: grid; gap: 0.5rem; }
+  .tool-copy__faq details { padding: 0.85rem 1rem; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+  .tool-copy__faq summary { color: var(--ink); font-weight: 600; cursor: pointer; }
+  .tool-copy__faq details p { margin: 0.65rem 0 0; }
+  .tool-copy__related ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 0.6rem; margin: 0; padding: 0; list-style: none; }
+  .tool-copy__related a { display: grid; gap: 0.2rem; height: 100%; padding: 0.85rem; border: 1px solid var(--line); border-radius: 10px; color: var(--ink); text-decoration: none; }
+  .tool-copy__related a:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .tool-copy__related span { color: var(--muted); font-size: var(--step--2); line-height: 1.45; }
+  @media (max-width: 48em) {
+    .tool-copy { gap: 1.8rem; }
+    .tool-copy__how ol { grid-template-columns: 1fr; }
+  }
+</style>

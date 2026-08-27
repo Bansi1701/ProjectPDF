@@ -434,7 +434,7 @@ export async function pdfToImages(
   } catch (error) {
     return { ok: false, error: `Rendering failed: ${(error as Error).message}` };
   } finally {
-    await doc.destroy();
+    await doc.loadingTask.destroy();
   }
 
   const notes: string[] = [];

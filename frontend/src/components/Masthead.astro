@@ -1,142 +1,392 @@
 ---
 import Lens from './Lens.astro';
 import Logo from './Logo.astro';
-import { CATEGORIES, SITE } from '../config/site';
+import ToolIcon from './ToolIcon.astro';
+import { SITE } from '../config/site';
+import {
+  LIVE_NAVIGATION_TOOL_COUNT,
+  NAVIGATION_GROUPS,
+  POPULAR_TOOLS,
+  QUICK_TOOLS,
+} from '../config/navigation';
+
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const currentSlug = Astro.url.pathname.split('/').filter(Boolean).at(-1) ?? '';
+const toolHref = (slug: string) => `${base}/${slug}/`;
+const menuLabelOverrides: Record<string, string> = {
+  'header-footer': 'Header, footer & Bates',
+  'split-by': 'Split by size or bookmark',
+  'text-to-pdf': 'Text, CSV or Markdown to PDF',
+};
+const menuLabel = (slug: string, fallback: string) => menuLabelOverrides[slug] ?? fallback;
+const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
+  group.tools.map((tool) => ({ tool, tone: group.tone, group: group.label }))
+);
 ---
 
 <div class="masthead-slot">
   <Lens variant="rail" as="header" class="rail">
-    <a class="brand" href={`${base}/`}>
-      <Logo size="2.5rem" />
+    <a class="brand" href={`${base}/`} aria-label={`${SITE.name} home`}>
+      <Logo size="2.65rem" />
       <span>{SITE.name}</span>
     </a>
 
-    <nav class="nav" aria-label="Tool categories">
-      {CATEGORIES.map((category) => <a href={`${base}/#${category.toLowerCase()}`}>{category}</a>)}
+    <nav class="quick-nav" aria-label="Popular PDF tools">
+      {QUICK_TOOLS.map((tool) => (
+        <a href={toolHref(tool.slug)} aria-current={tool.slug === currentSlug ? 'page' : undefined}>{tool.searchName}</a>
+      ))}
     </nav>
 
+    <details class="nav-menu all-menu" data-nav-menu>
+      <summary aria-controls="all-tools-menu-panel" aria-expanded="false">
+        <span>All PDF tools</span>
+        <svg class="caret" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+      </summary>
+      <div class="all-panel menu-surface" id="all-tools-menu-panel">
+        <div class="all-panel__head">
+          <div>
+            <span class="eyebrow">Tool library</span>
+            <strong>Choose what you need to do</strong>
+            <p>{LIVE_NAVIGATION_TOOL_COUNT} working tools, organized by task.</p>
+          </div>
+        </div>
+
+        <div class="mobile-popular" aria-labelledby="mobile-popular-heading">
+          <h2 id="mobile-popular-heading">Popular</h2>
+          <div>
+            {POPULAR_TOOLS.map((tool) => (
+              <a href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
+                <ToolIcon slug={tool.slug} size="1.9rem" />{tool.name}
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <div class="desktop-tool-groups">
+          {NAVIGATION_GROUPS.map((group) => (
+            <section class={`nav-group nav-group--${group.tone}`} aria-labelledby={`desktop-${group.tone}`}>
+              <h2 id={`desktop-${group.tone}`}><span aria-hidden="true"></span>{group.label}</h2>
+              <ul>
+                {group.tools.map((tool) => (
+                  <li>
+                    <a class="menu-tool" href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
+                      <ToolIcon slug={tool.slug} tone={group.tone} size="1.7rem" />
+                      <span>{menuLabel(tool.slug, tool.searchName)}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+
+        <div class="mobile-tool-groups">
+          {NAVIGATION_GROUPS.map((group, index) => (
+            <details class={`mobile-group mobile-group--${group.tone}`} open={index === 0}>
+              <summary>
+                <span class="mobile-group__dot" aria-hidden="true"></span><span>{group.label}</span><small>{group.tools.length}</small>
+                <svg class="caret" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+              </summary>
+              <ul>
+                {group.tools.map((tool) => (
+                  <li>
+                    <a class="menu-tool" href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
+                      <ToolIcon slug={tool.slug} tone={group.tone} size="1.7rem" />
+                      <span>{menuLabel(tool.slug, tool.searchName)}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ))}
+        </div>
+
+        <div class="all-panel__foot">
+          <span class="privacy-note"><i aria-hidden="true"></i>Your files stay on this device</span>
+          <nav aria-label="Project information"><a href={`${base}/how-to/`}>Guides</a><a href={`${base}/privacy/`}>Privacy</a><a href={`${base}/about/`}>About</a></nav>
+        </div>
+      </div>
+    </details>
+
     <div class="rail__actions">
+      <form class="header-search" data-header-search role="search">
+        <button class="header-search__trigger" type="button" data-header-search-trigger aria-label="Find a PDF tool">
+          <span class="header-search__glyph" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="5.6" /><path d="m15 15 4.2 4.2" /><path class="header-search__spark" d="M18.5 4.2v3m-1.5-1.5h3" /></svg>
+          </span>
+        </button>
+        <input
+          type="search"
+          data-header-search-input
+          aria-label="Search PDF tools"
+          aria-controls="header-search-results"
+          aria-expanded="false"
+          placeholder={`Search ${LIVE_NAVIGATION_TOOL_COUNT} tools…`}
+          autocomplete="off"
+        />
+        <kbd>/</kbd>
+        <ul class="header-search__results menu-surface" id="header-search-results" data-header-search-results hidden>
+          {headerSearchTools.map(({ tool, tone, group }) => (
+            <li data-header-search-item data-search={`${tool.searchName} ${tool.name} ${tool.blurb} ${group}`.toLowerCase()} hidden>
+              <a href={toolHref(tool.slug)}>
+                <ToolIcon slug={tool.slug} tone={tone} size="2rem" />
+                <span><strong>{tool.searchName}</strong><small>{group}</small></span>
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 3 5 5-5 5" /></svg>
+              </a>
+            </li>
+          ))}
+          <li class="header-search__empty" data-header-search-empty hidden>No matching tool yet.</li>
+        </ul>
+      </form>
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">
-        <span aria-hidden="true">◐</span>
+        <svg class="theme-icon theme-icon--moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.8 12.7A6.4 6.4 0 0 1 7.3 4.2 6.6 6.6 0 1 0 15.8 12.7Z" /></svg>
+        <svg class="theme-icon theme-icon--sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3" /><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.3 4.3l1.4 1.4M14.3 14.3l1.4 1.4M15.7 4.3l-1.4 1.4M5.7 14.3l-1.4 1.4" /></svg>
       </button>
-      <a class="rail-cta" href={`${base}/#tools`}>Browse tools</a>
     </div>
   </Lens>
 </div>
 
 <style>
-  .masthead-slot {
-    position: sticky;
-    top: 0.75rem;
-    z-index: 20;
-    width: min(100% - (var(--gutter) * 2), var(--content));
-    margin-inline: auto;
-    padding-top: 0.75rem;
-  }
-
-  /* The element is rendered by <Lens>, so the parent's scoped selector never
-     lands on it. Constrain :global() under .masthead-slot instead. */
-  .masthead-slot :global(.rail) {
-    padding: 0.5rem 0.5rem 0.5rem 1.125rem;
-    min-height: 3.5rem;
-  }
-
-  /* Lens wraps its slot in .lens__body, so the row lives one level down. */
-  .masthead-slot :global(.rail .lens__body) {
-    display: flex;
+  .masthead-slot { position: sticky; top: 0.75rem; z-index: 50; width: min(calc(100% - (var(--gutter) * 2)), 88rem); margin-inline: auto; padding-top: 0.75rem; }
+  .masthead-slot :global(.rail) { position: relative; min-height: 4rem; padding: 0.42rem 0.5rem 0.42rem 0.72rem; contain: none; }
+  .masthead-slot :global(.rail .lens__body) { display: flex; align-items: center; min-width: 0; min-height: 3.15rem; gap: 0.25rem; }
+  .brand { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0.65rem; margin-right: 0.45rem; color: var(--ink); font-family: var(--font-brand); font-size: 0.96rem; font-weight: 700; letter-spacing: -0.025em; text-decoration: none; }
+  .quick-nav { display: flex; align-items: center; align-self: stretch; gap: 0.1rem; }
+  .quick-nav a, .nav-menu > summary { display: inline-flex; align-items: center; justify-content: center; min-height: 2.55rem; padding-inline: 0.72rem; border-radius: 11px; color: var(--ink-2); font-size: 0.76rem; font-weight: 650; letter-spacing: 0.005em; text-decoration: none; white-space: nowrap; transition: color 150ms ease, background 150ms ease; }
+  .quick-nav a:hover, .quick-nav a[aria-current='page'], .nav-menu > summary:hover, .nav-menu[open] > summary { color: var(--ink); background: color-mix(in srgb, var(--accent) 8%, var(--paper-sunk)); }
+  .quick-nav a[aria-current='page'] { box-shadow: inset 0 -2px 0 var(--accent); }
+  .nav-menu { margin: 0; }
+  .nav-menu > summary { gap: 0.32rem; cursor: pointer; list-style: none; }
+  .nav-menu > summary::-webkit-details-marker { display: none; }
+  .caret { width: 0.9rem; height: 0.9rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 160ms ease; }
+  .nav-menu[open] > summary .caret, .mobile-group[open] > summary .caret { transform: rotate(180deg); }
+  .menu-surface { border: 1px solid var(--line-strong); border-radius: 20px; background: color-mix(in srgb, var(--paper-raised) 97%, transparent); box-shadow: 0 26px 70px -34px rgb(15 23 42 / 0.48), 0 8px 24px -18px rgb(15 23 42 / 0.22); -webkit-backdrop-filter: blur(22px) saturate(1.25); backdrop-filter: blur(22px) saturate(1.25); }
+  .eyebrow { color: var(--accent); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.11em; text-transform: uppercase; }
+  .all-menu { position: static; }
+  .all-panel { position: absolute; z-index: 60; top: calc(100% + 0.72rem); left: 50%; width: min(88rem, calc(100vw - 2rem)); max-height: calc(100vh - 6.5rem); padding: 1.2rem; overflow-y: auto; transform: translateX(-50%); }
+  .all-panel__head { display: flex; align-items: center; gap: 1.25rem; padding: 0.1rem 0.2rem 1rem; border-bottom: 1px solid var(--line); }
+  .all-panel__head > div { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0.25rem 0.65rem; }
+  .all-panel__head strong { font-family: var(--font-brand); font-size: var(--step-1); letter-spacing: -0.025em; }
+  .all-panel__head p { grid-column: 2; margin: 0; color: var(--muted); font-size: var(--step--2); }
+  .desktop-tool-groups { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: clamp(0.7rem, 1.3vw, 1.4rem); padding: 1.15rem 0.15rem 1rem; }
+  .nav-group { --group-color: #f97316; }
+  .nav-group--organize, .mobile-group--organize { --group-color: #f97316; }
+  .nav-group--optimize, .mobile-group--optimize { --group-color: #65a30d; }
+  .nav-group--to-pdf, .mobile-group--to-pdf { --group-color: #eab308; }
+  .nav-group--from-pdf, .mobile-group--from-pdf { --group-color: #3b82f6; }
+  .nav-group--compose, .mobile-group--compose { --group-color: #c026d3; }
+  .nav-group--review, .mobile-group--review { --group-color: #7c3aed; }
+  .nav-group--secure, .mobile-group--secure { --group-color: #0f766e; }
+  .nav-group h2 { display: flex; align-items: center; gap: 0.45rem; min-height: 2rem; margin: 0 0 0.38rem; color: var(--muted); font: 700 0.7rem/1.2 var(--font-sans); letter-spacing: 0.065em; text-transform: uppercase; }
+  .nav-group h2 > span { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--group-color); box-shadow: 0 0 0 4px color-mix(in srgb, var(--group-color) 12%, transparent); }
+  .nav-group ul, .mobile-group ul { display: grid; gap: 0.08rem; margin: 0; padding: 0; list-style: none; }
+  .menu-tool { display: grid; grid-template-columns: 1.8rem minmax(0, 1fr); align-items: center; gap: 0.45rem; min-height: 2.45rem; padding: 0.22rem; border-radius: 9px; color: var(--ink-2); font-size: 0.77rem; font-weight: 540; line-height: 1.25; text-decoration: none; transition: color 140ms ease, background 140ms ease, transform 140ms ease; }
+  .menu-tool:hover, .menu-tool[aria-current='page'] { color: var(--ink); background: color-mix(in srgb, var(--group-color) 9%, var(--paper-sunk)); transform: translateX(2px); }
+  .menu-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .all-panel__foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 0.25rem 0.1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
+  .privacy-note { display: inline-flex; align-items: center; gap: 0.45rem; }
+  .privacy-note i { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 12%, transparent); }
+  .all-panel__foot nav { display: flex; gap: 1rem; }
+  .all-panel__foot a { color: var(--ink-2); font-weight: 600; text-decoration: none; }
+  .all-panel__foot a:hover { color: var(--accent); }
+  .mobile-popular, .mobile-tool-groups { display: none; }
+  .rail__actions { position: relative; display: flex; flex: 0 0 auto; align-items: center; gap: 0.4rem; margin-left: auto; }
+  .header-search {
+    position: relative;
+    z-index: 4;
+    display: grid;
+    grid-template-columns: 2.45rem minmax(8rem, 1fr) auto;
     align-items: center;
-    gap: 1rem;
-    min-height: 2.5rem;
-  }
-
-  .brand {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    color: var(--ink);
-    text-decoration: none;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    margin-right: auto;
-  }
-
-  .nav {
-    display: none;
-    gap: 1.5rem;
-  }
-
-  .nav a {
-    color: var(--ink-2);
-    text-decoration: none;
-    font-size: var(--step--1);
-    font-weight: 500;
-  }
-
-  .nav a:hover {
-    color: var(--ink);
-  }
-
-  .rail__actions {
-    display: flex;
-    align-items: center;
-    gap: 0.625rem;
-  }
-
-  .theme-toggle,
-  .rail-cta {
-    padding: 0.5rem 1rem;
-    border-radius: 12px;
+    width: min(18rem, 24vw);
+    min-width: 12rem;
+    height: 2.55rem;
     border: 1px solid var(--line-strong);
-    color: var(--ink);
-    text-decoration: none;
-    font-size: var(--step--1);
-    font-weight: 500;
-    white-space: nowrap;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--paper-raised) 92%, transparent);
+    color: var(--ink-2);
+    box-shadow: 0 7px 20px -18px rgb(15 23 42 / 0.45);
+    transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
   }
-
-  .theme-toggle {
-    display: inline-grid;
-    place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    padding: 0;
-    background: transparent;
-    cursor: pointer;
+  .header-search:hover,
+  .header-search:focus-within {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--line-strong));
+    background: var(--paper-raised);
+    box-shadow: 0 14px 34px -22px color-mix(in srgb, var(--accent) 52%, transparent), 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
   }
-
-  .rail-cta:hover {
-    color: var(--ink);
-    border-color: var(--ink-2);
+  .header-search__trigger { display: grid; width: 2.45rem; height: 2.45rem; place-items: center; padding: 0; border: 0; background: transparent; color: inherit; cursor: text; }
+  .header-search__glyph { position: relative; display: grid; width: 1.78rem; height: 1.78rem; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--accent) 10%, var(--paper-sunk)); color: var(--accent); transition: transform 180ms ease, background 180ms ease; }
+  .header-search:hover .header-search__glyph,
+  .header-search:focus-within .header-search__glyph { transform: rotate(-4deg) scale(1.06); background: color-mix(in srgb, var(--accent) 15%, var(--paper-sunk)); }
+  .header-search__glyph svg { width: 1.12rem; height: 1.12rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+  .header-search__spark { opacity: 0; transform-origin: center; transition: opacity 180ms ease; }
+  .header-search:hover .header-search__spark,
+  .header-search:focus-within .header-search__spark { opacity: 1; }
+  .header-search input { min-width: 0; width: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 600 0.78rem/1 var(--font-sans); opacity: 1; }
+  .header-search input::placeholder { color: var(--muted); font-weight: 500; }
+  .header-search > kbd { padding-right: 0.65rem; color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
+  .header-search__results { position: absolute; z-index: 70; top: calc(100% + 0.65rem); right: 0; display: grid; width: min(24rem, calc(100vw - 1rem)); max-height: min(27rem, calc(100vh - 6rem)); margin: 0; padding: 0.5rem; overflow-y: auto; list-style: none; }
+  .header-search__results[hidden], .header-search__results li[hidden] { display: none; }
+  .header-search__results a { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; gap: 0.65rem; min-height: 3.25rem; padding: 0.42rem 0.55rem 0.42rem 0.42rem; border-radius: 12px; color: var(--ink); text-decoration: none; }
+  .header-search__results a:hover, .header-search__results a:focus-visible { background: color-mix(in srgb, var(--accent) 7%, var(--paper-sunk)); outline: none; }
+  .header-search__results a > span { display: grid; gap: 0.12rem; min-width: 0; }
+  .header-search__results strong { overflow: hidden; font-size: 0.78rem; font-weight: 680; text-overflow: ellipsis; white-space: nowrap; }
+  .header-search__results small { color: var(--muted); font: 600 0.62rem/1 var(--font-mono); letter-spacing: 0.045em; text-transform: uppercase; }
+  .header-search__results a > svg { width: 0.9rem; fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .header-search__empty { padding: 0.8rem; color: var(--muted); font-size: var(--step--1); }
+  .theme-toggle { display: inline-grid; flex: 0 0 auto; width: 2.55rem; height: 2.55rem; place-items: center; padding: 0; border: 1px solid var(--line-strong); border-radius: 12px; background: transparent; color: var(--ink); cursor: pointer; }
+  .theme-toggle:hover { border-color: color-mix(in srgb, var(--accent) 42%, var(--line-strong)); background: var(--paper-sunk); }
+  .theme-icon { grid-area: 1 / 1; width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+  .theme-icon--sun { display: none; }
+  :global(:root[data-theme='dark']) .theme-icon--moon { display: none; }
+  :global(:root[data-theme='dark']) .theme-icon--sun { display: block; }
+  @media (max-width: 78em) { .quick-nav { display: none; } .brand { margin-right: 0.25rem; } }
+  @media (max-width: 61em) and (min-width: 48.01em) { .desktop-tool-groups { grid-template-columns: repeat(4, minmax(0, 1fr)); } .all-panel { max-height: calc(100vh - 6rem); } }
+  @media (max-width: 48em) {
+    .masthead-slot { top: 0.35rem; width: calc(100% - 1rem); padding-top: 0.35rem; }
+    .masthead-slot :global(.rail) { min-height: 3.65rem; padding: 0.3rem 0.38rem 0.3rem 0.45rem; }
+    .masthead-slot :global(.rail .lens__body) { min-height: 3rem; }
+    .brand { gap: 0.45rem; margin-right: auto; font-size: 0.86rem; }
+    .nav-menu > summary { min-height: 2.55rem; padding-inline: 0.7rem; }
+    .all-menu > summary span { font-size: 0; }
+    .all-menu > summary span::after { content: 'Tools'; font-size: 0.76rem; }
+    .rail__actions { margin-left: 0; }
+    .header-search { grid-template-columns: 2.45rem 0 0; width: 2.55rem; min-width: 2.55rem; }
+    .header-search input { width: 0; opacity: 0; pointer-events: none; }
+    .header-search > kbd { opacity: 0; }
+    .header-search:focus-within { position: absolute; right: 2.95rem; grid-template-columns: 2.45rem minmax(6rem, 1fr) auto; width: min(17rem, calc(100vw - 8.25rem)); }
+    .header-search:focus-within input { width: 100%; opacity: 1; pointer-events: auto; }
+    .header-search:focus-within > kbd { opacity: 1; }
+    .all-panel { position: fixed; top: 4.65rem; right: 0.5rem; bottom: max(0.5rem, env(safe-area-inset-bottom)); left: 0.5rem; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; width: auto; max-height: none; padding: 1rem; overflow: hidden; transform: none; }
+    .all-panel__head { padding: 0.1rem 0.05rem 0.85rem; }
+    .all-panel__head > div { display: grid; grid-template-columns: 1fr; gap: 0.2rem; }
+    .all-panel__head p { grid-column: auto; }
+    .desktop-tool-groups { display: none; }
+    .mobile-popular { display: grid; gap: 0.55rem; padding: 0.85rem 0 0.75rem; }
+    .mobile-popular h2 { margin: 0; color: var(--muted); font: 700 0.67rem/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; }
+    .mobile-popular > div { display: flex; gap: 0.45rem; overflow-x: auto; padding: 0.15rem 0.05rem 0.35rem; scrollbar-width: thin; }
+    .mobile-popular a { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0.42rem; min-height: 2.75rem; padding: 0.4rem 0.7rem 0.4rem 0.45rem; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-sunk); color: var(--ink); font-size: 0.75rem; font-weight: 650; text-decoration: none; }
+    .mobile-popular a[aria-current='page'] { border-color: color-mix(in srgb, var(--accent) 48%, var(--line)); }
+    .mobile-tool-groups { display: block; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--line); scrollbar-width: thin; }
+    .mobile-group { border-bottom: 1px solid var(--line); }
+    .mobile-group > summary { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 0.65rem; min-height: 3.25rem; padding: 0.35rem 0.18rem; color: var(--ink); font-size: 0.81rem; font-weight: 700; cursor: pointer; list-style: none; }
+    .mobile-group > summary::-webkit-details-marker { display: none; }
+    .mobile-group > summary small { color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
+    .mobile-group__dot { width: 0.62rem; height: 0.62rem; border-radius: 50%; background: var(--group-color); box-shadow: 0 0 0 4px color-mix(in srgb, var(--group-color) 12%, transparent); }
+    .mobile-group ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.2rem 0.35rem; padding: 0 0 0.7rem; }
+    .mobile-group .menu-tool { min-height: 2.75rem; padding: 0.3rem; font-size: 0.73rem; }
+    .all-panel__foot { padding-top: 0.75rem; }
+    .all-panel__foot nav { gap: 0.8rem; }
   }
-
-  @media (min-width: 48em) {
-    .nav {
-      display: flex;
-      margin-inline: auto;
-    }
-
-    .brand {
-      margin-right: 0;
-    }
-  }
+  @media (max-width: 28em) { .brand span { display: none; } .mobile-group ul { grid-template-columns: 1fr; } .privacy-note { font-size: 0; } .privacy-note::after { content: 'Files stay here'; font-size: var(--step--2); } }
+  @media (prefers-reduced-motion: reduce) { .caret, .menu-tool, .header-search, .header-search__glyph { transition: none; } }
+  @media (forced-colors: active) { .menu-surface { background: Canvas; } .mobile-group__dot, .privacy-note i { forced-color-adjust: none; } }
 </style>
 
 <script>
-  const toggle = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
-
-  const paintToggle = () => {
-    if (!toggle) return;
-    const dark = document.documentElement.dataset.theme === 'dark';
-    toggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
-    toggle.firstElementChild!.textContent = dark ? '☀' : '◐';
+  const navMenus = Array.from(document.querySelectorAll<HTMLDetailsElement>('[data-nav-menu]'));
+  const themeToggle = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
+  const mobileNav = window.matchMedia('(max-width: 48em)');
+  const headerSearch = document.querySelector<HTMLFormElement>('[data-header-search]');
+  const headerSearchTrigger = headerSearch?.querySelector<HTMLButtonElement>('[data-header-search-trigger]');
+  const headerSearchInput = headerSearch?.querySelector<HTMLInputElement>('[data-header-search-input]');
+  const headerSearchResults = headerSearch?.querySelector<HTMLElement>('[data-header-search-results]');
+  const headerSearchEmpty = headerSearch?.querySelector<HTMLElement>('[data-header-search-empty]');
+  const headerSearchItems = Array.from(headerSearch?.querySelectorAll<HTMLElement>('[data-header-search-item]') ?? []);
+  const closeHeaderSearch = (clear = false) => {
+    if (clear && headerSearchInput) headerSearchInput.value = '';
+    headerSearchItems.forEach((item) => { item.hidden = true; });
+    if (headerSearchResults) headerSearchResults.hidden = true;
+    headerSearchInput?.setAttribute('aria-expanded', 'false');
   };
-
-  paintToggle();
-  toggle?.addEventListener('click', () => {
+  const filterHeaderSearch = () => {
+    const query = headerSearchInput?.value.trim().toLowerCase() ?? '';
+    let visible = 0;
+    headerSearchItems.forEach((item) => {
+      const match = Boolean(query) && (item.dataset.search ?? '').includes(query) && visible < 7;
+      item.hidden = !match;
+      if (match) visible += 1;
+    });
+    if (headerSearchEmpty) headerSearchEmpty.hidden = !query || visible > 0;
+    if (headerSearchResults) headerSearchResults.hidden = !query;
+    headerSearchInput?.setAttribute('aria-expanded', String(Boolean(query)));
+  };
+  const paintThemeToggle = () => {
+    if (!themeToggle) return;
+    const dark = document.documentElement.dataset.theme === 'dark';
+    themeToggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+  };
+  const syncMenuState = () => {
+    navMenus.forEach((menu) => menu.querySelector<HTMLElement>(':scope > summary')?.setAttribute('aria-expanded', String(menu.open)));
+    document.documentElement.classList.toggle('nav-drawer-open', mobileNav.matches && navMenus.some((menu) => menu.open));
+  };
+  paintThemeToggle();
+  themeToggle?.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem('pdfcraft-theme', next); } catch {}
-    paintToggle();
+    paintThemeToggle();
   });
+  navMenus.forEach((menu) => {
+    menu.addEventListener('toggle', () => {
+      if (menu.open) navMenus.filter((candidate) => candidate !== menu).forEach((candidate) => { candidate.open = false; });
+      syncMenuState();
+    });
+    menu.querySelectorAll<HTMLAnchorElement>('a').forEach((link) => link.addEventListener('click', () => { menu.open = false; }));
+  });
+  headerSearchTrigger?.addEventListener('click', () => headerSearchInput?.focus());
+  headerSearchInput?.addEventListener('input', filterHeaderSearch);
+  headerSearchInput?.addEventListener('focus', () => {
+    if (headerSearchInput.value.trim()) filterHeaderSearch();
+  });
+  const headerParams = new URLSearchParams(location.search);
+  if (headerSearchInput && headerParams.get('focus') === 'search') {
+    headerParams.delete('focus');
+    const cleanQuery = headerParams.toString();
+    history.replaceState(null, '', `${location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${location.hash}`);
+    requestAnimationFrame(() => headerSearchInput.focus());
+  }
+  headerSearch?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    const first = headerSearchResults?.querySelector<HTMLAnchorElement>('[data-header-search-item]:not([hidden]) a');
+    if (first) location.href = first.href;
+  });
+  document.addEventListener('pointerdown', (event) => {
+    const target = event.target as Node | null;
+    if (!target) return;
+    if (!navMenus.some((menu) => menu.contains(target))) navMenus.forEach((menu) => { menu.open = false; });
+    if (!headerSearch?.contains(target)) closeHeaderSearch();
+  });
+  document.addEventListener('keydown', (event) => {
+    const target = event.target as HTMLElement | null;
+    if (event.key === 'Escape') {
+      if (headerSearch?.contains(target)) {
+        closeHeaderSearch(true);
+        headerSearchInput?.blur();
+        headerSearchTrigger?.focus();
+        return;
+      }
+      const openMenu = navMenus.find((menu) => menu.open);
+      if (openMenu) { openMenu.open = false; openMenu.querySelector<HTMLElement>(':scope > summary')?.focus(); }
+      return;
+    }
+    if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey || target?.closest('input, textarea, select, [contenteditable]')) return;
+    event.preventDefault();
+    headerSearchInput?.focus();
+  });
+  mobileNav.addEventListener('change', syncMenuState);
+  syncMenuState();
+  const slug = location.pathname.split('/').filter(Boolean).at(-1) ?? '';
+  if (slug && document.querySelector(`[data-nav-tool="${CSS.escape(slug)}"]`)) {
+    try {
+      const key = 'projectpdf-tool-usage';
+      const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? '{}');
+      const usage = parsed && typeof parsed === 'object' ? parsed as Record<string, number> : {};
+      usage[slug] = (Number(usage[slug]) || 0) + 1;
+      localStorage.setItem(key, JSON.stringify(usage));
+    } catch {}
+  }
 </script>
+
+<style is:global>
+  html.nav-drawer-open, html.nav-drawer-open body { overflow: hidden; }
+</style>

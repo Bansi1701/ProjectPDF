@@ -4,21 +4,29 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "npm run assets && astro dev",
-    "build": "npm run assets && astro build",
+    "dev": "node scripts/copy-wasm.mjs && astro dev",
+    "build": "node scripts/copy-wasm.mjs && astro build",
     "preview": "astro preview",
-    "assets": "node scripts/copy-wasm.mjs"
+    "assets": "node scripts/copy-wasm.mjs",
+    "audit:icons": "node scripts/audit-icons.mjs",
+    "audit:links": "node scripts/audit-links.mjs",
+    "check": "node scripts/audit-icons.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-links.mjs"
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
     "@cantoo/pdf-lib": "^2.4.0",
-    "astro": "^5.13.2",
+    "@resvg/resvg-js": "^2.6.2",
+    "astro": "^7.2.9",
     "fflate": "0.8.3",
     "harfbuzzjs": "^1.6.0",
-    "pdfjs-dist": "5.7.284",
+    "pdfjs-dist": "^6.2.108",
+    "satori": "^0.33.4",
     "tesseract.js": "7.0.0",
     "tesseract.js-core": "7.0.0"
   },
   "devDependencies": {
+    "@emnapi/core": "1.11.3",
+    "@emnapi/runtime": "1.11.3",
     "playwright": "^1.62.1"
   }
 }

@@ -24,9 +24,26 @@
  *    difference between a tool that usually works and one that always does.
  */
 import Lens from './Lens.astro';
+import Breadcrumbs from './Breadcrumbs.astro';
+import ToolFooter from './ToolFooter.astro';
+import { getCollection } from 'astro:content';
+import { TOOLS } from '../config/site';
+
+const currentTool = TOOLS.find((tool) => tool.slug === 'scan-pdf');
+const siblings = currentTool
+  ? TOOLS.filter((tool) => tool.status === 'live' && tool.category === currentTool.category)
+  : [];
+const contentEntries = await getCollection('tools');
+const content = contentEntries.find((entry) => entry.id === 'scan-pdf');
+const related = content
+  ? content.data.related
+      .map((slug) => TOOLS.find((tool) => tool.slug === slug && tool.status === 'live'))
+      .filter((tool): tool is (typeof TOOLS)[number] => Boolean(tool))
+  : [];
 ---
 
 <section class="scan wrap" data-scan>
+  {currentTool && <Breadcrumbs tool={currentTool} siblings={siblings} />}
   <p class="eyebrow">Your camera, your device</p>
   <h1>Scan to PDF</h1>
   <p class="lede">
@@ -267,6 +284,7 @@ import Lens from './Lens.astro';
       </div>
     </div>
   </dialog>
+  {currentTool && content && <ToolFooter tool={currentTool} content={content.data} related={related} />}
 </section>
 
 <style>

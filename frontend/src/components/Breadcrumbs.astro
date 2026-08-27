@@ -1,0 +1,58 @@
+---
+import type { Tool } from '../config/site';
+import { breadcrumbLd } from '../lib/seo';
+
+interface Props {
+  tool: Tool;
+  siblings: Tool[];
+}
+
+const { tool, siblings } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const categoryAnchor = tool.category.toLowerCase();
+const schema = breadcrumbLd([
+  { name: 'Home', url: '/' },
+  { name: tool.category, url: `/#${categoryAnchor}` },
+  { name: tool.searchName, url: `/${tool.slug}/` },
+]);
+---
+
+<nav class="crumbs" aria-label="Breadcrumb">
+  <ol>
+    <li><a href={`${base}/`}>Home</a></li>
+    <li><a href={`${base}/#${categoryAnchor}`}>{tool.category}</a></li>
+    <li>
+      <details>
+        <summary aria-label={`${tool.searchName}; choose another ${tool.category.toLowerCase()} tool`}>
+          {tool.searchName}
+        </summary>
+        <ul>
+          {siblings.map((sibling) => (
+            <li>
+              <a href={`${base}/${sibling.slug}/`} aria-current={sibling.slug === tool.slug ? 'page' : undefined}>
+                {sibling.searchName}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </details>
+    </li>
+  </ol>
+</nav>
+
+<script type="application/ld+json" is:inline set:html={JSON.stringify(schema)}></script>
+
+<style>
+  .crumbs { margin-bottom: 1.1rem; color: var(--muted); font-size: var(--step--2); }
+  .crumbs ol { display: flex; align-items: center; gap: 0.45rem; margin: 0; padding: 0; list-style: none; }
+  .crumbs > ol > li { display: flex; align-items: center; min-width: 0; }
+  .crumbs > ol > li:not(:last-child)::after { content: '/'; margin-left: 0.45rem; color: var(--line-strong); }
+  .crumbs a { color: inherit; text-decoration: none; }
+  .crumbs a:hover { color: var(--accent); }
+  details { position: relative; }
+  summary { max-width: min(15rem, 46vw); overflow: hidden; color: var(--ink-2); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+  summary::marker { color: var(--accent); }
+  details ul { position: absolute; z-index: 40; top: calc(100% + 0.45rem); right: 0; display: grid; gap: 0.1rem; width: min(18rem, 82vw); max-height: 19rem; margin: 0; padding: 0.45rem; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-raised); box-shadow: 0 16px 36px rgb(15 23 42 / 0.14); list-style: none; }
+  details li a { display: block; padding: 0.55rem 0.65rem; border-radius: 8px; color: var(--ink-2); }
+  details li a:hover, details li a[aria-current='page'] { background: var(--paper-sunk); color: var(--accent); }
+</style>

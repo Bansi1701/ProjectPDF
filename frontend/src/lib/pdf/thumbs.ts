@@ -93,7 +93,7 @@ export async function openSession(id: number, files: InputFile[]): Promise<OpRes
       }
     }
   } catch (error) {
-    for (const doc of docs) await doc.destroy().catch(() => undefined);
+    for (const doc of docs) await doc.loadingTask.destroy().catch(() => undefined);
     return {
       ok: false,
       error: `That file could not be opened for preview: ${(error as Error).message}`,
@@ -166,7 +166,7 @@ export function closeSession(id: number): void {
   const session = sessions.get(id);
   if (!session) return;
   sessions.delete(id);
-  for (const doc of session.docs) void doc.destroy().catch(() => undefined);
+  for (const doc of session.docs) void doc.loadingTask.destroy().catch(() => undefined);
 }
 
 /** Frees every open session. Used when the tool is reset. */

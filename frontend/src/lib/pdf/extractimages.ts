@@ -1007,12 +1007,12 @@ export async function extractImages(
       page.cleanup();
     }
   } catch (error) {
-    await source.destroy();
+    await source.loadingTask.destroy();
     return { ok: false, error: `Could not read the images: ${(error as Error).message}` };
   }
 
   const pageCount = source.numPages;
-  await source.destroy();
+  await source.loadingTask.destroy();
 
   if (collected.length === 0) {
     const reason =

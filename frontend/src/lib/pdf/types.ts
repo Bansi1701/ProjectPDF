@@ -100,8 +100,20 @@ export interface EditPoint {
   y: number;
 }
 
+/** Shared geometry hints for any visible edit. */
+export interface EditGeometry {
+  /** Clockwise degrees around the mark's own center. */
+  rotation?: number;
+  /** Preserve the mark's width/height ratio when the editor reshapes it. */
+  lockAspectRatio?: boolean;
+  /** Explicit width/height ratio for UIs that need a stable shape. */
+  aspectRatio?: number;
+  /** Shared visual opacity for every mark family. */
+  opacity?: number;
+}
+
 /** Common geometry for marks that occupy a rectangular area. */
-export interface EditBox {
+export interface EditBox extends EditGeometry {
   id: string;
   page: number;
   x: number;
@@ -122,17 +134,21 @@ export interface EditBox {
  * the same place at 70% zoom, 150% zoom, and in the exported PDF.
  */
 export type EditMark =
-  | {
+  | (EditGeometry & {
       id: string;
       kind: 'text';
       page: number;
       x: number;
       y: number;
+      /** Optional editor bounds. Older marks can omit these. */
+      width?: number;
+      height?: number;
       text: string;
       size: number;
       color: string;
-    }
-  | {
+      opacity?: number;
+    })
+  | (EditGeometry & {
       id: string;
       kind: 'highlight' | 'rectangle' | 'whiteout';
       page: number;
@@ -144,7 +160,7 @@ export type EditMark =
       strokeWidth: number;
       opacity?: number;
       fill?: string;
-    }
+    })
   | (EditBox & {
       kind: 'underline' | 'strike' | 'strike-through' | 'strikethrough' | 'circle';
     })
@@ -155,7 +171,7 @@ export type EditMark =
       anchor?: EditPoint;
       fill?: string;
     })
-  | {
+  | (EditGeometry & {
       id: string;
       kind: 'line' | 'arrow';
       page: number;
@@ -174,8 +190,8 @@ export type EditMark =
       color: string;
       strokeWidth: number;
       opacity?: number;
-    }
-  | {
+    })
+  | (EditGeometry & {
       id: string;
       kind: 'polygon' | 'cloud';
       page: number;
@@ -184,8 +200,8 @@ export type EditMark =
       strokeWidth: number;
       fill?: string;
       opacity?: number;
-    }
-  | {
+    })
+  | (EditGeometry & {
       id: string;
       kind: 'stamp';
       page: number;
@@ -198,8 +214,8 @@ export type EditMark =
       /** Built-in visual stamp names. */
       stamp: 'check' | 'cross' | 'dot' | 'circle' | 'crossout' | string;
       opacity?: number;
-    }
-  | {
+    })
+  | (EditGeometry & {
       id: string;
       kind: 'signature' | 'signature-text';
       page: number;
@@ -214,12 +230,15 @@ export type EditMark =
       /** Alias accepted by editors that call the payload `bytes`. */
       bytes?: ArrayBuffer | Uint8Array;
       mimeType?: 'image/png' | 'image/jpeg' | 'image/jpg';
+      /** Editor role for the signature so saved marks stay descriptive. */
+      signatureRole?: 'signature' | 'initials' | 'date' | 'custom';
+      signatureSource?: 'typed' | 'drawn' | 'upload';
       /** Text placeholder when no image is available. */
       text?: string;
       size?: number;
       opacity?: number;
-    }
-  | {
+    })
+  | (EditGeometry & {
       id: string;
       kind: 'replace-text' | 'replace';
       page: number;
@@ -233,15 +252,15 @@ export type EditMark =
       /** Replacement is a visible cover, not secure redaction. */
       backgroundColor?: string;
       strokeWidth?: number;
-    }
-  | {
+    })
+  | (EditGeometry & {
       id: string;
       kind: 'ink';
       page: number;
       points: EditPoint[];
       color: string;
       strokeWidth: number;
-    };
+    });
 
 /** Images → PDF: the shape each page takes. */
 export type PageSize = 'fit' | 'a4' | 'letter';

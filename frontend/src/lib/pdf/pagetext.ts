@@ -1903,7 +1903,7 @@ export async function readDocumentStructure(
       }
     }
   } finally {
-    await doc.destroy().catch(() => undefined);
+    await doc.loadingTask.destroy().catch(() => undefined);
   }
 
   const allLines = scans.flatMap((scan) => scan.lines);

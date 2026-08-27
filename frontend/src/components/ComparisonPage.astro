@@ -1,0 +1,128 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from './Masthead.astro';
+
+interface Strength {
+  title: string;
+  text: string;
+  source: string;
+  sourceLabel: string;
+}
+
+interface Props {
+  competitor: string;
+  slug: string;
+  summary: string;
+  strengths: Strength[];
+  cloudNote: string;
+}
+
+const { competitor, slug, summary, strengths, cloudNote } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<BaseLayout title={`ProjectPDF vs ${competitor}: an honest comparison`} description={summary}>
+  <Masthead />
+  <main id="main" class="compare-page">
+    <nav aria-label="Breadcrumb"><a href={`${base}/`}>Home</a><span>/</span><span>Compare</span><span>/</span><span>{competitor}</span></nav>
+
+    <header class="compare-hero">
+      <p class="eyebrow">A deliberately uneven comparison</p>
+      <h1>ProjectPDF vs {competitor}</h1>
+      <p>{summary}</p>
+      <div class="compare-hero__actions">
+        <a class="primary" href={`${base}/#tools`}>Try ProjectPDF</a>
+        <a href={`https://${slug}`} rel="external">Visit {competitor}</a>
+      </div>
+    </header>
+
+    <section class="verdict" aria-labelledby="verdict-title">
+      <p class="eyebrow">The short answer</p>
+      <h2 id="verdict-title">Choose for the job you actually have.</h2>
+      <div class="verdict__grid">
+        <article><span>Choose ProjectPDF when</span><h3>The document should not be uploaded.</h3><p>Its live tools process document bytes inside your browser, require no account, and can carry one PDF through a guided local workflow.</p></article>
+        <article><span>Choose {competitor} when</span><h3>You need a mature product ecosystem.</h3><p>Its apps, languages, established support, integrations, and team features are real advantages ProjectPDF does not yet match.</p></article>
+      </div>
+    </section>
+
+    <section class="strengths" aria-labelledby="strengths-title">
+      <div class="section-head"><p class="eyebrow">Credit where it is due</p><h2 id="strengths-title">What {competitor} does better today</h2><p>A useful comparison should be able to recommend the other product.</p></div>
+      <div class="strengths__grid">
+        {strengths.map((strength) => <article><h3>{strength.title}</h3><p>{strength.text}</p><a href={strength.source} rel="external">Source: {strength.sourceLabel} ↗</a></article>)}
+      </div>
+    </section>
+
+    <section class="matrix" aria-labelledby="matrix-title">
+      <div class="section-head"><p class="eyebrow">Different architectures</p><h2 id="matrix-title">Where the difference matters</h2></div>
+      <div class="matrix__table" role="table" aria-label={`ProjectPDF and ${competitor} comparison`}>
+        <div class="matrix__row matrix__head" role="row"><span role="columnheader">Question</span><span role="columnheader">ProjectPDF</span><span role="columnheader">{competitor}</span></div>
+        <div class="matrix__row" role="row"><strong role="rowheader">Where are web-tool files processed?</strong><span role="cell">On the device for every currently live document tool.</span><span role="cell">{cloudNote}</span></div>
+        <div class="matrix__row" role="row"><strong role="rowheader">Account required?</strong><span role="cell">No account system.</span><span role="cell">Some work is available free; accounts and paid plans add features.</span></div>
+        <div class="matrix__row" role="row"><strong role="rowheader">Apps and languages?</strong><span role="cell">Browser product in English today.</span><span role="cell">A much broader app and language ecosystem.</span></div>
+        <div class="matrix__row" role="row"><strong role="rowheader">Connected jobs?</strong><span role="cell">Named recipes pass one PDF locally between compatible tools.</span><span role="cell">A mature suite with more integrations and cloud workflows.</span></div>
+        <div class="matrix__row" role="row"><strong role="rowheader">Who should avoid it?</strong><span role="cell">Teams needing SLAs, collaboration, localization, or mobile apps.</span><span role="cell">People whose policy forbids uploading the document to a web service.</span></div>
+      </div>
+    </section>
+
+    <section class="proof" data-proof-counter-slot>
+      <div><p class="eyebrow">A claim you can inspect</p><h2>Every finished tool shows its receipt.</h2><p>The result panel reports pages, elapsed time, and bytes sent. For live document tools, that last number is zero.</p></div>
+      <a href={`${base}/merge-pdf/`}>Try Merge PDF →</a>
+    </section>
+
+    <section class="limits">
+      <h2>Important limits</h2>
+      <p>ProjectPDF is newer, English-only, and has no support team, service-level agreement, native mobile app, cloud storage, or collaborative workspace. Very large documents also depend on the memory and speed of your device. Its Web page to PDF tool is marked as not yet available because that task cannot honestly make the same no-server promise.</p>
+    </section>
+  </main>
+</BaseLayout>
+
+<style>
+  .compare-page { width: min(70rem, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 6rem; }
+  nav { display: flex; gap: 0.5rem; color: var(--muted); font-size: var(--step--2); }
+  nav a { color: inherit; }
+  .eyebrow { margin: 0 0 0.6rem; color: var(--accent); font-size: var(--step--2); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .compare-hero { max-width: 58rem; padding: clamp(4rem, 10vw, 8rem) 0 5rem; }
+  .compare-hero h1 { margin: 0; font-family: var(--font-display); font-size: var(--step-5); line-height: 0.98; letter-spacing: -0.05em; }
+  .compare-hero > p:not(.eyebrow) { max-width: 46rem; color: var(--ink-2); font-size: var(--step-1); line-height: 1.7; }
+  .compare-hero__actions { display: flex; gap: 0.7rem; margin-top: 1.5rem; }
+  .compare-hero__actions a, .proof > a { min-height: 2.9rem; display: inline-flex; align-items: center; padding: 0 1rem; border: 1px solid var(--line-strong); border-radius: var(--radius); color: inherit; font-weight: 700; text-decoration: none; }
+  .compare-hero__actions .primary { border-color: var(--accent); background: var(--accent); color: white; }
+  h2 { margin: 0; font-family: var(--font-display); font-size: var(--step-3); letter-spacing: -0.025em; }
+  .verdict { padding-bottom: 6rem; }
+  .verdict__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+  .verdict article { padding: 1.5rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--paper-raised); }
+  .verdict article:first-child { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); background: color-mix(in srgb, var(--accent) 6%, var(--paper-raised)); }
+  .verdict span { color: var(--accent); font-size: var(--step--2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; }
+  .verdict h3 { margin: 0.8rem 0; font-family: var(--font-display); font-size: var(--step-2); }
+  .verdict p, .section-head > p:last-child, .strengths p, .limits p, .proof p { color: var(--ink-2); line-height: 1.65; }
+  .strengths { padding: 5rem 0; border-block: 1px solid var(--line); }
+  .section-head { max-width: 48rem; margin-bottom: 2rem; }
+  .strengths__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .strengths article { padding: 1.25rem; border-radius: var(--radius-lg); background: var(--paper-raised); }
+  .strengths h3 { font-family: var(--font-display); }
+  .strengths a { color: var(--accent); font-size: var(--step--2); }
+  .matrix { padding: 6rem 0; }
+  .matrix__table { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-lg); }
+  .matrix__row { display: grid; grid-template-columns: 1.1fr 1fr 1fr; }
+  .matrix__row > * { padding: 1rem; border-bottom: 1px solid var(--line); }
+  .matrix__row > * + * { border-left: 1px solid var(--line); }
+  .matrix__row:last-child > * { border-bottom: 0; }
+  .matrix__head { background: var(--paper-raised); font-weight: 700; }
+  .matrix__row span { color: var(--ink-2); }
+  .proof { display: flex; justify-content: space-between; gap: 2rem; align-items: center; padding: 2rem; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: var(--radius-xl); background: color-mix(in srgb, var(--accent) 7%, var(--paper-raised)); }
+  .proof > div { max-width: 44rem; }
+  .limits { max-width: 50rem; padding-top: 5rem; }
+  @media (max-width: 46rem) {
+    .compare-hero h1 { font-size: var(--step-4); }
+    .verdict__grid, .strengths__grid { grid-template-columns: 1fr; }
+    .matrix__table { border: 0; overflow: visible; }
+    .matrix__head { display: none; }
+    .matrix__row { grid-template-columns: 1fr; margin-bottom: 1rem; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+    .matrix__row > * + * { border-left: 0; }
+    .matrix__row > span::before { display: block; margin-bottom: 0.25rem; color: var(--muted); font-size: var(--step--2); font-weight: 700; }
+    .matrix__row > span:nth-child(2)::before { content: 'ProjectPDF'; }
+    .matrix__row > span:nth-child(3)::before { content: 'Alternative'; }
+    .proof { align-items: flex-start; flex-direction: column; }
+    .proof > a { width: 100%; justify-content: center; }
+  }
+</style>

@@ -4,8 +4,12 @@ import SaveDialog from './SaveDialog.astro';
 import Lens from './Lens.astro';
 import CropStage from './CropStage.astro';
 import LivePdfEditor from './LivePdfEditor.astro';
+import Breadcrumbs from './Breadcrumbs.astro';
+import ToolFooter from './ToolFooter.astro';
+import { getCollection } from 'astro:content';
 import type { Operation } from '../lib/pdf/types';
 import { TOOLS } from '../config/site';
+import { RECIPES } from '../config/recipes';
 
 interface Props {
   mode: Operation;
@@ -31,6 +35,34 @@ const {
 } = Astro.props;
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const pageSlug = Astro.url.pathname.split('/').filter(Boolean).at(-1) ?? '';
+const currentTool = TOOLS.find((tool) => tool.slug === pageSlug);
+const toolContentEntries = await getCollection('tools');
+const toolContentBySlug = new Map(toolContentEntries.map((entry) => [entry.id, entry]));
+const missingToolContent = TOOLS
+  .filter((tool) => tool.status === 'live' && !toolContentBySlug.has(tool.slug))
+  .map((tool) => tool.slug);
+
+if (missingToolContent.length > 0) {
+  throw new Error(`Live tools missing content entries: ${missingToolContent.join(', ')}`);
+}
+
+const currentToolContent = currentTool ? toolContentBySlug.get(currentTool.slug) : undefined;
+const siblingTools = currentTool
+  ? TOOLS.filter((tool) => tool.status === 'live' && tool.category === currentTool.category)
+  : [];
+const relatedTools = currentToolContent
+  ? currentToolContent.data.related
+      .map((slug) => TOOLS.find((tool) => tool.slug === slug && tool.status === 'live'))
+      .filter((tool): tool is (typeof TOOLS)[number] => Boolean(tool))
+  : [];
+const recipeAppearances = currentTool
+  ? RECIPES.flatMap((recipe) =>
+      recipe.steps.flatMap((step, index) =>
+        step.slug === currentTool.slug ? [{ recipe, index }] : []
+      )
+    )
+  : [];
 
 const ACTIONS: Record<Operation, string> = {
   compress: 'Compress',
@@ -122,7 +154,19 @@ const CHAIN: Partial<Record<Operation, string[]>> = {
   'powerpoint-to-pdf': ['compress-pdf', 'protect-pdf'],
   'pdf-a': ['protect-pdf'],
   forms: ['flatten-pdf', 'sign-pdf', 'protect-pdf'],
+  'text-to-pdf': ['sign-pdf', 'compress-pdf', 'protect-pdf'],
+  metadata: ['protect-pdf', 'compress-pdf'],
+  'header-footer': ['compress-pdf', 'protect-pdf'],
+  redact: ['metadata-pdf', 'protect-pdf', 'flatten-pdf'],
 };
+
+/** Recipe-only continuations still have to be rendered before client state is known. */
+for (const appearance of recipeAppearances) {
+  const nextStep = appearance.recipe.steps[appearance.index + 1];
+  if (nextStep && !(CHAIN[mode] ?? []).includes(nextStep.slug)) {
+    CHAIN[mode] = [...(CHAIN[mode] ?? []), nextStep.slug];
+  }
+}
 
 const nextTools = (CHAIN[mode] ?? [])
   .map((slug) => TOOLS.find((tool) => tool.slug === slug && tool.status === 'live'))
@@ -171,13 +215,38 @@ const dropTitle = takesExcel
 ---
 
 <section class="tool wrap" data-pdf-tool data-mode={mode} data-stage="choose" data-unavailable={unavailable ? '' : undefined} data-live-workspace={supportsLiveEditor || undefined}>
-  <a class="back" href={`${base}/#tools`}>← All tools</a>
+  {currentTool ? <Breadcrumbs tool={currentTool} siblings={siblingTools} /> : <a class="back" href={`${base}/#tools`}>← All tools</a>}
 
   <header class="tool__head">
     <p class="eyebrow"><span class="dot"></span>{eyebrow}</p>
     <h1>{title}</h1>
     <p class="lede">{description}</p>
   </header>
+
+  {
+    recipeAppearances.map(({ recipe, index }) => (
+      <aside
+        class="recipe-progress"
+        data-recipe-progress
+        data-recipe={recipe.slug}
+        data-recipe-step={index + 1}
+        data-recipe-next={recipe.steps[index + 1]?.slug}
+        hidden
+      >
+        <div>
+          <p class="recipe-progress__eyebrow">Guided recipe · step {index + 1} of {recipe.steps.length}</p>
+          <strong>{recipe.title}</strong>
+        </div>
+        <ol aria-label={`${recipe.title} steps`}>
+          {recipe.steps.map((step, at) => (
+            <li data-state={at < index ? 'done' : at === index ? 'current' : 'next'}>
+              <span>{at + 1}</span>{step.name}
+            </li>
+          ))}
+        </ol>
+      </aside>
+    ))
+  }
 
   {
     unavailable && (
@@ -915,7 +984,11 @@ const dropTitle = takesExcel
 
     <div class="running" data-running hidden>
       <div class="running__head">
-        <p class="status" data-status role="status" aria-live="polite"></p>
+        <span class="running__signal" aria-hidden="true"><i></i></span>
+        <div class="running__copy">
+          <span>Working on this device</span>
+          <p class="status" data-status role="status" aria-live="polite"></p>
+        </div>
         <button class="btn btn--quiet running__stop" type="button" data-cancel>Stop</button>
       </div>
       <div class="running__track" data-progress-track hidden aria-hidden="true">
@@ -926,8 +999,13 @@ const dropTitle = takesExcel
 
   <section class="result" data-result hidden aria-live="polite">
     <div class="result__headline">
-      <span class="result__pct" data-pct></span>
-      <span class="result__sizes" data-sizes></span>
+      <span class="result__success" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="m6.5 12.5 3.4 3.4 7.8-8" /></svg>
+      </span>
+      <div class="result__summary">
+        <span class="result__eyebrow">Ready to save</span>
+        <div><span class="result__pct" data-pct></span><span class="result__sizes" data-sizes></span></div>
+      </div>
     </div>
 
     <div class="result__bar" data-bar-wrap aria-hidden="true">
@@ -977,6 +1055,8 @@ const dropTitle = takesExcel
     <strong>Private by construction.</strong>
     <span>No upload starts when you choose a file. The work happens in this tab.</span>
   </aside>
+
+  {currentTool && currentToolContent && <ToolFooter tool={currentTool} content={currentToolContent.data} related={relatedTools} />}
 </section>
 
 <script>
@@ -2227,6 +2307,16 @@ const dropTitle = takesExcel
      * the next tool could open.
      */
     const chain = root.querySelector<HTMLElement>('[data-chain]');
+    const pageParams = new URLSearchParams(location.search);
+    const activeRecipe = pageParams.get('recipe');
+    const activeRecipeStep = Number.parseInt(pageParams.get('step') ?? '', 10);
+    const recipeProgress = activeRecipe
+      ? root.querySelector<HTMLElement>(`[data-recipe-progress][data-recipe="${CSS.escape(activeRecipe)}"]`)
+      : null;
+
+    if (recipeProgress && Number(recipeProgress.dataset.recipeStep) === activeRecipeStep) {
+      recipeProgress.hidden = false;
+    }
 
     function offerChain(res: { files: { name: string; bytes: Uint8Array; type?: string }[] }) {
       if (!chain) return;
@@ -2248,17 +2338,28 @@ const dropTitle = takesExcel
           const to = `${root}/${slug}/`;
           // No key means IndexedDB is unavailable (private mode, or blocked).
           // Still send them to the tool rather than dead-ending on the click.
-          location.href = key ? `${to}?from=${encodeURIComponent(key)}` : to;
+          const next = new URLSearchParams();
+          if (key) next.set('from', key);
+          const recipeNext = recipeProgress?.dataset.recipeNext;
+          if (activeRecipe && recipeNext === slug && Number.isFinite(activeRecipeStep)) {
+            next.set('recipe', activeRecipe);
+            next.set('step', String(activeRecipeStep + 1));
+          }
+          const query = next.toString();
+          location.href = query ? `${to}?${query}` : to;
         };
       }
     }
 
     /** A result handed over from the previous tool, if there is one. */
     async function acceptHandoff() {
-      const key = new URLSearchParams(location.search).get('from');
+      const params = new URLSearchParams(location.search);
+      const key = params.get('from');
       if (!key) return;
       // Drop the parameter first, so a refresh does not look like a failed claim.
-      history.replaceState(null, '', location.pathname + location.hash);
+      params.delete('from');
+      const rest = params.toString();
+      history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : '') + location.hash);
       const { claim } = await import('../lib/handoff');
       const file = await claim(key);
       if (!file) return;
@@ -3047,12 +3148,23 @@ const dropTitle = takesExcel
   }
 
   .result {
-    background: var(--paper-sunk); border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--ok) 4%, var(--paper-sunk));
+    border: 1px solid color-mix(in srgb, var(--ok) 24%, var(--line));
     border-radius: var(--radius); padding: clamp(1.25rem, 1rem + 1vw, 1.75rem);
     display: grid; gap: 1rem;
   }
 
-  .result__headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem; }
+  .result:not([hidden]) { animation: result-arrive 340ms cubic-bezier(.2,.75,.2,1) both; }
+  .result__headline { display: flex; align-items: center; gap: 0.85rem; }
+  .result__success {
+    display: grid; flex: 0 0 auto; width: 2.65rem; height: 2.65rem; place-items: center;
+    border-radius: 14px; background: color-mix(in srgb, var(--ok) 14%, var(--paper-raised));
+    color: var(--ok); box-shadow: 0 8px 20px -16px color-mix(in srgb, var(--ok) 72%, transparent);
+  }
+  .result__success svg { width: 1.35rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .result__summary { display: grid; gap: 0.18rem; min-width: 0; }
+  .result__summary > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 0.8rem; }
+  .result__eyebrow { color: var(--muted); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
   .result__pct {
     font-size: var(--step-3); font-weight: 600;
     letter-spacing: -0.03em; color: var(--ok);
@@ -3091,6 +3203,11 @@ const dropTitle = takesExcel
   .result__receipt {
     font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted);
     padding-top: 0.75rem; border-top: 1px solid var(--line);
+  }
+
+  @keyframes result-arrive {
+    from { opacity: 0; transform: translateY(0.5rem); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .error {
@@ -3304,6 +3421,61 @@ const dropTitle = takesExcel
 
   .chain__note { margin: 0; font-size: var(--step--2); color: var(--muted); }
 
+  .recipe-progress {
+    margin: 1rem 0 1.5rem;
+    padding: 1rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--accent) 7%, var(--paper-raised));
+  }
+
+  .recipe-progress__eyebrow {
+    margin: 0 0 0.2rem;
+    color: var(--accent);
+    font-size: var(--step--2);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .recipe-progress strong { font-family: var(--font-display); }
+  .recipe-progress ol {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin: 0.85rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .recipe-progress li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--muted);
+    font-size: var(--step--2);
+  }
+
+  .recipe-progress li:not(:last-child)::after { content: '→'; margin-left: 0.15rem; color: var(--line-strong); }
+  .recipe-progress li span {
+    display: grid;
+    width: 1.45rem;
+    height: 1.45rem;
+    place-items: center;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    font-family: var(--font-mono);
+  }
+
+  .recipe-progress li[data-state='current'] { color: var(--ink); font-weight: 700; }
+  .recipe-progress li[data-state='current'] span { border-color: var(--accent); background: var(--accent); color: white; }
+  .recipe-progress li[data-state='done'] span { border-color: var(--accent); color: var(--accent); }
+
+  @media (max-width: 42rem) {
+    .recipe-progress ol { display: grid; }
+    .recipe-progress li::after { display: none; }
+  }
+
   /* The first-run barrier is "go and find a file". This removes it. */
   .try {
     display: flex;
@@ -3394,14 +3566,27 @@ const dropTitle = takesExcel
      A bar that moves on a guess is a lie, so operations that cannot say how
      far along they are get an elapsed count instead — and either way, a way
      out. Each op runs to completion inside the worker, so Stop terminates it. */
-  .running { display: grid; gap: 0.5rem; }
-
-  .running__head {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 1rem; flex-wrap: wrap;
+  .running {
+    display: grid; gap: 0.65rem; padding: 0.85rem 0.95rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+    border-radius: 14px; background: color-mix(in srgb, var(--accent) 4%, var(--paper-sunk));
   }
 
-  .running__head .status { margin: 0; }
+  .running__head {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+    gap: 0.75rem;
+  }
+
+  .running__signal {
+    position: relative; display: grid; width: 2rem; height: 2rem; place-items: center;
+    border-radius: 50%; background: color-mix(in srgb, var(--accent) 11%, var(--paper-raised));
+  }
+  .running__signal::before, .running__signal i { content: ''; position: absolute; border-radius: 50%; }
+  .running__signal::before { inset: 0.32rem; border: 2px solid color-mix(in srgb, var(--accent) 24%, transparent); border-top-color: var(--accent); animation: local-spin 850ms linear infinite; }
+  .running__signal i { width: 0.3rem; height: 0.3rem; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 9%, transparent); }
+  .running__copy { display: grid; gap: 0.08rem; min-width: 0; }
+  .running__copy > span { color: var(--ink); font-size: var(--step--1); font-weight: 700; }
+  .running__head .status { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .running__stop { flex: none; }
 
   .running__track {
@@ -3415,8 +3600,12 @@ const dropTitle = takesExcel
     transition: width 240ms ease-out;
   }
 
+  @keyframes local-spin { to { transform: rotate(360deg); } }
+
   @media (prefers-reduced-motion: reduce) {
     .running__fill { transition: none; }
+    .running__signal::before { animation: none; }
+    .result:not([hidden]) { animation: none; }
   }
 
   .pair { display: grid; gap: 1rem; }

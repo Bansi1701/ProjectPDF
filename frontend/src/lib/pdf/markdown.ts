@@ -268,7 +268,7 @@ export async function pdfToMarkdown(files: InputFile[]): Promise<OpResult> {
     if (markdown.trim()) sections.push(markdown);
   }
 
-  await doc.destroy();
+  await doc.loadingTask.destroy();
 
   if (totalSpans === 0) {
     return {

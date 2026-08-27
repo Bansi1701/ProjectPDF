@@ -1,0 +1,96 @@
+<template data-proof-counter-template>
+  <aside class="proof-counter" aria-live="polite">
+    <span class="proof-counter__light" aria-hidden="true"></span>
+    <div><strong data-proof-counter-value>Ready to measure</strong><p data-proof-counter-detail>Choose a file in any tool to start the browser's resource counter.</p></div>
+  </aside>
+</template>
+
+<script>
+  const proofTemplate = document.querySelector<HTMLTemplateElement>('[data-proof-counter-template]');
+  let measuringFrom: number | null = null;
+  let supportAssets = 0;
+  let nonAssetRequests = 0;
+
+  const isSupportAsset = (name: string) => {
+    const url = new URL(name, location.href);
+    if (url.protocol === 'blob:' || url.protocol === 'data:') return true;
+    return url.origin === location.origin && (
+      url.pathname.includes('/_astro/') ||
+      url.pathname.includes('/pdfjs/') ||
+      url.pathname.includes('/wasm/') ||
+      /\.(?:js|mjs|css|wasm|woff2?|ttf|png|svg)$/i.test(url.pathname)
+    );
+  };
+
+  function mountProof(target: Element | null) {
+    if (!target || !proofTemplate || target.querySelector('[data-proof-counter-value]')) return;
+    target.append(proofTemplate.content.cloneNode(true));
+    paintProof();
+  }
+
+  function paintProof() {
+    for (const counter of document.querySelectorAll<HTMLElement>('.proof-counter')) {
+      const value = counter.querySelector<HTMLElement>('[data-proof-counter-value]');
+      const detail = counter.querySelector<HTMLElement>('[data-proof-counter-detail]');
+      if (!value || !detail) continue;
+      if (measuringFrom === null) {
+        value.textContent = 'Ready to measure';
+        detail.textContent = 'Choose a file in any tool to start the browser resource counter.';
+      } else {
+        value.textContent = `${nonAssetRequests} non-asset network request${nonAssetRequests === 1 ? '' : 's'}`;
+        detail.textContent = `${supportAssets} same-origin support asset${supportAssets === 1 ? '' : 's'} loaded after file selection. Document processing remains in this tab.`;
+        counter.dataset.state = nonAssetRequests === 0 ? 'clear' : 'active';
+      }
+    }
+  }
+
+  function beginProof() {
+    measuringFrom = performance.now();
+    supportAssets = 0;
+    nonAssetRequests = 0;
+    paintProof();
+  }
+
+  mountProof(document.querySelector('[data-proof-counter-home]'));
+  mountProof(document.querySelector('[data-proof-counter-slot]'));
+
+  document.addEventListener('change', (event) => {
+    const input = event.target as HTMLInputElement;
+    if (input.matches('input[type="file"]') && input.files?.length) beginProof();
+  }, true);
+  document.addEventListener('drop', (event) => {
+    if (event.dataTransfer?.files.length) beginProof();
+  }, true);
+
+  if ('PerformanceObserver' in window) {
+    const observer = new PerformanceObserver((list) => {
+      if (measuringFrom === null) return;
+      for (const entry of list.getEntries()) {
+        if (entry.startTime < measuringFrom) continue;
+        if (isSupportAsset(entry.name)) supportAssets += 1;
+        else nonAssetRequests += 1;
+      }
+      paintProof();
+    });
+    observer.observe({ type: 'resource', buffered: true });
+  }
+
+  const attachToResults = () => {
+    for (const result of document.querySelectorAll<HTMLElement>('[data-result]')) {
+      if (result.hidden) continue;
+      mountProof(result);
+      if (measuringFrom === null) beginProof();
+    }
+  };
+  attachToResults();
+  new MutationObserver(attachToResults).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+</script>
+
+<style>
+  .proof-counter { display: flex; align-items: center; gap: 0.85rem; margin-top: 1rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); }
+  .proof-counter__light { flex: 0 0 auto; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 5px color-mix(in srgb, var(--muted) 12%, transparent); }
+  .proof-counter[data-state='clear'] .proof-counter__light { background: var(--ok); box-shadow: 0 0 0 5px color-mix(in srgb, var(--ok) 14%, transparent); }
+  .proof-counter[data-state='active'] .proof-counter__light { background: var(--disclose); }
+  .proof-counter strong { font-family: var(--font-mono); font-size: var(--step-0); }
+  .proof-counter p { margin: 0.22rem 0 0; color: var(--muted); font-size: var(--step--2); line-height: 1.45; }
+</style>

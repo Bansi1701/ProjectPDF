@@ -54,7 +54,7 @@ export async function renderThumbnails(files: InputFile[]): Promise<OpResult> {
   } catch (error) {
     return { ok: false, error: (error as Error).message };
   } finally {
-    await doc.destroy();
+    await doc.loadingTask.destroy();
   }
 
   return { ok: true, preview: true, pages: totalPages, thumbnails };

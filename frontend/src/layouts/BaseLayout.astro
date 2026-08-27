@@ -1,70 +1,38 @@
 ---
 import '../styles/global.css';
 
-import { SITE } from '../config/site';
+import Seo from '../components/Seo.astro';
+import ProofCounter from '../components/ProofCounter.astro';
+import SpeedNote from '../components/SpeedNote.astro';
+import { TOOLS } from '../config/site';
 
 interface Props {
   title: string;
   description: string;
-  /** Set on a tool page so search engines get an app entry, not just a document. */
+  lang?: string;
+  imageSlug?: string;
+  /** Kept for page-call compatibility; schema is derived from the shared tool config. */
   toolName?: string;
 }
 
-const { title, description, toolName } = Astro.props;
+const { title, description, lang = 'en', imageSlug } = Astro.props;
 
 // Respects the deployment base path (a GitHub Pages project site is served
 // from /ProjectPDF/, not /).
 const favicon = `${import.meta.env.BASE_URL}/favicon.svg`.replace(/\/{2,}/g, '/');
 
-/* One absolute URL per page, so duplicates (/x and /x/) collapse to one. */
-const canonical = new URL(Astro.url.pathname.replace(/\/+$/, '') + '/', Astro.site).href;
-const ogImage = new URL(`${import.meta.env.BASE_URL}/brand/og.png`.replace(/\/{2,}/g, '/'), Astro.site).href;
-
-/* Structured data. A tool page is an application, not an article — that is what
-   makes it eligible for the richer result, and it is also simply true. */
-const schema = {
-  '@context': 'https://schema.org',
-  '@type': 'WebApplication',
-  name: toolName ? `${toolName} — ${SITE.name}` : SITE.name,
-  url: canonical,
-  applicationCategory: 'UtilitiesApplication',
-  operatingSystem: 'Any browser',
-  browserRequirements: 'Requires JavaScript',
-  description,
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-  featureList: 'Runs entirely in the browser. No upload, no account, no stored files.',
-};
+const pageSlug = Astro.url.pathname.split('/').filter(Boolean).at(-1) ?? '';
+const noindex = TOOLS.some((tool) => tool.slug === pageSlug && tool.status !== 'live');
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
 
-    <title>{title}</title>
-    <meta name="description" content={description} />
-
-    <link rel="canonical" href={canonical} />
-
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content={canonical} />
-    <meta property="og:site_name" content={SITE.name} />
-    <meta property="og:locale" content="en_GB" />
-    <meta property="og:image" content={ogImage} />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content={`${SITE.name} — ${SITE.tagline}`} />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={title} />
-    <meta name="twitter:description" content={description} />
-    <meta name="twitter:image" content={ogImage} />
-
-    <script type="application/ld+json" set:html={JSON.stringify(schema)} is:inline />
+    <Seo {title} {description} {imageSlug} {noindex} />
 
     <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b0f17" media="(prefers-color-scheme: dark)" />
@@ -86,6 +54,8 @@ const schema = {
   <body>
     <a class="skip" href="#main">Skip to content</a>
     <slot />
+    <ProofCounter />
+    <SpeedNote />
   </body>
 </html>
 

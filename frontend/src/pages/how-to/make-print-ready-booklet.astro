@@ -1,0 +1,7 @@
+---
+import WorkflowRecipe from '../../components/WorkflowRecipe.astro';
+import { recipeBySlug } from '../../config/recipes';
+const recipe = recipeBySlug('make-print-ready-booklet');
+if (!recipe) throw new Error('Missing booklet recipe');
+---
+<WorkflowRecipe {recipe} />

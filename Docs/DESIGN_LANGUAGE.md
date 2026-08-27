@@ -1,4 +1,4 @@
-# PDFCraft Design Language v1.1
+# PDFCraft Design Language v1.4
 
 ## Product direction
 PDFCraft is a private document studio: calm, precise, and visibly browser-side. It must not resemble a dense, generic file-conversion dashboard. Use white or deep-slate space, strong typography, restrained rose actions, document previews, and honest processing disclosures.
@@ -23,6 +23,20 @@ A document is a living object moving through a precise, private workspace.
 
 ## Do-not-copy boundaries
 Do not reproduce a competitor's tool-tile proportions, upload hero, copy, navigation grouping, icon treatment, or workflow. Build around PDFCraft's own sequence: document stage -> focused settings -> visible result -> save receipt.
+
+## Tool identity system
+Every live app has its own semantic Fold & Flow mark, rendered by `frontend/src/components/ToolIcon.astro`.
+- Foundation: one softly rounded square with the ProjectPDF diagonal fold in the upper-right corner, a short lower signal, and a bold white operation mark. Shape links the family to the brand; category colour distinguishes the job. Do not place a second page frame inside it.
+- Meaning: the foreground line drawing must communicate the actual operation. Do not use a generic letter when a merge, crop, lock, signature, table, or page relationship can be drawn.
+- Colour is categorical, not decorative: calm coral Organize, sage Optimize, mellow gold Convert to PDF, quiet blue Convert from PDF, plum Edit & Compose, soft violet Review & Data, teal Secure & Archive. Keep saturation moderate so a grid of icons remains comfortable to scan.
+- Icons are inline SVG so they stay sharp, inherit theme colours, and require no network request. They are decorative beside a visible tool name and therefore remain hidden from assistive technology.
+- Use 58-64px marks on tool cards and 28-32px marks in menus. At both sizes the white action mark must remain identifiable without reading the label.
+- New tools must add a unique semantic drawing to `ToolIcon.astro` and must be assigned to exactly one group in `frontend/src/config/navigation.ts` before they appear in discovery surfaces.
+
+## Discovery controls
+- The masthead search is icon-sized at rest and expands on hover, focus, or the `/` shortcut. A click on the graphic must focus the field immediately.
+- Search results appear beside the field and must include the app icon, tool name, and category. Enter opens the first result; Escape clears and collapses the control.
+- Hero shortcuts represent the seven stable category headings, not a changing popularity list. Each button uses its category colour and jumps to the matching section.
 
 ## Page and tool rules
 1. Header: mark and wordmark left; categories centred; persistent theme control and sign-in right.

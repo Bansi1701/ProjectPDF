@@ -582,7 +582,7 @@ export async function autoCrop(
       const canvas = new OffscreenCanvas(width, height);
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) {
-        await source.destroy();
+        await source.loadingTask.destroy();
         return { ok: false, error: 'This browser would not give us a canvas to render into.' };
       }
 
@@ -628,11 +628,11 @@ export async function autoCrop(
       });
     }
   } catch (error) {
-    await source.destroy();
+    await source.loadingTask.destroy();
     return { ok: false, error: `Could not measure the pages: ${(error as Error).message}` };
   }
 
-  await source.destroy();
+  await source.loadingTask.destroy();
 
   /* ---- decide the box(es) ---------------------------------------- */
 
