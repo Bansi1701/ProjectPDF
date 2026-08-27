@@ -4,7 +4,7 @@ import Masthead from '../components/Masthead.astro';
 import Lens from '../components/Lens.astro';
 import ToolIcon from '../components/ToolIcon.astro';
 import { SERVER_ONLY_REASONS, SITE, TOOLS } from '../config/site';
-import { NAVIGATION_GROUPS, type NavigationTone } from '../config/navigation';
+import { NAVIGATION_GROUPS } from '../config/navigation';
 
 const steps = [
   { n: '1', title: 'You pick a file', body: 'The browser hands the tool a copy in memory. No request is made.' },
@@ -34,16 +34,6 @@ const serverOnlyCount = NUMBER_WORDS[SERVER_ONLY_REASONS.length] ?? String(SERVE
 
 const liveTools = TOOLS.filter((tool) => tool.status === 'live');
 
-const groupDetails: Record<NavigationTone, { anchor: string; description: string }> = {
-  organize: { anchor: 'organize', description: 'Build the document in the page order you need.' },
-  optimize: { anchor: 'optimize', description: 'Reduce, repair, crop, and prepare the file.' },
-  'to-pdf': { anchor: 'convert', description: 'Turn everyday files into dependable PDFs.' },
-  'from-pdf': { anchor: 'convert-from-pdf', description: 'Take text, tables, and images back out.' },
-  compose: { anchor: 'edit', description: 'Add, arrange, and make content permanent.' },
-  review: { anchor: 'review', description: 'Read, compare, recognize, and inspect documents.' },
-  secure: { anchor: 'secure', description: 'Control access, remove secrets, sign, and archive.' },
-};
-
 const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 ---
@@ -70,57 +60,28 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
       <div class="hero__copy">
         <p class="eyebrow"><span class="dot"></span>Private document workspace</p>
 
-        <h1>Free PDF tools.<br />No sign-up. No daily limit.</h1>
+        <h1>Private PDF tools.<br />No upload. No account.</h1>
 
         <p class="lede">
-          Merge, split, compress, edit, sign, and convert PDFs without sending the document
-          away. The work happens in this browser and the result stays yours.
+          Merge, split, compress, edit, sign, and convert PDFs on this device. There is no
+          daily limit, and the result stays yours.
         </p>
+
+        <div class="hero__actions">
+          <a class="btn btn--primary" href={`${baseUrl}merge-pdf/`}>Merge PDFs</a>
+          <a class="btn btn--quiet" href="#tools">Choose another tool</a>
+        </div>
 
         <ul class="hero__proof" aria-label={`${SITE.name} benefits`}>
           <li><span>01</span> Free to use</li>
-          <li><span>02</span> No account</li>
+          <li><span>02</span> {liveTools.length} working tools</li>
           <li><span>03</span> No daily limit</li>
         </ul>
-
-        <!-- Search that answers where you type it. Filtering a grid a thousand
-             pixels further down is a search box that appears to do nothing. -->
-        <div class="quickfind">
-          <label class="quickfind__field">
-            <span class="sr-only">Search tools</span>
-            <svg class="quickfind__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
-              <circle cx="10.5" cy="10.5" r="5.7"></circle><path d="m15 15 4.3 4.3" stroke-linecap="round"></path><path class="quickfind__spark" d="M18.5 4v3m-1.5-1.5h3" stroke-linecap="round"></path>
-            </svg>
-            <input
-              type="search"
-              data-tool-search
-              placeholder={`Search ${liveTools.length} tools — merge, sign, redact…`}
-              autocomplete="off"
-              role="combobox"
-              aria-expanded="false"
-              aria-controls="quickfind-results"
-            />
-          </label>
-
-          <ul class="quickfind__results" id="quickfind-results" data-tool-search-results hidden>
-            {
-              liveTools.map((tool) => (
-                <li data-search={`${tool.searchName} ${tool.name} ${tool.blurb} ${tool.category}`.toLowerCase()} hidden>
-                  <a href={`${baseUrl}${tool.slug}/`}>
-                    <strong>{tool.name}</strong>
-                    <span>{tool.blurb}</span>
-                  </a>
-                </li>
-              ))
-            }
-            <li class="quickfind__empty" data-tool-search-empty hidden>No tool matches that yet.</li>
-          </ul>
-        </div>
 
         <nav class="shortcuts category-shortcuts" aria-label="Jump to a PDF tool category">
           {
             NAVIGATION_GROUPS.map((group) => (
-              <a class={`shortcuts__item shortcuts__item--${group.tone}`} href={`#${groupDetails[group.tone].anchor}`}>
+              <a class={`shortcuts__item shortcuts__item--${group.tone}`} href={`#${group.anchor}`}>
                 <span class="shortcuts__mark" aria-hidden="true"><i></i></span>
                 <span>{group.label}</span>
                 <small>{group.tools.length}</small>
@@ -173,16 +134,6 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
         </p>
       </header>
 
-      <nav class="tool-tree" aria-label="PDF tool categories">
-        {NAVIGATION_GROUPS.map((group) => (
-          <a class={`tool-tree__branch tool-tree__branch--${group.tone}`} href={`#${groupDetails[group.tone].anchor}`}>
-            <span aria-hidden="true"></span>
-            <strong>{group.label}</strong>
-            <small>{group.tools.length}</small>
-          </a>
-        ))}
-      </nav>
-
       <div class="cluster cluster--yours" id="yours" data-yours hidden>
         <h3 class="cluster__name">Your tools</h3>
         <nav class="shortcuts" data-yours-row aria-label="Your saved tools"></nav>
@@ -190,14 +141,14 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 
       {
         NAVIGATION_GROUPS.map((group) => (
-          <div class={`cluster cluster--${group.tone}`} id={groupDetails[group.tone].anchor}>
+          <div class={`cluster cluster--${group.tone}`} id={group.anchor}>
             <header class="cluster__head">
               <div>
                 <span class="cluster__signal" aria-hidden="true"></span>
                 <h3 class="cluster__name">{group.label}</h3>
                 <small>{group.tools.length} tools</small>
               </div>
-              <p>{groupDetails[group.tone].description}</p>
+              <p>{group.description}</p>
             </header>
             <ul class="grid">
               {group.tools.map((tool) => (
@@ -370,91 +321,6 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 </BaseLayout>
 
 <script>
-  const search = document.querySelector<HTMLInputElement>('[data-tool-search]');
-  const cards = [...document.querySelectorAll<HTMLElement>('[data-tool-card]')];
-  const results = document.querySelector<HTMLElement>('[data-tool-search-results]');
-  const empty = document.querySelector<HTMLElement>('[data-tool-search-empty]');
-  const options = results ? [...results.querySelectorAll<HTMLElement>('li[data-search]')] : [];
-
-  /* Six is what fits above the fold on a phone without the list becoming the
-     page. Anything longer is better answered by the grid below. */
-  const SHOWN = 6;
-
-  const links = () => options.filter((option) => !option.hidden).map((o) => o.querySelector('a')!);
-
-  function close() {
-    if (results) results.hidden = true;
-    search?.setAttribute('aria-expanded', 'false');
-  }
-
-  function filterTools(writeUrl = true) {
-    if (!search) return;
-    const query = search.value.trim().toLowerCase();
-
-    // The grid stays in step, so scrolling down after a search is not confusing.
-    cards.forEach((card) => {
-      card.hidden = Boolean(query) && !card.dataset.search?.includes(query);
-    });
-
-    if (!query) {
-      options.forEach((option) => { option.hidden = true; });
-      if (empty) empty.hidden = true;
-      close();
-    } else {
-      let shown = 0;
-      options.forEach((option) => {
-        const match = option.dataset.search?.includes(query) ?? false;
-        option.hidden = !match || shown >= SHOWN;
-        if (match && shown < SHOWN) shown += 1;
-      });
-
-      if (empty) empty.hidden = shown !== 0;
-      if (results) results.hidden = false;
-      search.setAttribute('aria-expanded', 'true');
-    }
-
-    if (writeUrl) {
-      const url = new URL(location.href);
-      if (query) url.searchParams.set('q', query);
-      else url.searchParams.delete('q');
-      url.searchParams.delete('focus');
-      history.replaceState(null, '', url);
-    }
-  }
-
-  search?.addEventListener('input', () => filterTools());
-
-  const initial = new URLSearchParams(location.search);
-  if (search && initial.get('q')) {
-    search.value = initial.get('q') ?? '';
-    filterTools(false);
-  }
-  if (search && initial.get('focus') === 'search') {
-    requestAnimationFrame(() => search.focus());
-  }
-
-  // A combobox people can drive from the keyboard, not just the mouse.
-  search?.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') { close(); return; }
-    if (event.key === 'ArrowDown') {
-      const first = links()[0];
-      if (first) { event.preventDefault(); first.focus(); }
-    }
-  });
-
-  results?.addEventListener('keydown', (event) => {
-    const all = links();
-    const at = all.indexOf(document.activeElement as HTMLAnchorElement);
-    if (at < 0) return;
-    if (event.key === 'ArrowDown') { event.preventDefault(); (all[at + 1] ?? all[0]).focus(); }
-    if (event.key === 'ArrowUp') { event.preventDefault(); (at === 0 ? search : all[at - 1])?.focus(); }
-    if (event.key === 'Escape') { close(); search?.focus(); }
-  });
-
-  document.addEventListener('click', (event) => {
-    if (!(event.target as HTMLElement).closest('.quickfind')) close();
-  });
-
   /* ── Your tools ────────────────────────────────────────────────────────
      Kept in this browser, like everything else here. Nobody is asked to make
      an account to remember which five of forty tools they actually use. */
@@ -570,7 +436,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     isolation: isolate;
     display: grid;
     gap: clamp(3rem, 2rem + 5vw, 5rem);
-    padding-block: clamp(4.5rem, 3rem + 6vw, 7.75rem) clamp(4rem, 3rem + 5vw, 7rem);
+    padding-block: clamp(2.75rem, 2rem + 3.5vw, 4.75rem) clamp(2.75rem, 2rem + 3vw, 4.25rem);
   }
 
   .hero::before {
@@ -676,15 +542,15 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   }
 
   h1 {
-    font-size: var(--step-5);
-    margin-block: 1.25rem 1.5rem;
+    font-size: clamp(2.6rem, 1.9rem + 3vw, 4.15rem);
+    margin-block: 1rem 1.1rem;
   }
 
   .hero__actions {
     display: flex;
     flex-wrap: wrap;
     gap: 0.75rem;
-    margin-top: 2rem;
+    margin-top: 1.4rem;
   }
 
   .hero__meta {
@@ -724,7 +590,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     display: flex;
     flex-wrap: wrap;
     gap: 0.55rem 1.1rem;
-    margin: 1.75rem 0 0;
+    margin: 1.25rem 0 0;
     padding: 0;
     list-style: none;
     color: var(--ink-2);
@@ -913,7 +779,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     .hero {
       grid-template-columns: 1.05fr 0.95fr;
       align-items: center;
-      padding-block: clamp(3rem, 2rem + 2vw, 4.5rem) clamp(3rem, 2rem + 2vw, 4.5rem);
+      padding-block: clamp(2.4rem, 1.8rem + 1.4vw, 3.35rem);
     }
   }
 
@@ -1065,135 +931,6 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     .orbit-card span { display: none; }
   }
 
-  /* ── Quickfind ──────────────────────────────────────────────────────
-     One search box, at the top, that answers in place. */
-  .quickfind {
-    position: relative;
-    width: 3.2rem;
-    max-width: 100%;
-    margin-top: 1.75rem;
-    transition: width 260ms cubic-bezier(.2,.75,.2,1);
-  }
-
-  .quickfind .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .quickfind:hover,
-  .quickfind:focus-within { width: min(32rem, 100%); }
-
-  .quickfind__field {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    min-height: 3.2rem;
-    padding: 0.3rem;
-    background: var(--paper-raised);
-    border: 1px solid var(--line-strong);
-    border-radius: 14px;
-    box-shadow: 0 9px 28px -24px rgb(15 23 42 / 0.5);
-    cursor: text;
-    overflow: hidden;
-    transition: border-color 170ms ease, box-shadow 170ms ease, background 170ms ease;
-  }
-
-  .quickfind:hover .quickfind__field,
-  .quickfind__field:focus-within {
-    border-color: var(--accent);
-    background: color-mix(in srgb, var(--paper-raised) 96%, var(--accent));
-    box-shadow: 0 14px 34px -25px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 0 3px color-mix(in oklab, var(--accent) 12%, transparent);
-  }
-
-  .quickfind__icon {
-    flex: 0 0 auto;
-    width: 2.5rem;
-    height: 2.5rem;
-    padding: 0.58rem;
-    border-radius: 11px;
-    background: color-mix(in srgb, var(--accent) 10%, var(--paper-sunk));
-    color: var(--accent);
-    transition: transform 190ms ease, background 190ms ease;
-  }
-  .quickfind:hover .quickfind__icon,
-  .quickfind:focus-within .quickfind__icon { transform: rotate(-4deg) scale(1.04); background: color-mix(in srgb, var(--accent) 15%, var(--paper-sunk)); }
-  .quickfind__spark { opacity: 0; transition: opacity 180ms ease; }
-  .quickfind:hover .quickfind__spark,
-  .quickfind:focus-within .quickfind__spark { opacity: 1; }
-
-  .quickfind__field input {
-    flex: 1;
-    min-width: 0;
-    width: 0;
-    min-height: 2.5rem;
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--ink);
-    font: 600 var(--step-0)/1 var(--font-sans);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 140ms ease;
-  }
-
-  .quickfind:hover .quickfind__field input,
-  .quickfind:focus-within .quickfind__field input { width: auto; padding-right: 0.75rem; opacity: 1; pointer-events: auto; }
-
-  .quickfind__field input:focus { outline: none; }
-  .quickfind__field input::placeholder { color: var(--muted); }
-  .quickfind__field input::-webkit-search-cancel-button { cursor: pointer; }
-
-  .quickfind__results {
-    position: absolute;
-    z-index: 12;
-    inset-inline: 0;
-    top: calc(100% + 0.4rem);
-    margin: 0;
-    padding: 0.3rem;
-    list-style: none;
-    background: var(--paper-raised);
-    border: 1px solid var(--line-strong);
-    border-radius: 12px;
-    box-shadow: 0 24px 48px -28px rgb(15 23 42 / 0.45);
-  }
-
-  .quickfind__results a {
-    display: grid;
-    gap: 0.1rem;
-    padding: 0.55rem 0.7rem;
-    border-radius: 8px;
-    color: var(--ink);
-    text-decoration: none;
-  }
-
-  .quickfind__results a:hover,
-  .quickfind__results a:focus-visible {
-    background: color-mix(in oklab, var(--accent) 8%, transparent);
-    outline: none;
-  }
-
-  .quickfind__results strong { font-size: var(--step--1); font-weight: 600; }
-  .quickfind__results span {
-    font-size: var(--step--2);
-    color: var(--muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .quickfind__empty {
-    padding: 0.6rem 0.7rem;
-    color: var(--muted);
-    font-size: var(--step--1);
-  }
-
   .cluster--yours .shortcuts { margin-top: 0; }
 
   .card__star {
@@ -1338,59 +1075,19 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   }
 
   /* ── Tool grid ────────────────────────────────────────────────────── */
-  .tool-tree {
-    display: grid;
-    grid-template-columns: repeat(7, minmax(8rem, 1fr));
-    gap: 0.55rem;
-    margin: 2rem 0 2.75rem;
-  }
-
-  .tool-tree__branch {
-    --group-color: #f97316;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.45rem;
-    min-height: 3.25rem;
-    padding: 0.6rem 0.65rem;
-    border: 1px solid var(--line);
-    border-radius: 13px;
-    background: color-mix(in srgb, var(--group-color) 4%, var(--paper-raised));
-    color: var(--ink-2);
-    text-decoration: none;
-    transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
-  }
-
-  .tool-tree__branch:hover {
-    transform: translateY(-2px);
-    border-color: color-mix(in srgb, var(--group-color) 45%, var(--line));
-    background: color-mix(in srgb, var(--group-color) 8%, var(--paper-raised));
-  }
-
-  .tool-tree__branch > span {
-    width: 0.55rem;
-    height: 0.55rem;
-    border-radius: 50%;
-    background: var(--group-color);
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--group-color) 12%, transparent);
-  }
-
-  .tool-tree__branch strong { overflow: hidden; font-size: 0.68rem; line-height: 1.2; text-overflow: ellipsis; }
-  .tool-tree__branch small { color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
-
   .cluster {
     --group-color: #f97316;
     margin-bottom: 2.5rem;
     scroll-margin-top: 6rem;
   }
 
-  .cluster--organize, .tool-tree__branch--organize { --group-color: #f97316; }
-  .cluster--optimize, .tool-tree__branch--optimize { --group-color: #65a30d; }
-  .cluster--to-pdf, .tool-tree__branch--to-pdf { --group-color: #ca8a04; }
-  .cluster--from-pdf, .tool-tree__branch--from-pdf { --group-color: #2563eb; }
-  .cluster--compose, .tool-tree__branch--compose { --group-color: #c026d3; }
-  .cluster--review, .tool-tree__branch--review { --group-color: #7c3aed; }
-  .cluster--secure, .tool-tree__branch--secure { --group-color: #0f766e; }
+  .cluster--organize { --group-color: #f97316; }
+  .cluster--optimize { --group-color: #65a30d; }
+  .cluster--to-pdf { --group-color: #ca8a04; }
+  .cluster--from-pdf { --group-color: #2563eb; }
+  .cluster--compose { --group-color: #c026d3; }
+  .cluster--review { --group-color: #7c3aed; }
+  .cluster--secure { --group-color: #0f766e; }
 
   .cluster__head {
     display: flex;
@@ -1503,11 +1200,6 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 
   .card__soon {
     color: var(--muted);
-  }
-
-  @media (max-width: 64em) {
-    .tool-tree { display: flex; overflow-x: auto; padding: 0.15rem 0 0.45rem; scrollbar-width: thin; }
-    .tool-tree__branch { flex: 0 0 10.25rem; }
   }
 
   @media (max-width: 40em) {

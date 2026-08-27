@@ -4,10 +4,13 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "npm run assets && astro dev",
-    "build": "npm run assets && astro build",
+    "dev": "node scripts/copy-wasm.mjs && astro dev",
+    "build": "node scripts/copy-wasm.mjs && astro build",
     "preview": "astro preview",
-    "assets": "node scripts/copy-wasm.mjs"
+    "assets": "node scripts/copy-wasm.mjs",
+    "audit:icons": "node scripts/audit-icons.mjs",
+    "audit:links": "node scripts/audit-links.mjs",
+    "check": "node scripts/audit-icons.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-links.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",

@@ -286,7 +286,7 @@ const { profile = 'full' } = Astro.props;
           </span>
         </div>
 
-        <p data-editor-hint>Click an edit to select it. Drag selected text to reposition it.</p>
+        <p data-editor-hint>Click an edit to select it. Drag the object or its handles to adjust it.</p>
         <p class="editor__feedback" data-editor-feedback role="status" aria-live="polite"></p>
       </div>
     </section>
@@ -1369,7 +1369,7 @@ const { profile = 'full' } = Astro.props;
       this.syncInspector();
       this.refreshState();
       const hints: Record<Tool, string> = {
-        select: 'Click an edit to select it. Drag text or a signature to reposition it.',
+        select: 'Click an edit to select it. Drag the object or its handles to move, resize, or rotate it.',
         pan: 'Drag the page to move around the workspace.',
         text: 'Type the text below, then click where it should appear.',
         stamp: 'Choose a stamp, then click where it should appear.',

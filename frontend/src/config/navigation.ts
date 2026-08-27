@@ -12,12 +12,16 @@ export type NavigationTone =
 export interface NavigationGroup {
   label: string;
   tone: NavigationTone;
+  anchor: string;
+  description: string;
   tools: Tool[];
 }
 
 interface NavigationGroupDefinition {
   label: string;
   tone: NavigationTone;
+  anchor: string;
+  description: string;
   slugs: string[];
 }
 
@@ -29,6 +33,8 @@ const groupDefinitions: NavigationGroupDefinition[] = [
   {
     label: 'Organize PDF',
     tone: 'organize',
+    anchor: 'organize',
+    description: 'Build the document in the page order you need.',
     slugs: [
       'merge-pdf',
       'split-pdf',
@@ -43,31 +49,43 @@ const groupDefinitions: NavigationGroupDefinition[] = [
   {
     label: 'Optimize PDF',
     tone: 'optimize',
+    anchor: 'optimize',
+    description: 'Reduce, repair, crop, and prepare the file.',
     slugs: ['compress-pdf', 'repair-pdf', 'grayscale-pdf', 'auto-crop', 'crop-pdf', 'flatten-pdf'],
   },
   {
     label: 'Convert to PDF',
     tone: 'to-pdf',
+    anchor: 'convert',
+    description: 'Turn everyday files into dependable PDFs.',
     slugs: ['jpg-to-pdf', 'word-to-pdf', 'excel-to-pdf', 'powerpoint-to-pdf', 'text-to-pdf'],
   },
   {
     label: 'Convert from PDF',
     tone: 'from-pdf',
+    anchor: 'convert-from-pdf',
+    description: 'Take text, tables, and images back out.',
     slugs: ['pdf-to-jpg', 'pdf-to-word', 'pdf-to-excel', 'pdf-to-markdown', 'extract-images'],
   },
   {
     label: 'Edit & compose',
     tone: 'compose',
+    anchor: 'edit',
+    description: 'Add, arrange, and make content permanent.',
     slugs: ['edit-pdf', 'watermark-pdf', 'page-numbers', 'impose-pdf', 'overlay-pdf', 'header-footer'],
   },
   {
     label: 'Review & data',
     tone: 'review',
+    anchor: 'review',
+    description: 'Read, compare, recognize, and inspect documents.',
     slugs: ['compare-pdf', 'ocr-pdf', 'pdf-forms', 'metadata-pdf'],
   },
   {
     label: 'Secure & archive',
     tone: 'secure',
+    anchor: 'secure',
+    description: 'Control access, remove secrets, sign, and archive.',
     slugs: ['protect-pdf', 'unlock-pdf', 'redact-pdf', 'sign-pdf', 'pdf-a'],
   },
 ];
@@ -75,6 +93,8 @@ const groupDefinitions: NavigationGroupDefinition[] = [
 const resolveTools = (definition: NavigationGroupDefinition): NavigationGroup => ({
   label: definition.label,
   tone: definition.tone,
+  anchor: definition.anchor,
+  description: definition.description,
   tools: definition.slugs
     .map((slug) => liveToolsBySlug.get(slug))
     .filter((tool): tool is Tool => Boolean(tool)),
@@ -86,10 +106,6 @@ const resolveTools = (definition: NavigationGroupDefinition): NavigationGroup =>
  * site.ts therefore cannot accidentally expose an unfinished route here.
  */
 export const NAVIGATION_GROUPS: NavigationGroup[] = groupDefinitions.map(resolveTools);
-
-export const CONVERSION_GROUPS = NAVIGATION_GROUPS.filter(
-  (group) => group.tone === 'to-pdf' || group.tone === 'from-pdf',
-);
 
 export const POPULAR_TOOL_SLUGS = ['merge-pdf', 'split-pdf', 'compress-pdf', 'edit-pdf', 'sign-pdf'] as const;
 

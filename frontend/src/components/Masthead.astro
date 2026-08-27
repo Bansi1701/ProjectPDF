@@ -4,7 +4,6 @@ import Logo from './Logo.astro';
 import ToolIcon from './ToolIcon.astro';
 import { SITE } from '../config/site';
 import {
-  CONVERSION_GROUPS,
   LIVE_NAVIGATION_TOOL_COUNT,
   NAVIGATION_GROUPS,
   POPULAR_TOOLS,
@@ -38,36 +37,6 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
       ))}
     </nav>
 
-    <details class="nav-menu convert-menu" data-nav-menu>
-      <summary aria-controls="convert-menu-panel" aria-expanded="false">
-        <span>Convert PDF</span>
-        <svg class="caret" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
-      </summary>
-      <div class="convert-panel menu-surface" id="convert-menu-panel">
-        <div class="convert-panel__intro">
-          <span class="eyebrow">Convert</span>
-          <strong>Change the format, not the privacy.</strong>
-        </div>
-        <div class="convert-groups">
-          {CONVERSION_GROUPS.map((group) => (
-            <section class={`nav-group nav-group--${group.tone}`} aria-labelledby={`convert-${group.tone}`}>
-              <h2 id={`convert-${group.tone}`}>{group.label}</h2>
-              <ul>
-                {group.tools.map((tool) => (
-                  <li>
-                    <a class="menu-tool" href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
-                      <ToolIcon slug={tool.slug} tone={group.tone} size="1.7rem" />
-                      <span>{menuLabel(tool.slug, tool.searchName)}</span>
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-      </div>
-    </details>
-
     <details class="nav-menu all-menu" data-nav-menu>
       <summary aria-controls="all-tools-menu-panel" aria-expanded="false">
         <span>All PDF tools</span>
@@ -80,10 +49,6 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
             <strong>Choose what you need to do</strong>
             <p>{LIVE_NAVIGATION_TOOL_COUNT} working tools, organized by task.</p>
           </div>
-          <a class="panel-search" href={`${base}/?focus=search`}>
-            <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.25" /><path d="m12.5 12.5 4 4" /></svg>
-            <span>Search all tools</span><kbd>/</kbd>
-          </a>
         </div>
 
         <div class="mobile-popular" aria-labelledby="mobile-popular-heading">
@@ -159,7 +124,6 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
           placeholder={`Search ${LIVE_NAVIGATION_TOOL_COUNT} tools…`}
           autocomplete="off"
         />
-        <span class="header-search__art" aria-hidden="true"><i></i><i></i><i></i></span>
         <kbd>/</kbd>
         <ul class="header-search__results menu-surface" id="header-search-results" data-header-search-results hidden>
           {headerSearchTools.map(({ tool, tone, group }) => (
@@ -197,22 +161,13 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
   .caret { width: 0.9rem; height: 0.9rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 160ms ease; }
   .nav-menu[open] > summary .caret, .mobile-group[open] > summary .caret { transform: rotate(180deg); }
   .menu-surface { border: 1px solid var(--line-strong); border-radius: 20px; background: color-mix(in srgb, var(--paper-raised) 97%, transparent); box-shadow: 0 26px 70px -34px rgb(15 23 42 / 0.48), 0 8px 24px -18px rgb(15 23 42 / 0.22); -webkit-backdrop-filter: blur(22px) saturate(1.25); backdrop-filter: blur(22px) saturate(1.25); }
-  .convert-menu { position: relative; }
-  .convert-panel { position: absolute; z-index: 60; top: calc(100% + 0.72rem); left: 50%; width: min(38rem, calc(100vw - 2rem)); padding: 1.05rem; transform: translateX(-50%); }
-  .convert-panel__intro { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.15rem 0.35rem 0.85rem; border-bottom: 1px solid var(--line); }
-  .convert-panel__intro strong { color: var(--ink-2); font-size: var(--step--1); font-weight: 500; }
   .eyebrow { color: var(--accent); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.11em; text-transform: uppercase; }
-  .convert-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; padding-top: 0.95rem; }
   .all-menu { position: static; }
   .all-panel { position: absolute; z-index: 60; top: calc(100% + 0.72rem); left: 50%; width: min(88rem, calc(100vw - 2rem)); max-height: calc(100vh - 6.5rem); padding: 1.2rem; overflow-y: auto; transform: translateX(-50%); }
-  .all-panel__head { display: flex; align-items: center; justify-content: space-between; gap: 1.25rem; padding: 0.1rem 0.2rem 1rem; border-bottom: 1px solid var(--line); }
+  .all-panel__head { display: flex; align-items: center; gap: 1.25rem; padding: 0.1rem 0.2rem 1rem; border-bottom: 1px solid var(--line); }
   .all-panel__head > div { display: grid; grid-template-columns: auto 1fr; align-items: baseline; gap: 0.25rem 0.65rem; }
   .all-panel__head strong { font-family: var(--font-brand); font-size: var(--step-1); letter-spacing: -0.025em; }
   .all-panel__head p { grid-column: 2; margin: 0; color: var(--muted); font-size: var(--step--2); }
-  .panel-search { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.55rem; border: 1px solid var(--line-strong); border-radius: 12px; color: var(--ink-2); font-size: var(--step--1); font-weight: 600; text-decoration: none; white-space: nowrap; }
-  .panel-search { padding: 0.48rem 0.65rem 0.48rem 0.75rem; background: var(--paper-sunk); }
-  .panel-search svg { width: 1rem; height: 1rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
-  .panel-search kbd { color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
   .desktop-tool-groups { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: clamp(0.7rem, 1.3vw, 1.4rem); padding: 1.15rem 0.15rem 1rem; }
   .nav-group { --group-color: #f97316; }
   .nav-group--organize, .mobile-group--organize { --group-color: #f97316; }
@@ -222,10 +177,10 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
   .nav-group--compose, .mobile-group--compose { --group-color: #c026d3; }
   .nav-group--review, .mobile-group--review { --group-color: #7c3aed; }
   .nav-group--secure, .mobile-group--secure { --group-color: #0f766e; }
-  .nav-group h2 { display: flex; align-items: center; gap: 0.45rem; min-height: 2rem; margin: 0 0 0.38rem; color: var(--muted); font: 700 0.66rem/1.2 var(--font-sans); letter-spacing: 0.075em; text-transform: uppercase; }
+  .nav-group h2 { display: flex; align-items: center; gap: 0.45rem; min-height: 2rem; margin: 0 0 0.38rem; color: var(--muted); font: 700 0.7rem/1.2 var(--font-sans); letter-spacing: 0.065em; text-transform: uppercase; }
   .nav-group h2 > span { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--group-color); box-shadow: 0 0 0 4px color-mix(in srgb, var(--group-color) 12%, transparent); }
   .nav-group ul, .mobile-group ul { display: grid; gap: 0.08rem; margin: 0; padding: 0; list-style: none; }
-  .menu-tool { display: grid; grid-template-columns: 1.8rem minmax(0, 1fr); align-items: center; gap: 0.4rem; min-height: 2.25rem; padding: 0.18rem 0.22rem; border-radius: 9px; color: var(--ink-2); font-size: 0.72rem; font-weight: 520; line-height: 1.25; text-decoration: none; transition: color 140ms ease, background 140ms ease, transform 140ms ease; }
+  .menu-tool { display: grid; grid-template-columns: 1.8rem minmax(0, 1fr); align-items: center; gap: 0.45rem; min-height: 2.45rem; padding: 0.22rem; border-radius: 9px; color: var(--ink-2); font-size: 0.77rem; font-weight: 540; line-height: 1.25; text-decoration: none; transition: color 140ms ease, background 140ms ease, transform 140ms ease; }
   .menu-tool:hover, .menu-tool[aria-current='page'] { color: var(--ink); background: color-mix(in srgb, var(--group-color) 9%, var(--paper-sunk)); transform: translateX(2px); }
   .menu-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .all-panel__foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 0.25rem 0.1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
@@ -240,22 +195,20 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
     position: relative;
     z-index: 4;
     display: grid;
-    grid-template-columns: 2.45rem 0 0 0;
+    grid-template-columns: 2.45rem minmax(8rem, 1fr) auto;
     align-items: center;
-    width: 2.55rem;
-    min-width: 2.55rem;
+    width: min(18rem, 24vw);
+    min-width: 12rem;
     height: 2.55rem;
     border: 1px solid var(--line-strong);
     border-radius: 12px;
     background: color-mix(in srgb, var(--paper-raised) 92%, transparent);
     color: var(--ink-2);
     box-shadow: 0 7px 20px -18px rgb(15 23 42 / 0.45);
-    transition: width 220ms cubic-bezier(.2,.75,.2,1), border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+    transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
   }
   .header-search:hover,
   .header-search:focus-within {
-    grid-template-columns: 2.45rem minmax(7rem, 1fr) auto auto;
-    width: min(19rem, 30vw);
     border-color: color-mix(in srgb, var(--accent) 55%, var(--line-strong));
     background: var(--paper-raised);
     box-shadow: 0 14px 34px -22px color-mix(in srgb, var(--accent) 52%, transparent), 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent);
@@ -268,18 +221,9 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
   .header-search__spark { opacity: 0; transform-origin: center; transition: opacity 180ms ease; }
   .header-search:hover .header-search__spark,
   .header-search:focus-within .header-search__spark { opacity: 1; }
-  .header-search input { min-width: 0; width: 0; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 600 0.78rem/1 var(--font-sans); opacity: 0; pointer-events: none; }
+  .header-search input { min-width: 0; width: 100%; padding: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 600 0.78rem/1 var(--font-sans); opacity: 1; }
   .header-search input::placeholder { color: var(--muted); font-weight: 500; }
-  .header-search:hover input,
-  .header-search:focus-within input { width: 100%; opacity: 1; pointer-events: auto; }
-  .header-search > kbd { padding-right: 0.65rem; color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); opacity: 0; }
-  .header-search:hover > kbd,
-  .header-search:focus-within > kbd { opacity: 1; }
-  .header-search__art { display: flex; align-items: center; gap: 2px; width: 0; opacity: 0; }
-  .header-search__art i { width: 3px; height: 3px; border-radius: 50%; background: var(--accent); }
-  .header-search__art i:nth-child(2) { width: 5px; height: 5px; opacity: 0.55; }
-  .header-search:hover .header-search__art,
-  .header-search:focus-within .header-search__art { width: 0.9rem; opacity: 1; }
+  .header-search > kbd { padding-right: 0.65rem; color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
   .header-search__results { position: absolute; z-index: 70; top: calc(100% + 0.65rem); right: 0; display: grid; width: min(24rem, calc(100vw - 1rem)); max-height: min(27rem, calc(100vh - 6rem)); margin: 0; padding: 0.5rem; overflow-y: auto; list-style: none; }
   .header-search__results[hidden], .header-search__results li[hidden] { display: none; }
   .header-search__results a { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: center; gap: 0.65rem; min-height: 3.25rem; padding: 0.42rem 0.55rem 0.42rem 0.42rem; border-radius: 12px; color: var(--ink); text-decoration: none; }
@@ -289,7 +233,6 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
   .header-search__results small { color: var(--muted); font: 600 0.62rem/1 var(--font-mono); letter-spacing: 0.045em; text-transform: uppercase; }
   .header-search__results a > svg { width: 0.9rem; fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
   .header-search__empty { padding: 0.8rem; color: var(--muted); font-size: var(--step--1); }
-  .panel-search:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 42%, var(--line-strong)); }
   .theme-toggle { display: inline-grid; flex: 0 0 auto; width: 2.55rem; height: 2.55rem; place-items: center; padding: 0; border: 1px solid var(--line-strong); border-radius: 12px; background: transparent; color: var(--ink); cursor: pointer; }
   .theme-toggle:hover { border-color: color-mix(in srgb, var(--accent) 42%, var(--line-strong)); background: var(--paper-sunk); }
   .theme-icon { grid-area: 1 / 1; width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -303,19 +246,20 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
     .masthead-slot :global(.rail) { min-height: 3.65rem; padding: 0.3rem 0.38rem 0.3rem 0.45rem; }
     .masthead-slot :global(.rail .lens__body) { min-height: 3rem; }
     .brand { gap: 0.45rem; margin-right: auto; font-size: 0.86rem; }
-    .convert-menu { display: none; }
     .nav-menu > summary { min-height: 2.55rem; padding-inline: 0.7rem; }
     .all-menu > summary span { font-size: 0; }
     .all-menu > summary span::after { content: 'Tools'; font-size: 0.76rem; }
     .rail__actions { margin-left: 0; }
-    .header-search:hover,
-    .header-search:focus-within { position: absolute; right: 2.95rem; width: min(17rem, calc(100vw - 8.25rem)); }
+    .header-search { grid-template-columns: 2.45rem 0 0; width: 2.55rem; min-width: 2.55rem; }
+    .header-search input { width: 0; opacity: 0; pointer-events: none; }
+    .header-search > kbd { opacity: 0; }
+    .header-search:focus-within { position: absolute; right: 2.95rem; grid-template-columns: 2.45rem minmax(6rem, 1fr) auto; width: min(17rem, calc(100vw - 8.25rem)); }
+    .header-search:focus-within input { width: 100%; opacity: 1; pointer-events: auto; }
+    .header-search:focus-within > kbd { opacity: 1; }
     .all-panel { position: fixed; top: 4.65rem; right: 0.5rem; bottom: max(0.5rem, env(safe-area-inset-bottom)); left: 0.5rem; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; width: auto; max-height: none; padding: 1rem; overflow: hidden; transform: none; }
     .all-panel__head { padding: 0.1rem 0.05rem 0.85rem; }
     .all-panel__head > div { display: grid; grid-template-columns: 1fr; gap: 0.2rem; }
     .all-panel__head p { grid-column: auto; }
-    .panel-search { width: 2.7rem; justify-content: center; padding: 0; }
-    .panel-search span, .panel-search kbd { display: none; }
     .desktop-tool-groups { display: none; }
     .mobile-popular { display: grid; gap: 0.55rem; padding: 0.85rem 0 0.75rem; }
     .mobile-popular h2 { margin: 0; color: var(--muted); font: 700 0.67rem/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; }
@@ -394,6 +338,13 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
   headerSearchInput?.addEventListener('focus', () => {
     if (headerSearchInput.value.trim()) filterHeaderSearch();
   });
+  const headerParams = new URLSearchParams(location.search);
+  if (headerSearchInput && headerParams.get('focus') === 'search') {
+    headerParams.delete('focus');
+    const cleanQuery = headerParams.toString();
+    history.replaceState(null, '', `${location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${location.hash}`);
+    requestAnimationFrame(() => headerSearchInput.focus());
+  }
   headerSearch?.addEventListener('submit', (event) => {
     event.preventDefault();
     const first = headerSearchResults?.querySelector<HTMLAnchorElement>('[data-header-search-item]:not([hidden]) a');
@@ -420,9 +371,7 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
     }
     if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey || target?.closest('input, textarea, select, [contenteditable]')) return;
     event.preventDefault();
-    const search = headerSearchInput ?? document.querySelector<HTMLInputElement>('[data-tool-search]');
-    if (search) search.focus();
-    else location.href = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/?focus=search`;
+    headerSearchInput?.focus();
   });
   mobileNav.addEventListener('change', syncMenuState);
   syncMenuState();

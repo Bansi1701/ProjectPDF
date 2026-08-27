@@ -961,7 +961,11 @@ const dropTitle = takesExcel
 
     <div class="running" data-running hidden>
       <div class="running__head">
-        <p class="status" data-status role="status" aria-live="polite"></p>
+        <span class="running__signal" aria-hidden="true"><i></i></span>
+        <div class="running__copy">
+          <span>Working on this device</span>
+          <p class="status" data-status role="status" aria-live="polite"></p>
+        </div>
         <button class="btn btn--quiet running__stop" type="button" data-cancel>Stop</button>
       </div>
       <div class="running__track" data-progress-track hidden aria-hidden="true">
@@ -972,8 +976,13 @@ const dropTitle = takesExcel
 
   <section class="result" data-result hidden aria-live="polite">
     <div class="result__headline">
-      <span class="result__pct" data-pct></span>
-      <span class="result__sizes" data-sizes></span>
+      <span class="result__success" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="m6.5 12.5 3.4 3.4 7.8-8" /></svg>
+      </span>
+      <div class="result__summary">
+        <span class="result__eyebrow">Ready to save</span>
+        <div><span class="result__pct" data-pct></span><span class="result__sizes" data-sizes></span></div>
+      </div>
     </div>
 
     <div class="result__bar" data-bar-wrap aria-hidden="true">
@@ -2919,12 +2928,23 @@ const dropTitle = takesExcel
   }
 
   .result {
-    background: var(--paper-sunk); border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--ok) 4%, var(--paper-sunk));
+    border: 1px solid color-mix(in srgb, var(--ok) 24%, var(--line));
     border-radius: var(--radius); padding: clamp(1.25rem, 1rem + 1vw, 1.75rem);
     display: grid; gap: 1rem;
   }
 
-  .result__headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem; }
+  .result:not([hidden]) { animation: result-arrive 340ms cubic-bezier(.2,.75,.2,1) both; }
+  .result__headline { display: flex; align-items: center; gap: 0.85rem; }
+  .result__success {
+    display: grid; flex: 0 0 auto; width: 2.65rem; height: 2.65rem; place-items: center;
+    border-radius: 14px; background: color-mix(in srgb, var(--ok) 14%, var(--paper-raised));
+    color: var(--ok); box-shadow: 0 8px 20px -16px color-mix(in srgb, var(--ok) 72%, transparent);
+  }
+  .result__success svg { width: 1.35rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .result__summary { display: grid; gap: 0.18rem; min-width: 0; }
+  .result__summary > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 0.8rem; }
+  .result__eyebrow { color: var(--muted); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
   .result__pct {
     font-size: var(--step-3); font-weight: 600;
     letter-spacing: -0.03em; color: var(--ok);
@@ -2963,6 +2983,11 @@ const dropTitle = takesExcel
   .result__receipt {
     font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted);
     padding-top: 0.75rem; border-top: 1px solid var(--line);
+  }
+
+  @keyframes result-arrive {
+    from { opacity: 0; transform: translateY(0.5rem); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   .error {
@@ -3321,14 +3346,27 @@ const dropTitle = takesExcel
      A bar that moves on a guess is a lie, so operations that cannot say how
      far along they are get an elapsed count instead — and either way, a way
      out. Each op runs to completion inside the worker, so Stop terminates it. */
-  .running { display: grid; gap: 0.5rem; }
-
-  .running__head {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 1rem; flex-wrap: wrap;
+  .running {
+    display: grid; gap: 0.65rem; padding: 0.85rem 0.95rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
+    border-radius: 14px; background: color-mix(in srgb, var(--accent) 4%, var(--paper-sunk));
   }
 
-  .running__head .status { margin: 0; }
+  .running__head {
+    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+    gap: 0.75rem;
+  }
+
+  .running__signal {
+    position: relative; display: grid; width: 2rem; height: 2rem; place-items: center;
+    border-radius: 50%; background: color-mix(in srgb, var(--accent) 11%, var(--paper-raised));
+  }
+  .running__signal::before, .running__signal i { content: ''; position: absolute; border-radius: 50%; }
+  .running__signal::before { inset: 0.32rem; border: 2px solid color-mix(in srgb, var(--accent) 24%, transparent); border-top-color: var(--accent); animation: local-spin 850ms linear infinite; }
+  .running__signal i { width: 0.3rem; height: 0.3rem; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 9%, transparent); }
+  .running__copy { display: grid; gap: 0.08rem; min-width: 0; }
+  .running__copy > span { color: var(--ink); font-size: var(--step--1); font-weight: 700; }
+  .running__head .status { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .running__stop { flex: none; }
 
   .running__track {
@@ -3342,8 +3380,12 @@ const dropTitle = takesExcel
     transition: width 240ms ease-out;
   }
 
+  @keyframes local-spin { to { transform: rotate(360deg); } }
+
   @media (prefers-reduced-motion: reduce) {
     .running__fill { transition: none; }
+    .running__signal::before { animation: none; }
+    .result:not([hidden]) { animation: none; }
   }
 
   .pair { display: grid; gap: 1rem; }
