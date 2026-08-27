@@ -3,6 +3,9 @@ import PageGrid from './PageGrid.astro';
 import SaveDialog from './SaveDialog.astro';
 import Lens from './Lens.astro';
 import LivePdfEditor from './LivePdfEditor.astro';
+import Breadcrumbs from './Breadcrumbs.astro';
+import ToolFooter from './ToolFooter.astro';
+import { getCollection } from 'astro:content';
 import type { Operation } from '../lib/pdf/types';
 import { TOOLS } from '../config/site';
 
@@ -30,6 +33,27 @@ const {
 } = Astro.props;
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const pageSlug = Astro.url.pathname.split('/').filter(Boolean).at(-1) ?? '';
+const currentTool = TOOLS.find((tool) => tool.slug === pageSlug);
+const toolContentEntries = await getCollection('tools');
+const toolContentBySlug = new Map(toolContentEntries.map((entry) => [entry.id, entry]));
+const missingToolContent = TOOLS
+  .filter((tool) => tool.status === 'live' && !toolContentBySlug.has(tool.slug))
+  .map((tool) => tool.slug);
+
+if (missingToolContent.length > 0) {
+  throw new Error(`Live tools missing content entries: ${missingToolContent.join(', ')}`);
+}
+
+const currentToolContent = currentTool ? toolContentBySlug.get(currentTool.slug) : undefined;
+const siblingTools = currentTool
+  ? TOOLS.filter((tool) => tool.status === 'live' && tool.category === currentTool.category)
+  : [];
+const relatedTools = currentToolContent
+  ? currentToolContent.data.related
+      .map((slug) => TOOLS.find((tool) => tool.slug === slug && tool.status === 'live'))
+      .filter((tool): tool is (typeof TOOLS)[number] => Boolean(tool))
+  : [];
 
 const ACTIONS: Record<Operation, string> = {
   compress: 'Compress',
@@ -170,7 +194,7 @@ const dropTitle = takesExcel
 ---
 
 <section class="tool wrap" data-pdf-tool data-mode={mode} data-stage="choose" data-unavailable={unavailable ? '' : undefined} data-live-workspace={supportsLiveEditor || undefined}>
-  <a class="back" href={`${base}/#tools`}>← All tools</a>
+  {currentTool ? <Breadcrumbs tool={currentTool} siblings={siblingTools} /> : <a class="back" href={`${base}/#tools`}>← All tools</a>}
 
   <header class="tool__head">
     <p class="eyebrow"><span class="dot"></span>{eyebrow}</p>
@@ -947,6 +971,8 @@ const dropTitle = takesExcel
     <strong>Private by construction.</strong>
     <span>No upload starts when you choose a file. The work happens in this tab.</span>
   </aside>
+
+  {currentTool && currentToolContent && <ToolFooter tool={currentTool} content={currentToolContent.data} related={relatedTools} />}
 </section>
 
 <script>
