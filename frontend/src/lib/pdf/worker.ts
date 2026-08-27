@@ -24,7 +24,7 @@ import { pdfToWord } from './pdftoword';
 import { scanToPdf } from './scan';
 import { renderThumbnails } from './preview';
 import { closeSession, openSession, renderThumbs } from './thumbs';
-import { addText, compare, pageNumbers, watermark } from './edit';
+import { applyEdits, compare, editDocument, pageNumbers, watermark } from './edit';
 import { deletePages, extract, merge, reorder, rotate, split } from './organise';
 import { repair, toPdfA } from './archive';
 import { fillForm, probeForm } from './forms';
@@ -69,6 +69,15 @@ async function run(request: WorkerRequest): Promise<OpResult> {
     return { ok: true, session: true, geometry: [] };
   }
 
+  // Quick edits from the shared page workspace are part of the same local
+  // transaction as the selected tool. The dedicated editor returns them
+  // directly; other tools receive an in-memory edited input and continue as
+  // normal. No intermediate file is downloaded or uploaded.
+  if (request.edits?.length) {
+    if (request.op === 'edit') return editDocument(request.files, request.edits);
+    request = { ...request, files: await applyEdits(request.files, request.edits) };
+  }
+
   switch (request.op) {
     case 'compress':
       return compress(request.files);
@@ -89,7 +98,7 @@ async function run(request: WorkerRequest): Promise<OpResult> {
     case 'delete':
       return deletePages(request.files, request.ranges ?? '');
     case 'edit':
-      return addText(request.files, request.text ?? '', request.targetPage ?? 1);
+      return editDocument(request.files, request.edits ?? []);
     case 'watermark':
       return watermark(request.files, request.text ?? '');
     case 'page-numbers':

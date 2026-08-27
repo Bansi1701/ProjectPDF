@@ -2,6 +2,7 @@
 import PageGrid from './PageGrid.astro';
 import SaveDialog from './SaveDialog.astro';
 import Lens from './Lens.astro';
+import LivePdfEditor from './LivePdfEditor.astro';
 import type { Operation } from '../lib/pdf/types';
 
 interface Props {
@@ -33,7 +34,7 @@ const ACTIONS: Record<Operation, string> = {
   reorder: 'Reorder pages',
   extract: 'Extract pages',
   delete: 'Delete pages',
-  edit: 'Add the text',
+  edit: 'Save edited PDF',
   watermark: 'Add watermark',
   'page-numbers': 'Add numbers',
   compare: 'Compare',
@@ -85,6 +86,20 @@ const takesExcel = mode === 'excel-to-pdf';
 const takesSlides = mode === 'powerpoint-to-pdf';
 const takesText = mode === 'text-to-pdf';
 
+/**
+ * The page workspace needs one readable PDF. Organise tools already have the
+ * specialised all-page grid; conversion inputs such as DOCX and XLSX do not
+ * have a PDF page to preview until after their conversion.
+ */
+const supportsLiveEditor =
+  !gridMode &&
+  !takesImages &&
+  !takesWord &&
+  !takesExcel &&
+  !takesSlides &&
+  !takesText &&
+  !['url-to-pdf', 'compare', 'overlay', 'unlock', 'repair'].includes(mode);
+
 const accept = takesImages
   ? 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
   : takesWord
@@ -110,7 +125,7 @@ const dropTitle = takesExcel
     : 'Choose a PDF, or drop one here';
 ---
 
-<section class="tool wrap" data-pdf-tool data-mode={mode}>
+<section class="tool wrap" data-pdf-tool data-mode={mode} data-live-workspace={supportsLiveEditor || undefined}>
   <a class="back" href={`${base}/#tools`}>← All tools</a>
 
   <header class="tool__head">
@@ -173,6 +188,8 @@ const dropTitle = takesExcel
 
     {gridMode && <PageGrid mode={gridMode} />}
 
+    {supportsLiveEditor && <LivePdfEditor />}
+
     <section class="preview" data-preview hidden>
       <div class="preview__head">
         <p class="preview__note" data-preview-note hidden></p>
@@ -234,7 +251,7 @@ const dropTitle = takesExcel
     }
 
     {
-      mode === 'edit' && (
+      mode === 'edit' && !supportsLiveEditor && (
         <Fragment>
           <label class="field">
             <span>Text to add</span>
@@ -722,6 +739,7 @@ const dropTitle = takesExcel
 
 <script>
   import type { WorkerRequest, WorkerResponse } from '../lib/pdf/types';
+  import type { EditMark } from '../lib/pdf/types';
 
   const root = document.querySelector<HTMLElement>('[data-pdf-tool]');
 
@@ -749,6 +767,13 @@ const dropTitle = takesExcel
     const previewSection = q('[data-preview]');
     const previewNote = q('[data-preview-note]');
     const previewPages = q<HTMLElement>('[data-preview-pages]');
+    interface LiveEditorElement extends HTMLElement {
+      open(file: File): Promise<void>;
+      release(): Promise<void>;
+      getEdits(): EditMark[];
+      setToolPreview(guide: { kind: 'none' | 'watermark' | 'page-number'; text?: string; start?: number }): void;
+    }
+    const liveEditor = root.querySelector('live-pdf-editor') as LiveEditorElement | null;
     /* Lens is an Astro component: it forwards `class` but not arbitrary data
        attributes, so the dropzone can only be found by its class. */
     const fileUi = q<HTMLElement>('.drop');
@@ -1137,8 +1162,8 @@ const dropTitle = takesExcel
     }
 
     /** Only modes whose input file is a PDF pdf.js can open. */
-    const NON_PDF_INPUT = new Set(['images-to-pdf', 'word-to-pdf', 'excel-to-pdf', 'powerpoint-to-pdf', 'url-to-pdf']);
-    const previewable = !NON_PDF_INPUT.has(mode);
+    const NON_PDF_INPUT = new Set(['images-to-pdf', 'word-to-pdf', 'excel-to-pdf', 'powerpoint-to-pdf', 'text-to-pdf', 'url-to-pdf']);
+    const previewable = !NON_PDF_INPUT.has(mode) && !liveEditor;
 
     async function preview(file: File) {
       previewId = ++jobId;
@@ -1209,6 +1234,22 @@ const dropTitle = takesExcel
      * get the interactive grid instead and never reach this strip at all.
      */
     function updateLiveOverlay() {
+      if (liveEditor) {
+        if (mode === 'watermark') {
+          liveEditor.setToolPreview({
+            kind: 'watermark',
+            text: root.querySelector<HTMLInputElement>('[data-text]')?.value ?? '',
+          });
+        } else if (mode === 'page-numbers') {
+          const start = Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value || 1);
+          const prefix = root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '';
+          liveEditor.setToolPreview({ kind: 'page-number', text: prefix, start });
+        } else {
+          liveEditor.setToolPreview({ kind: 'none' });
+        }
+        return;
+      }
+
       const figures = [...previewPages.querySelectorAll<HTMLElement>('figure[data-page]')];
       if (!figures.length) return;
       for (const figure of figures) clearOverlay(figure);
@@ -1251,6 +1292,7 @@ const dropTitle = takesExcel
       previewPages.replaceChildren();
       for (const url of previewUrls) URL.revokeObjectURL(url);
       previewUrls = [];
+      if (liveEditor) void liveEditor.release();
 
       // The dropzone is only useful before a file is picked — once one is,
       // showing it alongside the file list and preview just eats space.
@@ -1270,6 +1312,7 @@ const dropTitle = takesExcel
       // strip shows the first eight pages, the grid shows all of them and
       // lets you act on what you see.
       if (grid) void openGrid();
+      else if (liveEditor && files[0]) void liveEditor.open(files[0]).then(updateLiveOverlay);
       else if (previewable && files[0]) void preview(files[0]);
     }
 
@@ -1790,6 +1833,7 @@ const dropTitle = takesExcel
         ranges: root.querySelector<HTMLInputElement>('[data-ranges]')?.value,
         pageOrder: readOrder(),
         text: root.querySelector<HTMLInputElement>('[data-text]')?.value,
+        edits: liveEditor?.getEdits() ?? [],
         targetPage: readTargetPage(),
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
         prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
@@ -1963,6 +2007,7 @@ const dropTitle = takesExcel
     gap: clamp(1.5rem, 1rem + 2vw, 2.5rem);
     max-width: 46rem;
   }
+  .tool[data-live-workspace] { max-width: 78rem; }
 
   .back {
     font-size: var(--step--1);

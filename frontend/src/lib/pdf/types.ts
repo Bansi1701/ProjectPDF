@@ -94,6 +94,44 @@ export interface RedactionBox {
   height: number;
 }
 
+/**
+ * A visible edit placed in the shared browser workspace.
+ *
+ * Positions are fractions of the displayed page and use a top-left origin.
+ * Keeping them independent of the preview scale means the same edit lands in
+ * the same place at 70% zoom, 150% zoom, and in the exported PDF.
+ */
+export type EditMark =
+  | {
+      id: string;
+      kind: 'text';
+      page: number;
+      x: number;
+      y: number;
+      text: string;
+      size: number;
+      color: string;
+    }
+  | {
+      id: string;
+      kind: 'highlight' | 'rectangle' | 'whiteout';
+      page: number;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      color: string;
+      strokeWidth: number;
+    }
+  | {
+      id: string;
+      kind: 'ink';
+      page: number;
+      points: { x: number; y: number }[];
+      color: string;
+      strokeWidth: number;
+    };
+
 /** Images → PDF: the shape each page takes. */
 export type PageSize = 'fit' | 'a4' | 'letter';
 
@@ -278,6 +316,8 @@ export interface WorkerRequest {
   pageOrder?: number[];
   /** Text tools only. */
   text?: string;
+  /** Shared live-workspace edits, applied before the tool's own operation. */
+  edits?: EditMark[];
   /** Edit only: one-based target page. */
   targetPage?: number;
   /** Page-number tool only. */

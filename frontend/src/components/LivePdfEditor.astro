@@ -1,0 +1,724 @@
+---
+/**
+ * The shared page workspace used by PDF-input tools.
+ *
+ * It is deliberately a custom element rather than a framework island: the
+ * page shell stays static, pdf.js loads only after a file is chosen, and the
+ * element exposes a tiny `open / release / getEdits` contract to PdfTool.
+ */
+---
+
+<live-pdf-editor class="editor" data-live-pdf-editor hidden>
+  <header class="editor__topbar">
+    <div>
+      <p class="editor__eyebrow">Live document workspace</p>
+      <h2>Edit the page before you export</h2>
+    </div>
+    <span class="editor__privacy">Local preview · edits stay in this tab</span>
+  </header>
+
+  <div class="editor__shell">
+    <nav class="editor__tools" aria-label="Page editing tools">
+      <button type="button" data-editor-tool="select" aria-pressed="true" title="Select and move">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 12.5 9.2-6.1 1.2-3.2 5.4L5 3Z"></path></svg>
+        <span>Select</span>
+      </button>
+      <button type="button" data-editor-tool="text" aria-pressed="false" title="Add text">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M12 5v14M8.5 19h7"></path></svg>
+        <span>Text</span>
+      </button>
+      <button type="button" data-editor-tool="highlight" aria-pressed="false" title="Highlight an area">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 16 8.8-8.8 3 3L10 19H7v-3Z"></path><path d="M5 21h14"></path></svg>
+        <span>Highlight</span>
+      </button>
+      <button type="button" data-editor-tool="ink" aria-pressed="false" title="Draw freely">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17c4-8 7 3 10-5s5-3 6-1"></path><path d="M4 21h16"></path></svg>
+        <span>Draw</span>
+      </button>
+      <button type="button" data-editor-tool="rectangle" aria-pressed="false" title="Draw a box">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="1"></rect></svg>
+        <span>Box</span>
+      </button>
+      <button type="button" data-editor-tool="whiteout" aria-pressed="false" title="Cover an area in white">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 15 8-9 6 5-8 9H5v-5Z"></path><path d="M13 6l6 5"></path></svg>
+        <span>Whiteout</span>
+      </button>
+      <span class="editor__tool-rule"></span>
+      <button type="button" data-editor-undo title="Undo last edit" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8 5 12l4 4"></path><path d="M5 12h8a6 6 0 0 1 6 6"></path></svg>
+        <span>Undo</span>
+      </button>
+      <button type="button" data-editor-delete title="Delete selected edit" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3M8 10v8M12 10v8M16 10v8M7 7l1 14h8l1-14"></path></svg>
+        <span>Delete</span>
+      </button>
+    </nav>
+
+    <aside class="editor__pages" aria-label="Document pages">
+      <div class="editor__pages-head">
+        <span>Pages</span>
+        <span data-editor-page-total></span>
+      </div>
+      <div class="editor__thumbs" data-editor-thumbs></div>
+    </aside>
+
+    <section class="editor__workarea">
+      <div class="editor__viewbar">
+        <div class="editor__pager" aria-label="Page navigation">
+          <button type="button" data-editor-prev aria-label="Previous page">←</button>
+          <span>Page <strong data-editor-page>1</strong> / <span data-editor-pages>1</span></span>
+          <button type="button" data-editor-next aria-label="Next page">→</button>
+        </div>
+        <div class="editor__zoom" aria-label="Preview zoom">
+          <button type="button" data-editor-zoom-out aria-label="Zoom out">−</button>
+          <span data-editor-zoom>100%</span>
+          <button type="button" data-editor-zoom-in aria-label="Zoom in">+</button>
+        </div>
+      </div>
+
+      <div class="editor__viewport" data-editor-viewport>
+        <div class="editor__page" data-editor-page-stage>
+          <canvas data-editor-canvas></canvas>
+          <svg data-editor-overlay viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-label="Editable page layer"></svg>
+        </div>
+        <p class="editor__loading" data-editor-loading>Choose a PDF to open the workspace.</p>
+      </div>
+
+      <div class="editor__properties">
+        <label data-editor-text-control>
+          <span>Text</span>
+          <input data-editor-text value="Add your text" maxlength="160" />
+        </label>
+        <label>
+          <span>Colour</span>
+          <input data-editor-color type="color" value="#e11d48" />
+        </label>
+        <label data-editor-size-control>
+          <span>Size</span>
+          <select data-editor-size>
+            <option value="10">10 pt</option>
+            <option value="12">12 pt</option>
+            <option value="16" selected>16 pt</option>
+            <option value="22">22 pt</option>
+            <option value="30">30 pt</option>
+          </select>
+        </label>
+        <label data-editor-width-control hidden>
+          <span>Stroke</span>
+          <select data-editor-width>
+            <option value="1">Fine</option>
+            <option value="2" selected>Regular</option>
+            <option value="4">Bold</option>
+          </select>
+        </label>
+        <p data-editor-hint>Click an edit to select it. Drag selected text to reposition it.</p>
+      </div>
+    </section>
+  </div>
+
+  <footer class="editor__footer">
+    <span data-editor-count>No quick edits yet</span>
+    <span>Undo: <kbd>Ctrl</kbd> + <kbd>Z</kbd> · Delete selected: <kbd>Delete</kbd></span>
+  </footer>
+</live-pdf-editor>
+
+<script>
+  import { documentOptions, loadPdfjs, type PdfjsApi } from '../lib/pdf/pdfjs';
+  import type { EditMark } from '../lib/pdf/types';
+
+  type PdfDocument = Awaited<ReturnType<PdfjsApi['getDocument']>['promise']>;
+  type Tool = 'select' | 'text' | 'highlight' | 'ink' | 'rectangle' | 'whiteout';
+  type BoxMark = Extract<EditMark, { kind: 'highlight' | 'rectangle' | 'whiteout' }>;
+  type InkMark = Extract<EditMark, { kind: 'ink' }>;
+
+  interface ToolGuide {
+    kind: 'none' | 'watermark' | 'page-number';
+    text?: string;
+    start?: number;
+  }
+
+  class LivePdfEditorElement extends HTMLElement {
+    private doc: PdfDocument | null = null;
+    private marks: EditMark[] = [];
+    private history: EditMark[][] = [];
+    private tool: Tool = 'select';
+    private activePage = 1;
+    private selectedId = '';
+    private zoom = 1;
+    private renderToken = 0;
+    private thumbObserver: IntersectionObserver | null = null;
+    private guide: ToolGuide = { kind: 'none' };
+    private dragStart: { x: number; y: number } | null = null;
+    private draft: BoxMark | InkMark | null = null;
+    private moving: { id: string; x: number; y: number; originX: number; originY: number } | null = null;
+
+    private canvas = this.querySelector<HTMLCanvasElement>('[data-editor-canvas]')!;
+    private overlay = this.querySelector<SVGSVGElement>('[data-editor-overlay]')!;
+    private pageStage = this.querySelector<HTMLElement>('[data-editor-page-stage]')!;
+    private viewport = this.querySelector<HTMLElement>('[data-editor-viewport]')!;
+    private loading = this.querySelector<HTMLElement>('[data-editor-loading]')!;
+    private thumbs = this.querySelector<HTMLElement>('[data-editor-thumbs]')!;
+
+    connectedCallback() {
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-tool]').forEach((button) => {
+        button.addEventListener('click', () => this.setTool(button.dataset.editorTool as Tool));
+      });
+
+      this.querySelector<HTMLButtonElement>('[data-editor-prev]')?.addEventListener('click', () => void this.setPage(this.activePage - 1));
+      this.querySelector<HTMLButtonElement>('[data-editor-next]')?.addEventListener('click', () => void this.setPage(this.activePage + 1));
+      this.querySelector<HTMLButtonElement>('[data-editor-zoom-out]')?.addEventListener('click', () => this.setZoom(this.zoom - 0.15));
+      this.querySelector<HTMLButtonElement>('[data-editor-zoom-in]')?.addEventListener('click', () => this.setZoom(this.zoom + 0.15));
+      this.querySelector<HTMLButtonElement>('[data-editor-undo]')?.addEventListener('click', () => this.undo());
+      this.querySelector<HTMLButtonElement>('[data-editor-delete]')?.addEventListener('click', () => this.deleteSelected());
+
+      this.overlay.addEventListener('pointerdown', (event) => this.pointerDown(event));
+      this.overlay.addEventListener('pointermove', (event) => this.pointerMove(event));
+      this.overlay.addEventListener('pointerup', (event) => this.pointerUp(event));
+      this.overlay.addEventListener('pointercancel', () => this.cancelPointer());
+
+      this.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+          event.preventDefault();
+          this.undo();
+        } else if ((event.key === 'Delete' || event.key === 'Backspace') && this.selectedId) {
+          const target = event.target as HTMLElement;
+          if (!target.matches('input, textarea, select')) {
+            event.preventDefault();
+            this.deleteSelected();
+          }
+        }
+      });
+
+      this.setTool('select');
+    }
+
+    async open(file: File): Promise<void> {
+      await this.release();
+      this.hidden = false;
+      this.loading.hidden = false;
+      this.loading.textContent = 'Opening the document locally…';
+      this.marks = [];
+      this.history = [];
+      this.selectedId = '';
+      this.activePage = 1;
+      this.refreshState();
+
+      try {
+        const api = await loadPdfjs();
+        this.doc = await api.getDocument({
+          data: new Uint8Array(await file.arrayBuffer()),
+          ...documentOptions(),
+        }).promise;
+        this.buildThumbs();
+        await this.renderPage();
+      } catch (error) {
+        this.loading.hidden = false;
+        this.loading.textContent = `Preview unavailable: ${(error as Error).message}. You can still run the tool.`;
+        this.pageStage.hidden = true;
+      }
+    }
+
+    async release(): Promise<void> {
+      this.renderToken += 1;
+      this.thumbObserver?.disconnect();
+      this.thumbObserver = null;
+      this.thumbs.replaceChildren();
+      this.canvas.width = 0;
+      this.canvas.height = 0;
+      this.overlay.replaceChildren();
+      this.pageStage.hidden = true;
+      if (this.doc) await this.doc.destroy().catch(() => undefined);
+      this.doc = null;
+      this.hidden = true;
+    }
+
+    getEdits(): EditMark[] {
+      return structuredClone(this.marks);
+    }
+
+    setToolPreview(guide: ToolGuide): void {
+      this.guide = guide;
+      this.renderMarks();
+    }
+
+    private buildThumbs(): void {
+      if (!this.doc) return;
+      const total = this.doc.numPages;
+      this.querySelector<HTMLElement>('[data-editor-page-total]')!.textContent = String(total);
+      this.querySelector<HTMLElement>('[data-editor-pages]')!.textContent = String(total);
+
+      const frag = document.createDocumentFragment();
+      for (let page = 1; page <= total; page += 1) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'editor-thumb';
+        button.dataset.page = String(page);
+        button.setAttribute('aria-label', `Open page ${page}`);
+        const canvas = document.createElement('canvas');
+        const label = document.createElement('span');
+        label.textContent = String(page);
+        button.append(canvas, label);
+        button.addEventListener('click', () => void this.setPage(page));
+        frag.append(button);
+      }
+      this.thumbs.replaceChildren(frag);
+
+      this.thumbObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const button = entry.target as HTMLButtonElement;
+          this.thumbObserver?.unobserve(button);
+          void this.renderThumb(button);
+        }
+      }, { root: this.thumbs, rootMargin: '120px' });
+
+      this.thumbs.querySelectorAll<HTMLButtonElement>('.editor-thumb').forEach((button) => this.thumbObserver?.observe(button));
+      this.markActiveThumb();
+    }
+
+    private async renderThumb(button: HTMLButtonElement): Promise<void> {
+      if (!this.doc) return;
+      const pageNumber = Number(button.dataset.page);
+      const page = await this.doc.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: 0.22 });
+      const canvas = button.querySelector('canvas')!;
+      canvas.width = Math.max(1, Math.floor(viewport.width));
+      canvas.height = Math.max(1, Math.floor(viewport.height));
+      const context = canvas.getContext('2d');
+      if (context) await page.render({ canvasContext: context, viewport, canvas }).promise;
+      page.cleanup();
+    }
+
+    private async setPage(page: number): Promise<void> {
+      if (!this.doc) return;
+      const next = Math.max(1, Math.min(page, this.doc.numPages));
+      if (next === this.activePage && !this.pageStage.hidden) return;
+      this.activePage = next;
+      this.selectedId = '';
+      this.markActiveThumb();
+      await this.renderPage();
+    }
+
+    private markActiveThumb(): void {
+      this.querySelector<HTMLElement>('[data-editor-page]')!.textContent = String(this.activePage);
+      this.thumbs.querySelectorAll<HTMLButtonElement>('.editor-thumb').forEach((button) => {
+        button.setAttribute('aria-current', String(Number(button.dataset.page) === this.activePage));
+      });
+      const active = this.thumbs.querySelector<HTMLElement>(`.editor-thumb[data-page="${this.activePage}"]`);
+      active?.scrollIntoView({ block: 'nearest' });
+      const total = this.doc?.numPages ?? 1;
+      const prev = this.querySelector<HTMLButtonElement>('[data-editor-prev]')!;
+      const next = this.querySelector<HTMLButtonElement>('[data-editor-next]')!;
+      prev.disabled = this.activePage <= 1;
+      next.disabled = this.activePage >= total;
+    }
+
+    private async renderPage(): Promise<void> {
+      if (!this.doc) return;
+      const token = ++this.renderToken;
+      this.loading.hidden = false;
+      this.loading.textContent = `Rendering page ${this.activePage}…`;
+      this.pageStage.hidden = true;
+
+      const page = await this.doc.getPage(this.activePage);
+      const viewport = page.getViewport({ scale: 1.35 });
+      if (token !== this.renderToken) return;
+      this.canvas.width = Math.max(1, Math.floor(viewport.width));
+      this.canvas.height = Math.max(1, Math.floor(viewport.height));
+      const context = this.canvas.getContext('2d');
+      if (!context) return;
+      await page.render({ canvasContext: context, viewport, canvas: this.canvas }).promise;
+      page.cleanup();
+      if (token !== this.renderToken) return;
+
+      this.pageStage.dataset.pageWidth = String(viewport.width / 1.35);
+      this.pageStage.dataset.pageHeight = String(viewport.height / 1.35);
+      this.pageStage.hidden = false;
+      this.loading.hidden = true;
+      this.applyZoom();
+      this.renderMarks();
+    }
+
+    private setZoom(value: number): void {
+      this.zoom = Math.max(0.55, Math.min(1.75, Math.round(value * 20) / 20));
+      this.applyZoom();
+    }
+
+    private applyZoom(): void {
+      const width = this.canvas.width * this.zoom;
+      const height = this.canvas.height * this.zoom;
+      this.pageStage.style.width = `${width}px`;
+      this.pageStage.style.height = `${height}px`;
+      this.querySelector<HTMLElement>('[data-editor-zoom]')!.textContent = `${Math.round(this.zoom * 100)}%`;
+    }
+
+    private setTool(tool: Tool): void {
+      this.tool = tool;
+      this.selectedId = '';
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-tool]').forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.editorTool === tool));
+      });
+      this.overlay.dataset.tool = tool;
+      this.querySelector<HTMLElement>('[data-editor-text-control]')!.hidden = tool !== 'text';
+      this.querySelector<HTMLElement>('[data-editor-size-control]')!.hidden = tool !== 'text';
+      this.querySelector<HTMLElement>('[data-editor-width-control]')!.hidden = !['ink', 'rectangle'].includes(tool);
+      const hints: Record<Tool, string> = {
+        select: 'Click an edit to select it. Drag selected text to reposition it.',
+        text: 'Type the text below, then click where it should appear.',
+        highlight: 'Drag over the area you want to highlight.',
+        ink: 'Draw directly on the page with a mouse, pen, or finger.',
+        rectangle: 'Drag to draw an outline around an area.',
+        whiteout: 'Drag over an area to cover it with white. This is not secure redaction.',
+      };
+      this.querySelector<HTMLElement>('[data-editor-hint]')!.textContent = hints[tool];
+      this.renderMarks();
+    }
+
+    private point(event: PointerEvent): { x: number; y: number } {
+      const bounds = this.overlay.getBoundingClientRect();
+      return {
+        x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
+        y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height)),
+      };
+    }
+
+    private pointerDown(event: PointerEvent): void {
+      if (!this.doc || this.pageStage.hidden) return;
+      const target = event.target as SVGElement;
+      const id = target.closest<SVGElement>('[data-mark-id]')?.dataset.markId ?? '';
+      const at = this.point(event);
+
+      if (this.tool === 'select') {
+        this.selectedId = id;
+        const mark = this.marks.find((item) => item.id === id);
+        if (mark?.kind === 'text') {
+          this.moving = { id, x: at.x, y: at.y, originX: mark.x, originY: mark.y };
+          this.overlay.setPointerCapture(event.pointerId);
+        }
+        this.refreshState();
+        this.renderMarks();
+        return;
+      }
+
+      this.snapshot();
+      const color = this.querySelector<HTMLInputElement>('[data-editor-color]')!.value;
+      const strokeWidth = Number(this.querySelector<HTMLSelectElement>('[data-editor-width]')!.value);
+      const idValue = crypto.randomUUID();
+
+      if (this.tool === 'text') {
+        const text = this.querySelector<HTMLInputElement>('[data-editor-text]')!.value.trim();
+        if (!text) {
+          this.history.pop();
+          this.querySelector<HTMLInputElement>('[data-editor-text]')!.focus();
+          return;
+        }
+        this.marks.push({
+          id: idValue,
+          kind: 'text',
+          page: this.activePage,
+          x: at.x,
+          y: at.y,
+          text,
+          size: Number(this.querySelector<HTMLSelectElement>('[data-editor-size]')!.value),
+          color,
+        });
+        this.setTool('select');
+        this.selectedId = idValue;
+        this.changed();
+        return;
+      }
+
+      this.dragStart = at;
+      this.overlay.setPointerCapture(event.pointerId);
+      this.draft = this.tool === 'ink'
+        ? { id: idValue, kind: 'ink', page: this.activePage, points: [at], color, strokeWidth }
+        : {
+            id: idValue,
+            kind: this.tool,
+            page: this.activePage,
+            x: at.x,
+            y: at.y,
+            width: 0,
+            height: 0,
+            color: this.tool === 'highlight' ? '#facc15' : color,
+            strokeWidth,
+          };
+      this.renderMarks();
+    }
+
+    private pointerMove(event: PointerEvent): void {
+      const at = this.point(event);
+      if (this.moving) {
+        const mark = this.marks.find((item) => item.id === this.moving?.id);
+        if (mark?.kind === 'text') {
+          mark.x = Math.max(0, Math.min(0.98, this.moving.originX + at.x - this.moving.x));
+          mark.y = Math.max(0, Math.min(0.98, this.moving.originY + at.y - this.moving.y));
+          this.renderMarks();
+        }
+        return;
+      }
+      if (!this.draft || !this.dragStart) return;
+      if (this.draft.kind === 'ink') {
+        const last = this.draft.points[this.draft.points.length - 1];
+        if (!last || Math.hypot(at.x - last.x, at.y - last.y) > 0.002) this.draft.points.push(at);
+      } else {
+        this.draft.x = Math.min(this.dragStart.x, at.x);
+        this.draft.y = Math.min(this.dragStart.y, at.y);
+        this.draft.width = Math.abs(at.x - this.dragStart.x);
+        this.draft.height = Math.abs(at.y - this.dragStart.y);
+      }
+      this.renderMarks();
+    }
+
+    private pointerUp(event: PointerEvent): void {
+      if (this.moving) {
+        this.snapshot(this.marks.map((mark) => mark.id === this.moving?.id && mark.kind === 'text'
+          ? { ...mark, x: this.moving.originX, y: this.moving.originY }
+          : structuredClone(mark)));
+        this.moving = null;
+        this.changed();
+        return;
+      }
+      if (!this.draft) return;
+      const valid = this.draft.kind === 'ink'
+        ? this.draft.points.length > 1
+        : this.draft.width > 0.006 && this.draft.height > 0.006;
+      if (valid) {
+        this.marks.push(this.draft);
+        const selected = this.draft.id;
+        this.setTool('select');
+        this.selectedId = selected;
+        this.changed();
+      } else {
+        this.history.pop();
+      }
+      this.draft = null;
+      this.dragStart = null;
+      this.renderMarks();
+      if (this.overlay.hasPointerCapture(event.pointerId)) this.overlay.releasePointerCapture(event.pointerId);
+    }
+
+    private cancelPointer(): void {
+      this.draft = null;
+      this.dragStart = null;
+      this.moving = null;
+      this.renderMarks();
+    }
+
+    private snapshot(value: EditMark[] = this.marks): void {
+      this.history.push(structuredClone(value));
+      if (this.history.length > 50) this.history.shift();
+      this.refreshState();
+    }
+
+    private undo(): void {
+      const previous = this.history.pop();
+      if (!previous) return;
+      this.marks = previous;
+      this.selectedId = '';
+      this.changed();
+    }
+
+    private deleteSelected(): void {
+      if (!this.selectedId) return;
+      this.snapshot();
+      this.marks = this.marks.filter((mark) => mark.id !== this.selectedId);
+      this.selectedId = '';
+      this.changed();
+    }
+
+    private changed(): void {
+      this.refreshState();
+      this.renderMarks();
+      this.dispatchEvent(new CustomEvent('editorchange', { bubbles: true, detail: { count: this.marks.length } }));
+    }
+
+    private refreshState(): void {
+      const count = this.marks.length;
+      this.querySelector<HTMLElement>('[data-editor-count]')!.textContent = count
+        ? `${count} quick edit${count === 1 ? '' : 's'} will be included in the output`
+        : 'No quick edits yet';
+      this.querySelector<HTMLButtonElement>('[data-editor-undo]')!.disabled = this.history.length === 0;
+      this.querySelector<HTMLButtonElement>('[data-editor-delete]')!.disabled = !this.selectedId;
+    }
+
+    private svg(name: string, attributes: Record<string, string>): SVGElement {
+      const node = document.createElementNS('http://www.w3.org/2000/svg', name);
+      for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+      return node;
+    }
+
+    private renderMarks(): void {
+      const visible = [...this.marks, ...(this.draft ? [this.draft] : [])].filter((mark) => mark.page === this.activePage);
+      const nodes: SVGElement[] = [];
+      const pageHeight = Number(this.pageStage.dataset.pageHeight || 792);
+
+      if (this.guide.kind === 'watermark' && this.guide.text) {
+        const guide = this.svg('text', { x: '500', y: '515', 'text-anchor': 'middle', class: 'editor-guide editor-guide--watermark', transform: 'rotate(-32 500 500)' });
+        guide.textContent = this.guide.text;
+        nodes.push(guide);
+      } else if (this.guide.kind === 'page-number') {
+        const guide = this.svg('text', { x: '945', y: '955', 'text-anchor': 'end', class: 'editor-guide editor-guide--number' });
+        guide.textContent = `${this.guide.text ?? ''}${(this.guide.start ?? 1) + this.activePage - 1}`;
+        nodes.push(guide);
+      }
+
+      for (const mark of visible) {
+        const selected = mark.id === this.selectedId;
+        let node: SVGElement;
+        if (mark.kind === 'text') {
+          node = this.svg('text', {
+            x: String(mark.x * 1000),
+            y: String(mark.y * 1000),
+            fill: mark.color,
+            'font-size': String((mark.size / pageHeight) * 1000),
+            class: selected ? 'editor-mark is-selected' : 'editor-mark',
+          });
+          node.textContent = mark.text;
+        } else if (mark.kind === 'ink') {
+          node = this.svg('polyline', {
+            points: mark.points.map((point) => `${point.x * 1000},${point.y * 1000}`).join(' '),
+            fill: 'none',
+            stroke: mark.color,
+            'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)),
+            'stroke-linecap': 'round',
+            'stroke-linejoin': 'round',
+            class: selected ? 'editor-mark is-selected' : 'editor-mark',
+          });
+        } else {
+          const common = {
+            x: String(mark.x * 1000),
+            y: String(mark.y * 1000),
+            width: String(mark.width * 1000),
+            height: String(mark.height * 1000),
+            class: selected ? 'editor-mark is-selected' : 'editor-mark',
+          };
+          node = mark.kind === 'highlight'
+            ? this.svg('rect', { ...common, fill: mark.color, opacity: '0.32' })
+            : mark.kind === 'whiteout'
+              ? this.svg('rect', { ...common, fill: '#ffffff', stroke: '#cbd5e1', 'stroke-width': '1' })
+              : this.svg('rect', { ...common, fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)) });
+        }
+        node.dataset.markId = mark.id;
+        nodes.push(node);
+      }
+      this.overlay.replaceChildren(...nodes);
+    }
+  }
+
+  if (!customElements.get('live-pdf-editor')) customElements.define('live-pdf-editor', LivePdfEditorElement);
+</script>
+
+<style>
+  .editor {
+    display: grid;
+    gap: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: calc(var(--radius) + 8px);
+    background: var(--paper-raised);
+    box-shadow: var(--shadow-paper);
+    overflow: hidden;
+  }
+  .editor[hidden] { display: none; }
+
+  .editor__topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .editor__eyebrow { margin: 0 0 0.2rem; color: var(--accent); font: 600 var(--step--2) var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
+  .editor__topbar h2 { margin: 0; font-size: var(--step-1); letter-spacing: -0.02em; }
+  .editor__privacy { color: var(--muted); font-size: var(--step--2); }
+
+  .editor__shell {
+    display: grid;
+    grid-template-columns: 4.8rem 8.8rem minmax(0, 1fr);
+    min-height: 39rem;
+    background: var(--paper-sunk);
+  }
+
+  .editor__tools {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.7rem;
+    border-right: 1px solid var(--line);
+    background: var(--paper-raised);
+  }
+  .editor__tools button {
+    display: grid;
+    justify-items: center;
+    gap: 0.18rem;
+    padding: 0.52rem 0.2rem;
+    border: 1px solid transparent;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--muted);
+    font: 500 0.63rem/1 var(--font-sans);
+    cursor: pointer;
+  }
+  .editor__tools button:hover:not(:disabled) { color: var(--ink); background: var(--paper-sunk); }
+  .editor__tools button[aria-pressed='true'] { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 28%, var(--line)); background: color-mix(in oklab, var(--accent) 9%, var(--paper-raised)); }
+  .editor__tools button:disabled { opacity: 0.35; cursor: not-allowed; }
+  .editor__tools svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .editor__tool-rule { height: 1px; background: var(--line); margin: 0.25rem 0; }
+
+  .editor__pages { min-width: 0; border-right: 1px solid var(--line); background: var(--paper-raised); }
+  .editor__pages-head { display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
+  .editor__thumbs { display: grid; gap: 0.7rem; align-content: start; max-height: 36.3rem; overflow-y: auto; padding: 0.7rem; }
+  :global(.editor-thumb) { display: grid; gap: 0.3rem; padding: 0.35rem; border: 1px solid var(--line); border-radius: 9px; background: var(--paper-raised); color: var(--muted); cursor: pointer; }
+  :global(.editor-thumb:hover), :global(.editor-thumb[aria-current='true']) { border-color: var(--accent); color: var(--accent); }
+  :global(.editor-thumb canvas) { display: block; width: 100%; min-height: 4.6rem; background: white; border-radius: 3px; }
+  :global(.editor-thumb span) { font: 500 0.65rem var(--font-mono); }
+
+  .editor__workarea { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; }
+  .editor__viewbar { display: flex; justify-content: space-between; gap: 1rem; padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--line); background: var(--paper-raised); }
+  .editor__pager, .editor__zoom { display: flex; align-items: center; gap: 0.55rem; color: var(--muted); font-size: var(--step--2); }
+  .editor__viewbar button { width: 2rem; height: 2rem; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-raised); color: var(--ink); cursor: pointer; }
+  .editor__viewbar button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .editor__viewport { position: relative; min-height: 27rem; overflow: auto; padding: clamp(1rem, 2vw, 2rem); background-image: radial-gradient(circle, color-mix(in oklab, var(--muted) 18%, transparent) 1px, transparent 1px); background-size: 18px 18px; }
+  .editor__page { position: relative; margin: 0 auto; background: white; box-shadow: 0 14px 38px rgb(15 23 42 / 0.16), 0 0 0 1px rgb(15 23 42 / 0.08); transform-origin: top center; }
+  .editor__page[hidden] { display: none; }
+  .editor__page canvas, .editor__page svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .editor__page svg { touch-action: none; }
+  .editor__page svg[data-tool='text'] { cursor: text; }
+  .editor__page svg[data-tool='highlight'], .editor__page svg[data-tool='ink'], .editor__page svg[data-tool='rectangle'], .editor__page svg[data-tool='whiteout'] { cursor: crosshair; }
+  :global(.editor-mark) { pointer-events: stroke; }
+  :global(text.editor-mark), :global(rect.editor-mark) { pointer-events: all; }
+  :global(.editor-mark.is-selected) { filter: drop-shadow(0 0 3px rgb(225 29 72 / 0.9)); stroke-dasharray: 7 4; }
+  :global(.editor-guide) { pointer-events: none; fill: var(--accent); opacity: 0.43; font-weight: 700; }
+  :global(.editor-guide--watermark) { font-size: 82px; letter-spacing: 0.05em; text-transform: uppercase; }
+  :global(.editor-guide--number) { font: 500 22px var(--font-mono); fill: var(--ink); opacity: 0.8; }
+  .editor__loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 2rem; text-align: center; color: var(--muted); font-size: var(--step--1); }
+  .editor__loading[hidden] { display: none; }
+
+  .editor__properties { display: flex; align-items: end; gap: 0.65rem; flex-wrap: wrap; padding: 0.75rem 0.85rem; border-top: 1px solid var(--line); background: var(--paper-raised); }
+  .editor__properties label { display: grid; gap: 0.25rem; color: var(--muted); font-size: 0.68rem; }
+  .editor__properties label[hidden] { display: none; }
+  .editor__properties input:not([type='color']), .editor__properties select { min-height: 2.25rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); padding: 0.4rem 0.55rem; font: inherit; }
+  .editor__properties input[type='color'] { width: 2.4rem; height: 2.25rem; padding: 0.18rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); }
+  .editor__properties p { flex: 1 1 14rem; margin: 0 0 0.25rem; color: var(--muted); font-size: var(--step--2); }
+
+  .editor__footer { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 0.75rem 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
+  .editor__footer [data-editor-count]:not(:only-child) { color: var(--ink-2); font-weight: 500; }
+  .editor__footer kbd { padding: 0.1rem 0.3rem; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--paper-sunk); font: inherit; }
+
+  @media (max-width: 760px) {
+    .editor__topbar { align-items: flex-start; }
+    .editor__privacy { display: none; }
+    .editor__shell { grid-template-columns: 1fr; min-height: 0; }
+    .editor__tools { position: sticky; top: 0; z-index: 3; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    .editor__tools button { min-width: 3.6rem; }
+    .editor__tool-rule { width: 1px; height: auto; margin: 0 0.2rem; }
+    .editor__pages { border-right: 0; border-bottom: 1px solid var(--line); }
+    .editor__pages-head { display: none; }
+    .editor__thumbs { grid-auto-flow: column; grid-auto-columns: 5.2rem; overflow-x: auto; overflow-y: hidden; max-height: none; }
+    :global(.editor-thumb canvas) { min-height: 3.5rem; }
+    .editor__viewport { min-height: 24rem; }
+    .editor__footer span:last-child { display: none; }
+  }
+</style>

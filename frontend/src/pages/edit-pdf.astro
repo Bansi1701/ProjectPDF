@@ -4,9 +4,16 @@ import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
 ---
 
-<BaseLayout title="Add text to a PDF — ProjectPDF" description="Place a line of text on any page. Runs entirely in your browser.">
+<BaseLayout
+  title="Edit PDF pages — ProjectPDF"
+  description="Add text, highlights, drawing and shapes directly on a PDF page. Runs entirely in your browser."
+>
   <Masthead />
   <main id="main">
-    <PdfTool mode="edit" title="Add text to a PDF" description="Place a line of text on any page. Runs entirely in your browser." />
+    <PdfTool
+      mode="edit"
+      title="Edit PDF pages"
+      description="Add text, highlights, drawing and shapes directly on the page. Everything stays in your browser."
+    />
   </main>
 </BaseLayout>
