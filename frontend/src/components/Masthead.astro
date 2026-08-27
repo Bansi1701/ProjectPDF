@@ -1,7 +1,7 @@
 ---
 import Lens from './Lens.astro';
 import Logo from './Logo.astro';
-import { CATEGORIES, SITE } from '../config/site';
+import { CATEGORIES, SITE, toolsByCategory } from '../config/site';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
@@ -12,15 +12,37 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       <span>{SITE.name}</span>
     </a>
 
-    <nav class="nav" aria-label="Tool categories">
-      {CATEGORIES.map((category) => <a href={`${base}/#${category.toLowerCase()}`}>{category}</a>)}
-    </nav>
+    <details class="tools-menu">
+      <summary>All PDF tools <span aria-hidden="true">⌄</span></summary>
+      <div class="tools-menu__panel">
+        <div class="tools-menu__head">
+          <div><strong>Choose the job</strong><span>Every live tool, reachable from every page.</span></div>
+          <a href={`${base}/how-to/`}>Connected recipes →</a>
+        </div>
+        <div class="tools-menu__groups">
+          {CATEGORIES.map((category) => (
+            <section aria-labelledby={`menu-${category.toLowerCase()}`}>
+              <h2 id={`menu-${category.toLowerCase()}`}>{category}</h2>
+              <ul>
+                {toolsByCategory(category).filter((tool) => tool.status === 'live').map((tool) => (
+                  <li><a href={`${base}/${tool.slug}/`} data-menu-tool={tool.slug}>{tool.searchName}</a></li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+        <div class="tools-menu__foot">
+          <span>No account · no daily limit</span>
+          <nav aria-label="Project information"><a href={`${base}/privacy/`}>Privacy</a><a href={`${base}/about/`}>About</a></nav>
+        </div>
+      </div>
+    </details>
 
     <div class="rail__actions">
       <button class="theme-toggle" type="button" data-theme-toggle aria-label="Switch to dark mode">
         <span aria-hidden="true">◐</span>
       </button>
-      <a class="rail-cta" href={`${base}/#tools`}>Browse tools</a>
+      <a class="rail-cta" href={`${base}/?focus=search`} aria-label="Find a PDF tool; keyboard shortcut slash">Find a tool <kbd>/</kbd></a>
     </div>
   </Lens>
 </div>
@@ -40,6 +62,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   .masthead-slot :global(.rail) {
     padding: 0.5rem 0.5rem 0.5rem 1.125rem;
     min-height: 3.5rem;
+    /* The reusable glass surface normally clips its paint. This rail owns a
+       real <details> flyout, so its panel must be allowed beyond the pill. */
+    contain: none;
   }
 
   /* Lens wraps its slot in .lens__body, so the row lives one level down. */
@@ -61,21 +86,48 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     margin-right: auto;
   }
 
-  .nav {
-    display: none;
-    gap: 1.5rem;
-  }
-
-  .nav a {
+  .tools-menu { position: static; }
+  .tools-menu summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.35rem;
+    padding: 0 0.85rem;
+    border-radius: 10px;
     color: var(--ink-2);
-    text-decoration: none;
     font-size: var(--step--1);
-    font-weight: 500;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
   }
-
-  .nav a:hover {
-    color: var(--ink);
+  .tools-menu summary::-webkit-details-marker { display: none; }
+  .tools-menu summary:hover, .tools-menu[open] summary { color: var(--ink); background: var(--paper-sunk); }
+  .tools-menu[open] summary span { transform: rotate(180deg); }
+  .tools-menu__panel {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 0.55rem);
+    left: 0;
+    right: 0;
+    padding: 1rem;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--lens-radius);
+    background: color-mix(in srgb, var(--paper-raised) 96%, transparent);
+    box-shadow: 0 28px 60px -32px rgb(15 23 42 / 0.48);
+    backdrop-filter: blur(18px);
   }
+  .tools-menu__head, .tools-menu__foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+  .tools-menu__head { padding: 0.25rem 0.35rem 0.9rem; border-bottom: 1px solid var(--line); }
+  .tools-menu__head > div { display: grid; gap: 0.15rem; }
+  .tools-menu__head span, .tools-menu__foot { color: var(--muted); font-size: var(--step--2); }
+  .tools-menu__head a, .tools-menu__foot a { color: var(--accent); font-size: var(--step--1); font-weight: 700; text-decoration: none; }
+  .tools-menu__groups { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1.25rem; padding: 1rem 0.35rem; }
+  .tools-menu__groups h2 { margin: 0 0 0.55rem; color: var(--muted); font-size: var(--step--2); letter-spacing: 0.1em; text-transform: uppercase; }
+  .tools-menu__groups ul { display: grid; gap: 0.15rem; margin: 0; padding: 0; list-style: none; }
+  .tools-menu__groups a { display: block; padding: 0.28rem 0; color: var(--ink-2); font-size: var(--step--1); text-decoration: none; }
+  .tools-menu__groups a:hover { color: var(--accent); }
+  .tools-menu__foot { padding: 0.8rem 0.35rem 0.2rem; border-top: 1px solid var(--line); }
+  .tools-menu__foot nav { display: flex; gap: 1rem; }
 
   .rail__actions {
     display: flex;
@@ -110,15 +162,23 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     border-color: var(--ink-2);
   }
 
-  @media (min-width: 48em) {
-    .nav {
-      display: flex;
-      margin-inline: auto;
-    }
+  .rail-cta kbd { margin-left: 0.3rem; color: var(--muted); font: 600 var(--step--2)/1 var(--font-mono); }
 
+  @media (min-width: 48em) {
     .brand {
       margin-right: 0;
     }
+  }
+
+  @media (max-width: 48em) {
+    .masthead-slot :global(.rail) { padding-left: 0.65rem; }
+    .brand span { display: none; }
+    .tools-menu { margin-right: auto; }
+    .tools-menu summary { padding-inline: 0.6rem; }
+    .tools-menu__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: min(63vh, 31rem); overflow-y: auto; }
+    .tools-menu__head span, .tools-menu__foot > span { display: none; }
+    .rail-cta { width: 2.25rem; overflow: hidden; padding: 0; color: transparent; }
+    .rail-cta kbd { display: grid; width: 100%; height: 100%; place-items: center; margin: 0; color: var(--ink); }
   }
 </style>
 
@@ -138,5 +198,28 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem('pdfcraft-theme', next); } catch {}
     paintToggle();
+  });
+
+  /* Visiting a tool is the preference signal. It stays in this browser and
+     lets the homepage become useful on visit two without asking for an email. */
+  const slug = location.pathname.split('/').filter(Boolean).at(-1) ?? '';
+  const currentTool = slug ? document.querySelector<HTMLAnchorElement>(`[data-menu-tool="${CSS.escape(slug)}"]`) : null;
+  if (currentTool) {
+    try {
+      const key = 'projectpdf-tool-usage';
+      const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? '{}');
+      const usage = parsed && typeof parsed === 'object' ? parsed as Record<string, number> : {};
+      usage[slug] = (Number(usage[slug]) || 0) + 1;
+      localStorage.setItem(key, JSON.stringify(usage));
+    } catch {}
+  }
+
+  document.addEventListener('keydown', (event) => {
+    const target = event.target as HTMLElement | null;
+    if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey || target?.closest('input, textarea, select, [contenteditable]')) return;
+    event.preventDefault();
+    const search = document.querySelector<HTMLInputElement>('[data-tool-search]');
+    if (search) search.focus();
+    else location.href = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/?focus=search`;
   });
 </script>
