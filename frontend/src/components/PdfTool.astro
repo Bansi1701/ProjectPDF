@@ -1744,6 +1744,7 @@ const dropTitle = takesExcel
     }
 
     runBtn.addEventListener('click', async () => {
+        if (mode !== 'url-to-pdf') return;
         const url = root.querySelector<HTMLInputElement>('[data-url]')?.value?.trim() ?? '';
         if (!url) return fail('Enter a web address first.');
 
@@ -1932,6 +1933,14 @@ const dropTitle = takesExcel
       const picked = (name: string) =>
         root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
 
+      const signature = signatureBytes();
+      if (mode === 'sign' && !signature) {
+        fail('Draw a signature or choose Type and enter your name first.');
+        runBtn.disabled = false;
+        status.textContent = '';
+        return;
+      }
+
       const request: WorkerRequest = {
         id: ++jobId,
         op: mode,
@@ -1944,7 +1953,7 @@ const dropTitle = takesExcel
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
         prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
         searchable: root.querySelector<HTMLInputElement>('[data-searchable]')?.checked ?? true,
-        signature: signatureBytes(),
+        signature,
         corner: root.querySelector<HTMLSelectElement>('[data-corner]')?.value as WorkerRequest['corner'],
         signatureWidth: 180,
         fieldValues: readFields(),

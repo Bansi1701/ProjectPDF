@@ -98,11 +98,15 @@
           <span>Sign</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
         </button>
         <div class="editor__popover editor__signature-panel" id="editor-signature-panel" hidden>
-          <div class="editor__popover-heading"><strong>Signature palette</strong><span>Saved placeholders</span></div>
-          <button type="button" data-editor-signature-placeholder><span class="editor__signature-glyph">Signature</span><span><strong>Signature preview</strong><small>Placeholder only</small></span></button>
-          <button type="button" data-editor-signature-placeholder><span class="editor__signature-glyph editor__signature-glyph--initials">IN</span><span><strong>Initials preview</strong><small>Placeholder only</small></span></button>
-          <button type="button" data-editor-signature-placeholder><span class="editor__signature-glyph editor__signature-glyph--stamp">APPROVED</span><span><strong>Company stamp</strong><small>Placeholder only</small></span></button>
-          <p class="editor__signature-note">Signature assets are not loaded into this preview.</p>
+          <div class="editor__popover-heading"><strong>Sign the page</strong><span>Placed locally in this PDF</span></div>
+          <label class="editor__signature-input">
+            <span>Name or initials</span>
+            <input data-editor-signature-text maxlength="64" autocomplete="off" placeholder="Type your own mark" />
+          </label>
+          <button type="button" data-editor-signature-kind="signature"><span class="editor__signature-glyph">Signature</span><span><strong>Place signature</strong><small>Handwriting-style text</small></span></button>
+          <button type="button" data-editor-signature-kind="initials"><span class="editor__signature-glyph editor__signature-glyph--initials">IN</span><span><strong>Place initials</strong><small>Compact review mark</small></span></button>
+          <a class="editor__signature-link" href="/ProjectPDF/sign-pdf/">Need to draw it? Open Sign PDF →</a>
+          <p class="editor__signature-note">Nothing is saved to an account. The mark is included only when you export.</p>
         </div>
       </div>
 
@@ -196,7 +200,7 @@
   import type { EditMark } from '../lib/pdf/types';
 
   type PdfDocument = Awaited<ReturnType<PdfjsApi['getDocument']>['promise']>;
-  type Tool = 'select' | 'pan' | 'text' | 'highlight' | 'ink' | 'rectangle' | 'whiteout' | 'line' | 'arrow' | 'callout' | 'stamp';
+  type Tool = 'select' | 'pan' | 'text' | 'highlight' | 'ink' | 'rectangle' | 'whiteout' | 'line' | 'arrow' | 'callout' | 'stamp' | 'signature';
   type BoxMark = Extract<EditMark, { kind: 'highlight' | 'rectangle' | 'whiteout' }>;
   type InkMark = Extract<EditMark, { kind: 'ink' }>;
   type MarkStyle = 'highlight' | 'underline' | 'strike' | 'strike-through' | 'rectangle' | 'circle' | 'line' | 'arrow' | 'callout' | 'polygon' | 'cloud' | 'replace' | 'ink';
@@ -226,6 +230,7 @@
     private markupStyle: MarkStyle = 'highlight';
     private stampKind: StampKind = 'check';
     private replaceMode = false;
+    private signatureStyle: 'signature' | 'initials' = 'signature';
 
     private canvas = this.querySelector<HTMLCanvasElement>('[data-editor-canvas]')!;
     private overlay = this.querySelector<SVGSVGElement>('[data-editor-overlay]')!;
@@ -246,10 +251,17 @@
       this.querySelectorAll<HTMLButtonElement>('[data-editor-action]').forEach((button) => {
         button.addEventListener('click', () => this.chooseAction(button.dataset.editorAction ?? ''));
       });
-      this.querySelectorAll<HTMLButtonElement>('[data-editor-signature-placeholder]').forEach((button) => {
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-signature-kind]').forEach((button) => {
         button.addEventListener('click', () => {
-          this.closeMenus();
-          this.setFeedback('Signature palette is ready for a saved signature asset. This generic placeholder is not inserted.');
+          const value = this.querySelector<HTMLInputElement>('[data-editor-signature-text]')?.value.trim() ?? '';
+          if (!value) {
+            this.setFeedback('Type your name or initials first.');
+            this.querySelector<HTMLInputElement>('[data-editor-signature-text]')?.focus();
+            return;
+          }
+          this.signatureStyle = button.dataset.editorSignatureKind === 'initials' ? 'initials' : 'signature';
+          this.setTool('signature');
+          this.setFeedback(`Click the page to place your ${this.signatureStyle}.`);
         });
       });
       this.addEventListener('click', (event) => {
@@ -571,6 +583,7 @@
         arrow: 'Drag to draw an arrow.',
         callout: 'Drag to draw a callout pointer.',
         rectangle: this.replaceMode ? 'Enter replacement text below, then drag over the original text.' : 'Drag to draw an outline around an area.',
+        signature: `Click where your ${this.signatureStyle} should appear.`,
         whiteout: 'Drag over an area to cover it with white. This is not secure redaction.',
       };
       this.querySelector<HTMLElement>('[data-editor-hint]')!.textContent = hints[tool];
@@ -621,6 +634,38 @@
         };
         this.marks.push({ id: idValue, kind: 'stamp', page: this.activePage, x: at.x, y: at.y, width: 0.055, height: 0.055, color, strokeWidth, stamp: stampMap[this.stampKind] } as EditMark);
         this.markStyles.set(idValue, 'ink');
+        this.setTool('select');
+        this.selectedId = idValue;
+        this.changed();
+        return;
+      }
+
+      if (this.tool === 'signature') {
+        const value = this.querySelector<HTMLInputElement>('[data-editor-signature-text]')?.value.trim() ?? '';
+        if (!value) {
+          this.history.pop();
+          this.setFeedback('Type your name or initials in the Sign menu first.');
+          this.setTool('select');
+          return;
+        }
+        const text = this.signatureStyle === 'initials'
+          ? value.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 4).toUpperCase() || value.slice(0, 4).toUpperCase()
+          : value;
+        const width = this.signatureStyle === 'initials'
+          ? Math.min(0.14, Math.max(0.07, text.length * 0.028))
+          : Math.min(0.42, Math.max(0.16, text.length * 0.022));
+        this.marks.push({
+          id: idValue,
+          kind: 'signature-text',
+          page: this.activePage,
+          x: Math.min(at.x, 1 - width),
+          y: Math.min(at.y, 0.92),
+          width,
+          height: this.signatureStyle === 'initials' ? 0.055 : 0.075,
+          text,
+          size: this.signatureStyle === 'initials' ? 18 : 22,
+          color,
+        });
         this.setTool('select');
         this.selectedId = idValue;
         this.changed();
@@ -906,6 +951,20 @@
           } else {
             node = this.svg('polygon', { points: mark.points.map((point) => `${point.x * 1000},${point.y * 1000}`).join(' '), fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-linejoin': 'round', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
           }
+        } else if (mark.kind === 'signature' || mark.kind === 'signature-text') {
+          const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          if (selected) group.append(this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String(mark.width * 1000), height: String(mark.height * 1000), rx: '8', fill: 'none', stroke: mark.color ?? '#0f172a', 'stroke-width': '2', 'stroke-dasharray': '8 5' }));
+          const label = this.svg('text', {
+            x: String((mark.x + 0.006) * 1000),
+            y: String((mark.y + mark.height * 0.72) * 1000),
+            fill: mark.color ?? '#0f172a',
+            'font-size': String(Math.max(18, Math.min(42, (mark.size ?? 22) * 1.35))),
+            'font-family': 'Georgia, serif',
+            'font-style': 'italic',
+          });
+          label.textContent = mark.text?.trim() || 'Signature';
+          group.append(label);
+          node = group;
         } else if (mark.kind === 'replace-text' || mark.kind === 'replace') {
           const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark' });
           group.append(this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String(mark.width * 1000), height: String(mark.height * 1000), fill: mark.backgroundColor ?? '#ffffff', stroke: '#cbd5e1', 'stroke-width': '1' }));
@@ -1045,6 +1104,11 @@
   .editor__menu-icon--bad { color: var(--accent); }
   .editor__signature-panel { width: 17.25rem; }
   .editor__signature-panel button { grid-template-columns: 4.2rem minmax(0, 1fr); }
+  .editor__signature-input { display: grid; gap: 0.3rem; margin: 0.35rem 0.45rem 0.55rem; color: var(--muted); font-size: 0.62rem; }
+  .editor__signature-input input { min-height: 2.25rem; padding: 0.45rem 0.55rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); font: inherit; }
+  .editor__signature-input input:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .editor__signature-link { display: block; margin: 0.55rem 0.5rem 0.2rem; color: var(--accent); font-size: 0.64rem; font-weight: 600; text-decoration: none; }
+  .editor__signature-link:hover { text-decoration: underline; }
   .editor__signature-glyph { display: grid; place-items: center; min-height: 2.2rem; border: 1px dashed var(--line-strong); border-radius: 7px; color: var(--ink-2); font: italic 0.82rem Georgia, serif; white-space: nowrap; }
   .editor__signature-glyph--initials { font: 700 0.85rem var(--font-brand); }
   .editor__signature-glyph--stamp { color: var(--accent); font: 600 0.5rem var(--font-mono); letter-spacing: 0.05em; }
@@ -1071,7 +1135,7 @@
   .editor__page canvas, .editor__page svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .editor__page svg { touch-action: none; }
   .editor__page svg[data-tool='text'] { cursor: text; }
-  .editor__page svg[data-tool='highlight'], .editor__page svg[data-tool='ink'], .editor__page svg[data-tool='rectangle'], .editor__page svg[data-tool='whiteout'], .editor__page svg[data-tool='line'], .editor__page svg[data-tool='arrow'], .editor__page svg[data-tool='callout'] { cursor: crosshair; }
+  .editor__page svg[data-tool='highlight'], .editor__page svg[data-tool='ink'], .editor__page svg[data-tool='rectangle'], .editor__page svg[data-tool='whiteout'], .editor__page svg[data-tool='line'], .editor__page svg[data-tool='arrow'], .editor__page svg[data-tool='callout'], .editor__page svg[data-tool='signature'] { cursor: crosshair; }
   .editor__page svg[data-tool='pan'] { cursor: grab; }
   .editor__viewport[data-panning='true'] .editor__page svg[data-tool='pan'] { cursor: grabbing; }
   :global(.editor-mark) { pointer-events: stroke; }

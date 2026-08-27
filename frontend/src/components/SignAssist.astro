@@ -6,8 +6,7 @@
     <p class="eyebrow"><span class="sign-assist__dot" aria-hidden="true"></span>Signature studio</p>
     <h2 id="sign-assist-title">Set up your signing moment</h2>
     <p>
-      Pick a mark, check where it will land, and keep a small local signing note before you
-      place it on the document.
+      Optional shortcuts for the signing controls above, plus the future private phone handoff.
     </p>
   </div>
 
@@ -17,7 +16,7 @@
         <span class="sign-assist__number" aria-hidden="true">01</span>
         <div>
           <h3>Choose a mark</h3>
-          <p>Use the same Draw and Type controls below, from here.</p>
+          <p>Switch the Draw and Type controls above, from here.</p>
         </div>
       </div>
       <div class="sign-assist__choices" role="group" aria-label="Signature style shortcut">
@@ -131,6 +130,7 @@
         const wanted = button.dataset.proxySignTab;
         if (!wanted) return;
         signTab(wanted)?.click();
+        signTab(wanted)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         for (const other of assist.querySelectorAll<HTMLButtonElement>('[data-proxy-sign-tab]')) {
           other.setAttribute('aria-pressed', String(other === button));
         }
