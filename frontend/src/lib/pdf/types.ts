@@ -94,6 +94,26 @@ export interface RedactionBox {
   height: number;
 }
 
+/** A normalized point in the page preview (top-left origin). */
+export interface EditPoint {
+  x: number;
+  y: number;
+}
+
+/** Common geometry for marks that occupy a rectangular area. */
+export interface EditBox {
+  id: string;
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  color: string;
+  strokeWidth: number;
+  opacity?: number;
+  fill?: string;
+}
+
 /**
  * A visible edit placed in the shared browser workspace.
  *
@@ -122,12 +142,103 @@ export type EditMark =
       height: number;
       color: string;
       strokeWidth: number;
+      opacity?: number;
+      fill?: string;
+    }
+  | (EditBox & {
+      kind: 'underline' | 'strike' | 'strike-through' | 'strikethrough' | 'circle';
+    })
+  | (EditBox & {
+      /** A speech bubble/callout. `text` is optional so a bubble can be empty. */
+      kind: 'callout';
+      text?: string;
+      anchor?: EditPoint;
+      fill?: string;
+    })
+  | {
+      id: string;
+      kind: 'line' | 'arrow';
+      page: number;
+      /** Preferred geometry for free-positioned line tools. */
+      start?: EditPoint;
+      end?: EditPoint;
+      /** Box geometry is accepted as a convenient UI/editor shorthand. */
+      x?: number;
+      y?: number;
+      width?: number;
+      height?: number;
+      x1?: number;
+      y1?: number;
+      x2?: number;
+      y2?: number;
+      color: string;
+      strokeWidth: number;
+      opacity?: number;
+    }
+  | {
+      id: string;
+      kind: 'polygon' | 'cloud';
+      page: number;
+      points: EditPoint[];
+      color: string;
+      strokeWidth: number;
+      fill?: string;
+      opacity?: number;
+    }
+  | {
+      id: string;
+      kind: 'stamp';
+      page: number;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      color: string;
+      strokeWidth?: number;
+      /** Built-in visual stamp names. */
+      stamp: 'check' | 'cross' | 'dot' | 'circle' | 'crossout' | string;
+      opacity?: number;
+    }
+  | {
+      id: string;
+      kind: 'signature' | 'signature-text';
+      page: number;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      color?: string;
+      strokeWidth?: number;
+      /** Optional local image bytes for a drawn/uploaded visual signature. */
+      image?: ArrayBuffer | Uint8Array;
+      /** Alias accepted by editors that call the payload `bytes`. */
+      bytes?: ArrayBuffer | Uint8Array;
+      mimeType?: 'image/png' | 'image/jpeg' | 'image/jpg';
+      /** Text placeholder when no image is available. */
+      text?: string;
+      size?: number;
+      opacity?: number;
+    }
+  | {
+      id: string;
+      kind: 'replace-text' | 'replace';
+      page: number;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      text: string;
+      size: number;
+      color: string;
+      /** Replacement is a visible cover, not secure redaction. */
+      backgroundColor?: string;
+      strokeWidth?: number;
     }
   | {
       id: string;
       kind: 'ink';
       page: number;
-      points: { x: number; y: number }[];
+      points: EditPoint[];
       color: string;
       strokeWidth: number;
     };

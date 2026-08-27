@@ -1,0 +1,226 @@
+---
+---
+
+<section class="sign-assist wrap" data-sign-assist aria-labelledby="sign-assist-title">
+  <div class="sign-assist__heading">
+    <p class="eyebrow"><span class="sign-assist__dot" aria-hidden="true"></span>Signature studio</p>
+    <h2 id="sign-assist-title">Set up your signing moment</h2>
+    <p>
+      Pick a mark, check where it will land, and keep a small local signing note before you
+      place it on the document.
+    </p>
+  </div>
+
+  <div class="sign-assist__grid">
+    <article class="sign-assist__card sign-assist__card--mark">
+      <div class="sign-assist__card-head">
+        <span class="sign-assist__number" aria-hidden="true">01</span>
+        <div>
+          <h3>Choose a mark</h3>
+          <p>Use the same Draw and Type controls below, from here.</p>
+        </div>
+      </div>
+      <div class="sign-assist__choices" role="group" aria-label="Signature style shortcut">
+        <button type="button" data-proxy-sign-tab="draw" aria-pressed="true">
+          <span aria-hidden="true">✎</span>
+          <span><strong>Draw</strong><small>Freehand on the pad</small></span>
+        </button>
+        <button type="button" data-proxy-sign-tab="type" aria-pressed="false">
+          <span aria-hidden="true">Aa</span>
+          <span><strong>Type</strong><small>Use your name</small></span>
+        </button>
+      </div>
+    </article>
+
+    <article class="sign-assist__card">
+      <div class="sign-assist__card-head">
+        <span class="sign-assist__number" aria-hidden="true">02</span>
+        <div>
+          <h3>Prepare placement</h3>
+          <p>Choose a corner now; the position selector below stays in sync.</p>
+        </div>
+      </div>
+      <div class="sign-assist__placement" role="group" aria-label="Signature placement shortcut">
+        <button type="button" data-proxy-corner="top-left" aria-label="Top left" aria-pressed="false">↖</button>
+        <button type="button" data-proxy-corner="top-right" aria-label="Top right" aria-pressed="false">↗</button>
+        <button type="button" data-proxy-corner="bottom-left" aria-label="Bottom left" aria-pressed="false">↙</button>
+        <button type="button" data-proxy-corner="bottom-right" aria-label="Bottom right" aria-pressed="true">↘</button>
+      </div>
+      <p class="sign-assist__selection" data-placement-note>Bottom right · 36 pt margin</p>
+    </article>
+
+    <article class="sign-assist__card sign-assist__card--note">
+      <div class="sign-assist__card-head">
+        <span class="sign-assist__number" aria-hidden="true">03</span>
+        <div>
+          <h3>Keep a signing note</h3>
+          <p>These optional details stay in this browser and are not added to the PDF.</p>
+        </div>
+      </div>
+      <div class="sign-assist__fields">
+        <label>
+          <span>Initials</span>
+          <input data-sign-initials maxlength="4" autocomplete="off" placeholder="SP" />
+        </label>
+        <label>
+          <span>Date</span>
+          <input data-sign-date type="date" />
+        </label>
+      </div>
+      <p class="sign-assist__plan" data-sign-plan>Local note · no PDF changes</p>
+    </article>
+  </div>
+
+  <details class="phone-handoff">
+    <summary>
+      <span class="phone-handoff__title"><span aria-hidden="true">▣</span> Send from phone</span>
+      <span class="phone-handoff__badge">Design preview</span>
+    </summary>
+    <div class="phone-handoff__body">
+      <div class="phone-handoff__reserved" aria-hidden="true">
+        <span>QR</span>
+        <small>reserved for pairing</small>
+      </div>
+      <div class="phone-handoff__copy">
+        <h3>Sign on a nearby phone</h3>
+        <p>
+          A future pairing flow can move only the signature gesture over a short-lived encrypted
+          channel. The PDF should remain on this device until you choose to save it.
+        </p>
+        <button class="btn btn--quiet" type="button" data-phone-handoff>Prepare phone handoff</button>
+        <p class="phone-handoff__status" data-phone-status role="status" aria-live="polite">
+          Phone handoff is not connected in this build. Nothing has been shared.
+        </p>
+      </div>
+    </div>
+    <p class="phone-handoff__privacy">
+      Privacy boundary: no QR code, pairing token, document bytes, or signature image is generated
+      until a real signaling service is available.
+    </p>
+  </details>
+</section>
+
+<script>
+  const assist = document.querySelector<HTMLElement>('[data-sign-assist]');
+
+  if (assist) {
+    const signTab = (name: string) =>
+      document.querySelector<HTMLButtonElement>(`[data-sign-tab="${name}"]`);
+    const cornerSelect = () => document.querySelector<HTMLSelectElement>('[data-corner]');
+    const placementNote = assist.querySelector<HTMLElement>('[data-placement-note]');
+    const initials = assist.querySelector<HTMLInputElement>('[data-sign-initials]');
+    const date = assist.querySelector<HTMLInputElement>('[data-sign-date]');
+    const plan = assist.querySelector<HTMLElement>('[data-sign-plan]');
+
+    const labels: Record<string, string> = {
+      'top-left': 'Top left',
+      'top-right': 'Top right',
+      'bottom-left': 'Bottom left',
+      'bottom-right': 'Bottom right',
+    };
+
+    const paintPlan = () => {
+      if (!plan) return;
+      const who = initials?.value.trim().toUpperCase() || '—';
+      const when = date?.value || '—';
+      plan.textContent = `Local note · ${who} · ${when} · no PDF changes`;
+    };
+
+    for (const button of assist.querySelectorAll<HTMLButtonElement>('[data-proxy-sign-tab]')) {
+      button.addEventListener('click', () => {
+        const wanted = button.dataset.proxySignTab;
+        if (!wanted) return;
+        signTab(wanted)?.click();
+        for (const other of assist.querySelectorAll<HTMLButtonElement>('[data-proxy-sign-tab]')) {
+          other.setAttribute('aria-pressed', String(other === button));
+        }
+      });
+    }
+
+    for (const button of assist.querySelectorAll<HTMLButtonElement>('[data-proxy-corner]')) {
+      button.addEventListener('click', () => {
+        const wanted = button.dataset.proxyCorner;
+        const select = cornerSelect();
+        if (!wanted || !select) return;
+        select.value = wanted;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        for (const other of assist.querySelectorAll<HTMLButtonElement>('[data-proxy-corner]')) {
+          other.setAttribute('aria-pressed', String(other === button));
+        }
+        if (placementNote) placementNote.textContent = `${labels[wanted]} · 36 pt margin`;
+      });
+    }
+
+    initials?.addEventListener('input', paintPlan);
+    date?.addEventListener('input', paintPlan);
+    paintPlan();
+
+    assist.querySelector<HTMLButtonElement>('[data-phone-handoff]')?.addEventListener('click', () => {
+      const status = assist.querySelector<HTMLElement>('[data-phone-status]');
+      if (status) status.textContent = 'Not available yet — the PDF and signature remain on this device.';
+    });
+  }
+</script>
+
+<style>
+  .sign-assist {
+    width: min(100% - (var(--gutter) * 2), var(--content));
+    padding-block: clamp(2rem, 1.5rem + 2vw, 3rem) 0;
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .sign-assist__heading { max-width: 55ch; }
+  .sign-assist__heading h2 { margin: 0.6rem 0 0.45rem; font-size: var(--step-2); }
+  .sign-assist__heading > p:last-child { margin: 0; color: var(--ink-2); line-height: 1.5; }
+  .sign-assist__dot { display: inline-block; width: 0.4rem; height: 0.4rem; margin-right: 0.5rem; border-radius: 50%; background: var(--ok); }
+
+  .sign-assist__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.85rem; }
+  .sign-assist__card { display: grid; align-content: start; gap: 1rem; padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); box-shadow: var(--shadow-paper); }
+  .sign-assist__card-head { display: flex; gap: 0.7rem; }
+  .sign-assist__number { color: var(--accent); font-family: var(--font-mono); font-size: var(--step--2); letter-spacing: 0.08em; }
+  .sign-assist h3 { margin: 0; font-size: var(--step-0); }
+  .sign-assist__card p { margin: 0.25rem 0 0; color: var(--muted); font-size: var(--step--2); line-height: 1.45; }
+
+  .sign-assist__choices { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+  .sign-assist__choices button { display: flex; align-items: center; gap: 0.55rem; min-width: 0; padding: 0.6rem; border: 1px solid var(--line-strong); border-radius: 10px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+  .sign-assist__choices button:hover, .sign-assist__choices button[aria-pressed='true'] { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 6%, transparent); }
+  .sign-assist__choices button > span:first-child { font-size: 1.15rem; color: var(--accent); }
+  .sign-assist__choices strong, .sign-assist__choices small { display: block; }
+  .sign-assist__choices strong { font-size: var(--step--1); }
+  .sign-assist__choices small { color: var(--muted); font-size: 0.68rem; }
+
+  .sign-assist__placement { display: grid; grid-template-columns: repeat(2, 2.4rem); grid-template-rows: repeat(2, 2.4rem); justify-content: center; gap: 0.45rem; padding: 0.45rem; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-sunk); }
+  .sign-assist__placement button { border: 1px solid var(--line-strong); border-radius: 7px; background: var(--paper-raised); color: var(--ink-2); font-size: 1.2rem; cursor: pointer; }
+  .sign-assist__placement button:hover, .sign-assist__placement button[aria-pressed='true'] { border-color: var(--accent); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .sign-assist__selection { text-align: center; }
+
+  .sign-assist__fields { display: grid; grid-template-columns: 1fr 1.2fr; gap: 0.55rem; }
+  .sign-assist__fields label { display: grid; gap: 0.3rem; color: var(--ink-2); font-size: var(--step--2); }
+  .sign-assist__fields input { width: 100%; box-sizing: border-box; padding: 0.55rem 0.6rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); font: inherit; }
+  .sign-assist__fields input:focus, .sign-assist button:focus-visible, .phone-handoff summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sign-assist__plan { font-family: var(--font-mono); }
+
+  .phone-handoff { border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--paper-sunk); overflow: hidden; }
+  .phone-handoff summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.95rem 1.1rem; cursor: pointer; list-style: none; }
+  .phone-handoff summary::-webkit-details-marker { display: none; }
+  .phone-handoff__title { display: inline-flex; gap: 0.55rem; align-items: center; font-weight: 600; }
+  .phone-handoff__title > span { color: var(--accent); }
+  .phone-handoff__badge { color: var(--muted); font-family: var(--font-mono); font-size: var(--step--2); }
+  .phone-handoff__body { display: grid; grid-template-columns: minmax(8rem, 12rem) 1fr; gap: 1.25rem; align-items: center; padding: 0 1.1rem 1.1rem; }
+  .phone-handoff__reserved { display: grid; place-items: center; align-content: center; gap: 0.35rem; min-height: 8rem; border: 1px dashed var(--line-strong); border-radius: 12px; color: var(--muted); }
+  .phone-handoff__reserved span { font-family: var(--font-mono); font-size: var(--step-2); letter-spacing: 0.1em; }
+  .phone-handoff__reserved small { font-size: 0.68rem; text-align: center; }
+  .phone-handoff__copy { display: grid; gap: 0.55rem; }
+  .phone-handoff__copy h3 { margin: 0; }
+  .phone-handoff__copy p { margin: 0; max-width: 58ch; color: var(--ink-2); font-size: var(--step--1); line-height: 1.5; }
+  .phone-handoff__copy .btn { justify-self: start; margin-top: 0.2rem; }
+  .phone-handoff__status { color: var(--muted) !important; font-family: var(--font-mono); font-size: var(--step--2) !important; }
+  .phone-handoff__privacy { margin: 0; padding: 0.8rem 1.1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); line-height: 1.45; }
+
+  @media (max-width: 44rem) {
+    .sign-assist__grid { grid-template-columns: 1fr; }
+    .phone-handoff__body { grid-template-columns: 1fr; }
+    .phone-handoff__reserved { min-height: 5rem; }
+  }
+</style>

@@ -19,39 +19,107 @@
 
   <div class="editor__shell">
     <nav class="editor__tools" aria-label="Page editing tools">
-      <button type="button" data-editor-tool="select" aria-pressed="true" title="Select and move">
+      <div class="editor__tool-rail-label">TOOLS</div>
+      <button class="editor__tool-primary" type="button" data-editor-tool="select" aria-pressed="true" title="Select and move">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 12.5 9.2-6.1 1.2-3.2 5.4L5 3Z"></path></svg>
         <span>Select</span>
       </button>
-      <button type="button" data-editor-tool="text" aria-pressed="false" title="Add text">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M12 5v14M8.5 19h7"></path></svg>
-        <span>Text</span>
+      <button class="editor__tool-primary" type="button" data-editor-tool="pan" aria-pressed="false" title="Pan around the page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V6a1.5 1.5 0 0 1 3 0v5-6a1.5 1.5 0 0 1 3 0v6-5a1.5 1.5 0 0 1 3 0v7.5c0 3.6-2.5 5.5-5.6 5.5H11c-2.8 0-4.8-1.8-5.5-4.4L5 13a1.5 1.5 0 0 1 3-.4V11Z"></path></svg>
+        <span>Pan</span>
       </button>
-      <button type="button" data-editor-tool="highlight" aria-pressed="false" title="Highlight an area">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 16 8.8-8.8 3 3L10 19H7v-3Z"></path><path d="M5 21h14"></path></svg>
-        <span>Highlight</span>
-      </button>
-      <button type="button" data-editor-tool="ink" aria-pressed="false" title="Draw freely">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 17c4-8 7 3 10-5s5-3 6-1"></path><path d="M4 21h16"></path></svg>
-        <span>Draw</span>
-      </button>
-      <button type="button" data-editor-tool="rectangle" aria-pressed="false" title="Draw a box">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="1"></rect></svg>
-        <span>Box</span>
-      </button>
-      <button type="button" data-editor-tool="whiteout" aria-pressed="false" title="Cover an area in white">
+
+      <span class="editor__tool-rule"></span>
+
+      <div class="editor__tool-group">
+        <button class="editor__tool-menu" type="button" data-editor-menu-trigger="comment" aria-expanded="false" aria-controls="editor-menu-comment" title="Comments and text tools">
+          <span class="editor__tool-icon editor__tool-icon--comment" aria-hidden="true">⌁</span>
+          <span>Comment</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="editor__popover" id="editor-menu-comment" data-editor-menu="comment" hidden>
+          <div class="editor__popover-heading"><strong>Comment</strong><span>Add context to the page</span></div>
+          <button type="button" data-editor-action="comment" data-editor-tool="text"><span class="editor__menu-icon">◌</span><span><strong>Comment</strong><small>Place a visible note</small></span></button>
+          <button type="button" data-editor-action="replace" data-editor-tool="rectangle"><span class="editor__menu-icon">↺</span><span><strong>Replace text area</strong><small>Cover text, then place replacement text</small></span></button>
+          <button type="button" data-editor-action="insert-text" data-editor-tool="text"><span class="editor__menu-icon">T</span><span><strong>Insert text</strong><small>Type on the page</small></span></button>
+          <button type="button" data-editor-action="text-comment" data-editor-tool="text"><span class="editor__menu-icon">☷</span><span><strong>Text comment</strong><small>Place a visible review note</small></span></button>
+        </div>
+      </div>
+
+      <div class="editor__tool-group">
+        <button class="editor__tool-menu" type="button" data-editor-menu-trigger="markup" aria-expanded="false" aria-controls="editor-menu-markup" title="Markup tools">
+          <span class="editor__tool-icon editor__tool-icon--markup" aria-hidden="true">▰</span>
+          <span>Markup</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="editor__popover" id="editor-menu-markup" data-editor-menu="markup" hidden>
+          <div class="editor__popover-heading"><strong>Markup</strong><span>Call attention to content</span></div>
+          <button type="button" data-editor-action="highlight" data-editor-tool="highlight"><span class="editor__menu-icon editor__menu-icon--yellow">▰</span><span><strong>Highlight</strong><small>Emphasise an area</small></span></button>
+          <button type="button" data-editor-action="underline" data-editor-tool="highlight"><span class="editor__menu-icon">U̲</span><span><strong>Underline</strong><small>Draw a clean underline</small></span></button>
+          <button type="button" data-editor-action="strike" data-editor-tool="highlight"><span class="editor__menu-icon">S̶</span><span><strong>Strike through</strong><small>Mark content for removal</small></span></button>
+        </div>
+      </div>
+
+      <div class="editor__tool-group">
+        <button class="editor__tool-menu" type="button" data-editor-menu-trigger="draw" aria-expanded="false" aria-controls="editor-menu-draw" title="Drawing tools">
+          <span class="editor__tool-icon editor__tool-icon--draw" aria-hidden="true">⌁</span>
+          <span>Draw</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="editor__popover" id="editor-menu-draw" data-editor-menu="draw" hidden>
+          <div class="editor__popover-heading"><strong>Draw</strong><span>Build a simple shape</span></div>
+          <button type="button" data-editor-action="ink" data-editor-tool="ink"><span class="editor__menu-icon">〰</span><span><strong>Free draw</strong><small>Pen, mouse, or touch</small></span></button>
+          <button type="button" data-editor-action="line" data-editor-tool="line"><span class="editor__menu-icon">╱</span><span><strong>Line</strong><small>Draw a straight line</small></span></button>
+          <button type="button" data-editor-action="arrow" data-editor-tool="arrow"><span class="editor__menu-icon">↗</span><span><strong>Arrow</strong><small>Point to a detail</small></span></button>
+          <button type="button" data-editor-action="rectangle" data-editor-tool="rectangle"><span class="editor__menu-icon">□</span><span><strong>Rectangle</strong><small>Outline an area</small></span></button>
+          <button type="button" data-editor-action="circle" data-editor-tool="rectangle"><span class="editor__menu-icon">○</span><span><strong>Circle</strong><small>Outline an area</small></span></button>
+          <button type="button" data-editor-action="callout" data-editor-tool="callout"><span class="editor__menu-icon">⌑</span><span><strong>Callout</strong><small>Draw a pointer and box</small></span></button>
+          <button type="button" data-editor-action="polygon" data-editor-tool="rectangle"><span class="editor__menu-icon">⬡</span><span><strong>Polygon</strong><small>Draw a six-sided outline</small></span></button>
+          <button type="button" data-editor-action="cloud" data-editor-tool="rectangle"><span class="editor__menu-icon">☁</span><span><strong>Cloud</strong><small>Outline a revision area</small></span></button>
+        </div>
+      </div>
+
+      <div class="editor__tool-group">
+        <button class="editor__tool-menu" type="button" data-editor-menu-trigger="stamp" aria-expanded="false" aria-controls="editor-menu-stamp" title="Text and stamp tools">
+          <span class="editor__tool-icon editor__tool-icon--stamp" aria-hidden="true">T·</span>
+          <span>Stamp</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="editor__popover" id="editor-menu-stamp" data-editor-menu="stamp" hidden>
+          <div class="editor__popover-heading"><strong>Text &amp; stamps</strong><span>Place a quick response</span></div>
+          <button type="button" data-editor-action="text" data-editor-tool="text"><span class="editor__menu-icon">T</span><span><strong>Type text</strong><small>Place editable text</small></span></button>
+          <button type="button" data-editor-action="check" data-editor-tool="stamp"><span class="editor__menu-icon editor__menu-icon--ok">✓</span><span><strong>Check</strong><small>Positive response</small></span></button>
+          <button type="button" data-editor-action="cross" data-editor-tool="stamp"><span class="editor__menu-icon editor__menu-icon--bad">×</span><span><strong>Cross</strong><small>Negative response</small></span></button>
+          <button type="button" data-editor-action="dot" data-editor-tool="stamp"><span class="editor__menu-icon">•</span><span><strong>Dot</strong><small>Mark a location</small></span></button>
+          <button type="button" data-editor-action="circle-stamp" data-editor-tool="stamp"><span class="editor__menu-icon">○</span><span><strong>Circle</strong><small>Circle response</small></span></button>
+          <button type="button" data-editor-action="crossout" data-editor-tool="stamp"><span class="editor__menu-icon">╳</span><span><strong>Crossout</strong><small>Mark for removal</small></span></button>
+        </div>
+      </div>
+
+      <div class="editor__tool-group">
+        <button class="editor__tool-menu" type="button" data-editor-signature-trigger aria-expanded="false" aria-controls="editor-signature-panel" title="Signature palette">
+          <span class="editor__tool-icon editor__tool-icon--signature" aria-hidden="true">✎</span>
+          <span>Sign</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="editor__popover editor__signature-panel" id="editor-signature-panel" hidden>
+          <div class="editor__popover-heading"><strong>Signature palette</strong><span>Saved placeholders</span></div>
+          <button type="button" data-editor-signature-placeholder><span class="editor__signature-glyph">Signature</span><span><strong>Signature preview</strong><small>Placeholder only</small></span></button>
+          <button type="button" data-editor-signature-placeholder><span class="editor__signature-glyph editor__signature-glyph--initials">IN</span><span><strong>Initials preview</strong><small>Placeholder only</small></span></button>
+          <button type="button" data-editor-signature-placeholder><span class="editor__signature-glyph editor__signature-glyph--stamp">APPROVED</span><span><strong>Company stamp</strong><small>Placeholder only</small></span></button>
+          <p class="editor__signature-note">Signature assets are not loaded into this preview.</p>
+        </div>
+      </div>
+
+      <span class="editor__tool-rule"></span>
+      <button class="editor__tool-secondary" type="button" data-editor-tool="whiteout" aria-pressed="false" title="Cover an area in white">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 15 8-9 6 5-8 9H5v-5Z"></path><path d="M13 6l6 5"></path></svg>
         <span>Whiteout</span>
       </button>
-      <span class="editor__tool-rule"></span>
-      <button type="button" data-editor-undo title="Undo last edit" disabled>
+      <button class="editor__tool-secondary" type="button" data-editor-undo title="Undo last edit" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8 5 12l4 4"></path><path d="M5 12h8a6 6 0 0 1 6 6"></path></svg>
         <span>Undo</span>
       </button>
-      <button type="button" data-editor-delete title="Delete selected edit" disabled>
+      <button class="editor__tool-secondary" type="button" data-editor-delete title="Delete selected edit" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3M8 10v8M12 10v8M16 10v8M7 7l1 14h8l1-14"></path></svg>
         <span>Delete</span>
       </button>
+      <p class="editor__tool-footnote">Choose a tool, then place it on the page.</p>
     </nav>
 
     <aside class="editor__pages" aria-label="Document pages">
@@ -112,6 +180,7 @@
           </select>
         </label>
         <p data-editor-hint>Click an edit to select it. Drag selected text to reposition it.</p>
+        <p class="editor__feedback" data-editor-feedback role="status" aria-live="polite"></p>
       </div>
     </section>
   </div>
@@ -127,9 +196,11 @@
   import type { EditMark } from '../lib/pdf/types';
 
   type PdfDocument = Awaited<ReturnType<PdfjsApi['getDocument']>['promise']>;
-  type Tool = 'select' | 'text' | 'highlight' | 'ink' | 'rectangle' | 'whiteout';
+  type Tool = 'select' | 'pan' | 'text' | 'highlight' | 'ink' | 'rectangle' | 'whiteout' | 'line' | 'arrow' | 'callout' | 'stamp';
   type BoxMark = Extract<EditMark, { kind: 'highlight' | 'rectangle' | 'whiteout' }>;
   type InkMark = Extract<EditMark, { kind: 'ink' }>;
+  type MarkStyle = 'highlight' | 'underline' | 'strike' | 'strike-through' | 'rectangle' | 'circle' | 'line' | 'arrow' | 'callout' | 'polygon' | 'cloud' | 'replace' | 'ink';
+  type StampKind = 'check' | 'cross' | 'dot' | 'circle-stamp' | 'crossout';
 
   interface ToolGuide {
     kind: 'none' | 'watermark' | 'page-number';
@@ -151,6 +222,10 @@
     private dragStart: { x: number; y: number } | null = null;
     private draft: BoxMark | InkMark | null = null;
     private moving: { id: string; x: number; y: number; originX: number; originY: number } | null = null;
+    private markStyles = new Map<string, MarkStyle>();
+    private markupStyle: MarkStyle = 'highlight';
+    private stampKind: StampKind = 'check';
+    private replaceMode = false;
 
     private canvas = this.querySelector<HTMLCanvasElement>('[data-editor-canvas]')!;
     private overlay = this.querySelector<SVGSVGElement>('[data-editor-overlay]')!;
@@ -158,10 +233,28 @@
     private viewport = this.querySelector<HTMLElement>('[data-editor-viewport]')!;
     private loading = this.querySelector<HTMLElement>('[data-editor-loading]')!;
     private thumbs = this.querySelector<HTMLElement>('[data-editor-thumbs]')!;
+    private feedback = this.querySelector<HTMLElement>('[data-editor-feedback]')!;
 
     connectedCallback() {
       this.querySelectorAll<HTMLButtonElement>('[data-editor-tool]').forEach((button) => {
         button.addEventListener('click', () => this.setTool(button.dataset.editorTool as Tool));
+      });
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-menu-trigger]').forEach((button) => {
+        button.addEventListener('click', () => this.toggleMenu(button.dataset.editorMenuTrigger ?? ''));
+      });
+      this.querySelector<HTMLButtonElement>('[data-editor-signature-trigger]')?.addEventListener('click', () => this.toggleMenu('signature'));
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-action]').forEach((button) => {
+        button.addEventListener('click', () => this.chooseAction(button.dataset.editorAction ?? ''));
+      });
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-signature-placeholder]').forEach((button) => {
+        button.addEventListener('click', () => {
+          this.closeMenus();
+          this.setFeedback('Signature palette is ready for a saved signature asset. This generic placeholder is not inserted.');
+        });
+      });
+      this.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement;
+        if (!target.closest('[data-editor-menu-trigger], [data-editor-signature-trigger], [data-editor-menu], #editor-signature-panel')) this.closeMenus();
       });
 
       this.querySelector<HTMLButtonElement>('[data-editor-prev]')?.addEventListener('click', () => void this.setPage(this.activePage - 1));
@@ -200,6 +293,7 @@
       this.marks = [];
       this.history = [];
       this.selectedId = '';
+      this.markStyles.clear();
       this.activePage = 1;
       this.refreshState();
 
@@ -344,6 +438,105 @@
       this.applyZoom();
     }
 
+    private toggleMenu(name: string): void {
+      const panel = name === 'signature'
+        ? this.querySelector<HTMLElement>('#editor-signature-panel')
+        : this.querySelector<HTMLElement>(`[data-editor-menu="${name}"]`);
+      if (!panel) return;
+      const wasOpen = !panel.hidden;
+      this.closeMenus();
+      if (!wasOpen) {
+        panel.hidden = false;
+        const trigger = name === 'signature'
+          ? this.querySelector<HTMLButtonElement>('[data-editor-signature-trigger]')
+          : this.querySelector<HTMLButtonElement>(`[data-editor-menu-trigger="${name}"]`);
+        trigger?.setAttribute('aria-expanded', 'true');
+      }
+    }
+
+    private closeMenus(): void {
+      this.querySelectorAll<HTMLElement>('[data-editor-menu], #editor-signature-panel').forEach((panel) => { panel.hidden = true; });
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-menu-trigger], [data-editor-signature-trigger]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
+    }
+
+    private setFeedback(message: string): void {
+      this.feedback.textContent = message;
+      window.setTimeout(() => {
+        if (this.feedback.textContent === message) this.feedback.textContent = '';
+      }, 4500);
+    }
+
+    private chooseAction(action: string): void {
+      this.closeMenus();
+      const textInput = this.querySelector<HTMLInputElement>('[data-editor-text]')!;
+      if (action !== 'replace') this.replaceMode = false;
+      switch (action) {
+        case 'comment':
+          textInput.value = 'Comment: ';
+          this.setTool('text');
+          this.setFeedback('Comment preview: place a visible note on the page.');
+          break;
+        case 'replace':
+          this.replaceMode = true;
+          this.markStyles.set('__draft__', 'replace');
+          this.setTool('rectangle');
+          this.setFeedback('Enter replacement text, then drag over the text area. The original is visually covered; this is not secure redaction.');
+          break;
+        case 'insert-text':
+        case 'text-comment':
+        case 'text':
+          if (action === 'text-comment') textInput.value = 'Comment: ';
+          this.setTool('text');
+          this.setFeedback('Type your text below, then click on the page.');
+          break;
+        case 'highlight':
+          this.markupStyle = 'highlight';
+          this.setTool('highlight');
+          break;
+        case 'underline':
+        case 'strike':
+          this.markupStyle = action as 'underline' | 'strike';
+          this.setTool('highlight');
+          this.setFeedback(`${action === 'underline' ? 'Underline' : 'Strike through'} selected. Drag across the content to mark it.`);
+          break;
+        case 'circle':
+          this.markStyles.set('__draft__', 'circle');
+          this.setTool('rectangle');
+          this.setFeedback('Circle selected. Drag around the content to mark it.');
+          break;
+        case 'polygon':
+        case 'cloud':
+          this.markStyles.set('__draft__', action);
+          this.setTool('rectangle');
+          this.setFeedback(`${action === 'cloud' ? 'Cloud' : 'Polygon'} selected. Drag around the revision area.`);
+          break;
+        case 'callout':
+          this.setTool('callout');
+          this.setFeedback('Callout selected. Drag to draw a pointer and box.');
+          break;
+        case 'line':
+        case 'arrow':
+          this.setTool(action as Tool);
+          break;
+        case 'ink':
+          this.setTool('ink');
+          break;
+        case 'rectangle':
+          this.markStyles.delete('__draft__');
+          this.setTool('rectangle');
+          break;
+        case 'check':
+        case 'cross':
+        case 'dot':
+        case 'circle-stamp':
+        case 'crossout':
+          this.stampKind = action as StampKind;
+          this.setTool('stamp');
+          this.setFeedback(`${action === 'circle-stamp' ? 'Circle' : action[0].toUpperCase() + action.slice(1)} stamp selected. Click on the page to place it.`);
+          break;
+      }
+    }
+
     private applyZoom(): void {
       const width = this.canvas.width * this.zoom;
       const height = this.canvas.height * this.zoom;
@@ -355,19 +548,29 @@
     private setTool(tool: Tool): void {
       this.tool = tool;
       this.selectedId = '';
+      if (tool !== 'rectangle') {
+        this.markStyles.delete('__draft__');
+        this.replaceMode = false;
+      }
+      this.closeMenus();
       this.querySelectorAll<HTMLButtonElement>('[data-editor-tool]').forEach((button) => {
         button.setAttribute('aria-pressed', String(button.dataset.editorTool === tool));
       });
       this.overlay.dataset.tool = tool;
-      this.querySelector<HTMLElement>('[data-editor-text-control]')!.hidden = tool !== 'text';
-      this.querySelector<HTMLElement>('[data-editor-size-control]')!.hidden = tool !== 'text';
-      this.querySelector<HTMLElement>('[data-editor-width-control]')!.hidden = !['ink', 'rectangle'].includes(tool);
+      this.querySelector<HTMLElement>('[data-editor-text-control]')!.hidden = !(['text', 'stamp'].includes(tool) || this.replaceMode);
+      this.querySelector<HTMLElement>('[data-editor-size-control]')!.hidden = !(['text', 'stamp'].includes(tool) || this.replaceMode);
+      this.querySelector<HTMLElement>('[data-editor-width-control]')!.hidden = !['ink', 'rectangle', 'line', 'arrow', 'callout'].includes(tool);
       const hints: Record<Tool, string> = {
         select: 'Click an edit to select it. Drag selected text to reposition it.',
+        pan: 'Drag the page to move around the workspace.',
         text: 'Type the text below, then click where it should appear.',
+        stamp: 'Choose a stamp, then click where it should appear.',
         highlight: 'Drag over the area you want to highlight.',
         ink: 'Draw directly on the page with a mouse, pen, or finger.',
-        rectangle: 'Drag to draw an outline around an area.',
+        line: 'Drag to draw a straight line.',
+        arrow: 'Drag to draw an arrow.',
+        callout: 'Drag to draw a callout pointer.',
+        rectangle: this.replaceMode ? 'Enter replacement text below, then drag over the original text.' : 'Drag to draw an outline around an area.',
         whiteout: 'Drag over an area to cover it with white. This is not secure redaction.',
       };
       this.querySelector<HTMLElement>('[data-editor-hint]')!.textContent = hints[tool];
@@ -388,6 +591,13 @@
       const id = target.closest<SVGElement>('[data-mark-id]')?.dataset.markId ?? '';
       const at = this.point(event);
 
+      if (this.tool === 'pan') {
+        this.viewport.dataset.panning = 'true';
+        this.overlay.setPointerCapture(event.pointerId);
+        this.dragStart = { x: event.clientX, y: event.clientY };
+        return;
+      }
+
       if (this.tool === 'select') {
         this.selectedId = id;
         const mark = this.marks.find((item) => item.id === id);
@@ -404,6 +614,18 @@
       const color = this.querySelector<HTMLInputElement>('[data-editor-color]')!.value;
       const strokeWidth = Number(this.querySelector<HTMLSelectElement>('[data-editor-width]')!.value);
       const idValue = crypto.randomUUID();
+
+      if (this.tool === 'stamp') {
+        const stampMap: Record<StampKind, string> = {
+          check: 'check', cross: 'cross', dot: 'dot', 'circle-stamp': 'circle', crossout: 'crossout',
+        };
+        this.marks.push({ id: idValue, kind: 'stamp', page: this.activePage, x: at.x, y: at.y, width: 0.055, height: 0.055, color, strokeWidth, stamp: stampMap[this.stampKind] } as EditMark);
+        this.markStyles.set(idValue, 'ink');
+        this.setTool('select');
+        this.selectedId = idValue;
+        this.changed();
+        return;
+      }
 
       if (this.tool === 'text') {
         const text = this.querySelector<HTMLInputElement>('[data-editor-text]')!.value.trim();
@@ -422,6 +644,7 @@
           size: Number(this.querySelector<HTMLSelectElement>('[data-editor-size]')!.value),
           color,
         });
+        if (this.tool === 'stamp') this.markStyles.set(idValue, 'ink');
         this.setTool('select');
         this.selectedId = idValue;
         this.changed();
@@ -430,11 +653,20 @@
 
       this.dragStart = at;
       this.overlay.setPointerCapture(event.pointerId);
-      this.draft = this.tool === 'ink'
+      const drawingStyle: MarkStyle = this.tool === 'line' || this.tool === 'arrow' || this.tool === 'callout'
+        ? this.tool
+        : this.tool === 'highlight'
+          ? this.markupStyle
+          : this.tool === 'rectangle' && ['circle', 'polygon', 'cloud', 'replace'].includes(this.markStyles.get('__draft__') ?? '')
+            ? this.markStyles.get('__draft__') as MarkStyle
+            : this.tool === 'rectangle'
+              ? 'rectangle'
+              : 'ink';
+      this.draft = ['ink', 'line', 'arrow', 'callout'].includes(this.tool)
         ? { id: idValue, kind: 'ink', page: this.activePage, points: [at], color, strokeWidth }
         : {
             id: idValue,
-            kind: this.tool,
+            kind: this.tool === 'highlight' ? 'highlight' : this.tool === 'whiteout' ? 'whiteout' : 'rectangle',
             page: this.activePage,
             x: at.x,
             y: at.y,
@@ -443,10 +675,19 @@
             color: this.tool === 'highlight' ? '#facc15' : color,
             strokeWidth,
           };
+      this.markStyles.set(idValue, drawingStyle);
       this.renderMarks();
     }
 
     private pointerMove(event: PointerEvent): void {
+      if (this.tool === 'pan' && this.dragStart) {
+        const dx = this.dragStart.x - event.clientX;
+        const dy = this.dragStart.y - event.clientY;
+        this.viewport.scrollLeft += dx;
+        this.viewport.scrollTop += dy;
+        this.dragStart = { x: event.clientX, y: event.clientY };
+        return;
+      }
       const at = this.point(event);
       if (this.moving) {
         const mark = this.marks.find((item) => item.id === this.moving?.id);
@@ -459,8 +700,13 @@
       }
       if (!this.draft || !this.dragStart) return;
       if (this.draft.kind === 'ink') {
-        const last = this.draft.points[this.draft.points.length - 1];
-        if (!last || Math.hypot(at.x - last.x, at.y - last.y) > 0.002) this.draft.points.push(at);
+        const style = this.markStyles.get(this.draft.id);
+        if (style === 'line' || style === 'arrow' || style === 'callout') {
+          this.draft.points = [this.dragStart, at];
+        } else {
+          const last = this.draft.points[this.draft.points.length - 1];
+          if (!last || Math.hypot(at.x - last.x, at.y - last.y) > 0.002) this.draft.points.push(at);
+        }
       } else {
         this.draft.x = Math.min(this.dragStart.x, at.x);
         this.draft.y = Math.min(this.dragStart.y, at.y);
@@ -471,6 +717,12 @@
     }
 
     private pointerUp(event: PointerEvent): void {
+      if (this.tool === 'pan') {
+        this.viewport.dataset.panning = 'false';
+        this.dragStart = null;
+        if (this.overlay.hasPointerCapture(event.pointerId)) this.overlay.releasePointerCapture(event.pointerId);
+        return;
+      }
       if (this.moving) {
         this.snapshot(this.marks.map((mark) => mark.id === this.moving?.id && mark.kind === 'text'
           ? { ...mark, x: this.moving.originX, y: this.moving.originY }
@@ -484,7 +736,52 @@
         ? this.draft.points.length > 1
         : this.draft.width > 0.006 && this.draft.height > 0.006;
       if (valid) {
-        this.marks.push(this.draft);
+        const style = this.markStyles.get(this.draft.id);
+        let output: EditMark = this.draft;
+        if (this.draft.kind === 'ink' && (style === 'line' || style === 'arrow')) {
+          const start = this.draft.points[0]!;
+          const end = this.draft.points[this.draft.points.length - 1]!;
+          output = { id: this.draft.id, kind: style, page: this.activePage, start, end, color: this.draft.color, strokeWidth: this.draft.strokeWidth } as EditMark;
+        } else if (this.draft.kind === 'ink' && style === 'callout') {
+          const points = this.draft.points;
+          const xs = points.map((point) => point.x);
+          const ys = points.map((point) => point.y);
+          const x = Math.min(...xs);
+          const y = Math.min(...ys);
+          const width = Math.max(0.02, Math.max(...xs) - x);
+          const height = Math.max(0.02, Math.max(...ys) - y);
+          output = { id: this.draft.id, kind: 'callout', page: this.activePage, x, y, width, height, anchor: points[points.length - 1], color: this.draft.color, strokeWidth: this.draft.strokeWidth } as EditMark;
+        } else if (this.draft.kind !== 'ink' && style === 'circle') {
+          output = { ...this.draft, kind: 'circle' } as EditMark;
+        } else if (this.draft.kind !== 'ink' && (style === 'polygon' || style === 'cloud')) {
+          const { x, y, width, height } = this.draft;
+          output = {
+            id: this.draft.id,
+            kind: style,
+            page: this.activePage,
+            points: [
+              { x: x + width * 0.5, y }, { x: x + width, y: y + height * 0.28 },
+              { x: x + width * 0.82, y: y + height }, { x: x + width * 0.18, y: y + height },
+              { x, y: y + height * 0.28 },
+            ],
+            color: this.draft.color,
+            strokeWidth: this.draft.strokeWidth,
+          } as EditMark;
+        } else if (this.draft.kind !== 'ink' && style === 'replace') {
+          const replacement = this.querySelector<HTMLInputElement>('[data-editor-text]')!.value.trim();
+          output = {
+            ...this.draft,
+            kind: 'replace-text',
+            text: replacement || 'Replacement text',
+            size: Number(this.querySelector<HTMLSelectElement>('[data-editor-size]')!.value),
+            backgroundColor: '#ffffff',
+          } as EditMark;
+        } else if (this.draft.kind !== 'ink' && style === 'underline') {
+          output = { ...this.draft, kind: 'underline' } as EditMark;
+        } else if (this.draft.kind !== 'ink' && style === 'strike') {
+          output = { ...this.draft, kind: 'strike-through' } as EditMark;
+        }
+        this.marks.push(output);
         const selected = this.draft.id;
         this.setTool('select');
         this.selectedId = selected;
@@ -502,6 +799,7 @@
       this.draft = null;
       this.dragStart = null;
       this.moving = null;
+      this.viewport.dataset.panning = 'false';
       this.renderMarks();
     }
 
@@ -553,6 +851,12 @@
       const nodes: SVGElement[] = [];
       const pageHeight = Number(this.pageStage.dataset.pageHeight || 792);
 
+      const defs = this.svg('defs', {});
+      const arrowMarker = this.svg('marker', { id: 'editor-arrowhead', viewBox: '0 0 10 10', refX: '8', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto-start-reverse' });
+      arrowMarker.append(this.svg('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: 'currentColor' }));
+      defs.append(arrowMarker);
+      nodes.push(defs);
+
       if (this.guide.kind === 'watermark' && this.guide.text) {
         const guide = this.svg('text', { x: '500', y: '515', 'text-anchor': 'middle', class: 'editor-guide editor-guide--watermark', transform: 'rotate(-32 500 500)' });
         guide.textContent = this.guide.text;
@@ -575,7 +879,42 @@
             class: selected ? 'editor-mark is-selected' : 'editor-mark',
           });
           node.textContent = mark.text;
+        } else if (mark.kind === 'stamp') {
+          const glyphs: Record<string, string> = { check: '✓', cross: '×', dot: '•', circle: '○', crossout: '╳' };
+          node = this.svg('text', { x: String((mark.x + mark.width / 2) * 1000), y: String((mark.y + mark.height * 0.82) * 1000), 'text-anchor': 'middle', fill: mark.color, 'font-size': String(mark.height * 1000), 'font-weight': '700', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          node.textContent = glyphs[mark.stamp.toLowerCase()] ?? mark.stamp;
+        } else if (mark.kind === 'line' || mark.kind === 'arrow') {
+          const start = mark.start ?? { x: mark.x ?? 0, y: mark.y ?? 0 };
+          const end = mark.end ?? { x: (mark.x ?? 0) + (mark.width ?? 0), y: (mark.y ?? 0) + (mark.height ?? 0) };
+          node = this.svg('polyline', { points: `${start.x * 1000},${start.y * 1000} ${end.x * 1000},${end.y * 1000}`, fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-linecap': 'round', 'marker-end': mark.kind === 'arrow' ? 'url(#editor-arrowhead)' : '', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+        } else if (mark.kind === 'callout') {
+          const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          group.append(this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String(mark.width * 1000), height: String(mark.height * 1000), rx: '12', fill: mark.fill ?? '#ffffff', opacity: String(mark.opacity ?? 0.92), stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)) }));
+          const anchor = mark.anchor ?? { x: mark.x + mark.width / 2, y: mark.y + mark.height + 0.05 };
+          group.append(this.svg('line', { x1: String((mark.x + mark.width / 2) * 1000), y1: String((mark.y + mark.height) * 1000), x2: String(anchor.x * 1000), y2: String(anchor.y * 1000), stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)) }));
+          if (mark.text) { const label = this.svg('text', { x: String((mark.x + 0.01) * 1000), y: String((mark.y + mark.height * 0.6) * 1000), fill: mark.color, 'font-size': '18' }); label.textContent = mark.text; group.append(label); }
+          node = group;
+        } else if (mark.kind === 'polygon' || mark.kind === 'cloud') {
+          const xs = mark.points.map((point) => point.x);
+          const ys = mark.points.map((point) => point.y);
+          if (mark.kind === 'cloud') {
+            const x = Math.min(...xs) * 1000;
+            const y = Math.min(...ys) * 1000;
+            const width = (Math.max(...xs) - Math.min(...xs)) * 1000;
+            const height = (Math.max(...ys) - Math.min(...ys)) * 1000;
+            node = this.svg('rect', { x: String(x), y: String(y), width: String(width), height: String(height), rx: '52', fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-dasharray': '10 5', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          } else {
+            node = this.svg('polygon', { points: mark.points.map((point) => `${point.x * 1000},${point.y * 1000}`).join(' '), fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-linejoin': 'round', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          }
+        } else if (mark.kind === 'replace-text' || mark.kind === 'replace') {
+          const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          group.append(this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String(mark.width * 1000), height: String(mark.height * 1000), fill: mark.backgroundColor ?? '#ffffff', stroke: '#cbd5e1', 'stroke-width': '1' }));
+          const label = this.svg('text', { x: String((mark.x + 0.008) * 1000), y: String((mark.y + Math.min(mark.height * 0.7, 0.04)) * 1000), fill: mark.color, 'font-size': String(Math.max(12, Math.min(28, mark.size * 1.2))) });
+          label.textContent = mark.text;
+          group.append(label);
+          node = group;
         } else if (mark.kind === 'ink') {
+          const style = this.markStyles.get(mark.id) ?? 'ink';
           node = this.svg('polyline', {
             points: mark.points.map((point) => `${point.x * 1000},${point.y * 1000}`).join(' '),
             fill: 'none',
@@ -583,9 +922,11 @@
             'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)),
             'stroke-linecap': 'round',
             'stroke-linejoin': 'round',
+            ...(style === 'arrow' ? { 'marker-end': 'url(#editor-arrowhead)' } : {}),
             class: selected ? 'editor-mark is-selected' : 'editor-mark',
           });
         } else {
+          const style = this.markStyles.get(mark.id) ?? (mark.kind === 'strike-through' || mark.kind === 'strikethrough' ? 'strike-through' : mark.kind);
           const common = {
             x: String(mark.x * 1000),
             y: String(mark.y * 1000),
@@ -593,11 +934,17 @@
             height: String(mark.height * 1000),
             class: selected ? 'editor-mark is-selected' : 'editor-mark',
           };
-          node = mark.kind === 'highlight'
-            ? this.svg('rect', { ...common, fill: mark.color, opacity: '0.32' })
-            : mark.kind === 'whiteout'
-              ? this.svg('rect', { ...common, fill: '#ffffff', stroke: '#cbd5e1', 'stroke-width': '1' })
-              : this.svg('rect', { ...common, fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)) });
+          node = style === 'circle'
+            ? this.svg('ellipse', { cx: String((mark.x + mark.width / 2) * 1000), cy: String((mark.y + mark.height / 2) * 1000), rx: String(Math.max(0, mark.width * 500)), ry: String(Math.max(0, mark.height * 500)), fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), class: selected ? 'editor-mark is-selected' : 'editor-mark' })
+            : style === 'underline'
+              ? this.svg('line', { x1: String(mark.x * 1000), y1: String((mark.y + mark.height * 0.84) * 1000), x2: String((mark.x + mark.width) * 1000), y2: String((mark.y + mark.height * 0.84) * 1000), stroke: mark.color, 'stroke-width': String(Math.max(2, mark.strokeWidth * 2.4)), 'stroke-linecap': 'round', class: selected ? 'editor-mark is-selected' : 'editor-mark' })
+              : style === 'strike' || style === 'strike-through'
+                ? this.svg('line', { x1: String(mark.x * 1000), y1: String((mark.y + mark.height * 0.5) * 1000), x2: String((mark.x + mark.width) * 1000), y2: String((mark.y + mark.height * 0.5) * 1000), stroke: mark.color, 'stroke-width': String(Math.max(2, mark.strokeWidth * 2.4)), 'stroke-linecap': 'round', class: selected ? 'editor-mark is-selected' : 'editor-mark' })
+                : mark.kind === 'highlight'
+                  ? this.svg('rect', { ...common, fill: mark.color, opacity: '0.32' })
+                  : mark.kind === 'whiteout'
+                    ? this.svg('rect', { ...common, fill: '#ffffff', stroke: '#cbd5e1', 'stroke-width': '1' })
+                    : this.svg('rect', { ...common, fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)) });
         }
         node.dataset.markId = mark.id;
         nodes.push(node);
@@ -641,20 +988,26 @@
   }
 
   .editor__tools {
+    position: relative;
+    z-index: 4;
     display: flex;
     flex-direction: column;
-    gap: 0.35rem;
-    padding: 0.7rem;
+    gap: 0.25rem;
+    padding: 0.65rem 0.5rem;
     border-right: 1px solid var(--line);
     background: var(--paper-raised);
+    overflow: visible;
   }
+  .editor__tool-rail-label { margin: 0.15rem 0 0.3rem; color: var(--muted); font: 600 0.53rem/1 var(--font-mono); letter-spacing: 0.12em; text-align: center; }
   .editor__tools button {
+    position: relative;
     display: grid;
     justify-items: center;
     gap: 0.18rem;
-    padding: 0.52rem 0.2rem;
+    width: 100%;
+    padding: 0.5rem 0.15rem;
     border: 1px solid transparent;
-    border-radius: 10px;
+    border-radius: 11px;
     background: transparent;
     color: var(--muted);
     font: 500 0.63rem/1 var(--font-sans);
@@ -665,6 +1018,38 @@
   .editor__tools button:disabled { opacity: 0.35; cursor: not-allowed; }
   .editor__tools svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
   .editor__tool-rule { height: 1px; background: var(--line); margin: 0.25rem 0; }
+  .editor__tool-primary[aria-pressed='true'], .editor__tool-secondary[aria-pressed='true'] { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 28%, var(--line)); background: color-mix(in oklab, var(--accent) 9%, var(--paper-raised)); }
+  .editor__tool-group { position: relative; }
+  .editor__tool-menu { grid-template-columns: 1fr auto; grid-template-rows: auto auto; }
+  .editor__tool-menu > span:first-child { grid-row: span 2; align-self: center; }
+  .editor__tool-chevron { grid-column: 2; color: var(--muted); font-size: 0.72rem; line-height: 0.6; }
+  .editor__tool-icon { display: grid; place-items: center; width: 1.28rem; height: 1.28rem; border: 1px solid currentColor; border-radius: 5px; font: 700 0.77rem/1 var(--font-brand); }
+  .editor__tool-icon--markup { border: 0; transform: rotate(-8deg); }
+  .editor__tool-icon--draw { border: 0; font-size: 1.35rem; }
+  .editor__tool-icon--stamp { border: 0; font-size: 0.72rem; letter-spacing: -0.08em; }
+  .editor__tool-icon--signature { border: 0; font: italic 1.35rem/1 Georgia, serif; }
+  .editor__popover { position: absolute; z-index: 10; top: 0; left: calc(100% + 0.6rem); display: grid; width: 15.75rem; gap: 0.15rem; padding: 0.45rem; border: 1px solid var(--line-strong); border-radius: 13px; background: var(--paper-raised); box-shadow: 0 16px 40px rgb(15 23 42 / 0.18), 0 2px 7px rgb(15 23 42 / 0.08); }
+  .editor__popover[hidden] { display: none; }
+  .editor__popover-heading { display: grid; gap: 0.1rem; padding: 0.52rem 0.6rem 0.45rem; margin-bottom: 0.2rem; border-bottom: 1px solid var(--line); }
+  .editor__popover-heading strong { font: 600 0.75rem var(--font-brand); color: var(--ink); }
+  .editor__popover-heading span { color: var(--muted); font-size: 0.64rem; }
+  .editor__popover button { display: grid; grid-template-columns: 1.55rem minmax(0, 1fr) auto; align-items: center; justify-items: start; gap: 0.45rem; width: 100%; padding: 0.46rem 0.48rem; border: 1px solid transparent; border-radius: 8px; color: var(--ink-2); text-align: left; }
+  .editor__popover button:hover { border-color: var(--line); background: var(--paper-sunk); color: var(--ink); }
+  .editor__popover button > span:nth-child(2) { display: grid; gap: 0.08rem; min-width: 0; }
+  .editor__popover button strong { color: inherit; font-size: 0.68rem; font-weight: 600; }
+  .editor__popover button small { overflow: hidden; color: var(--muted); font-size: 0.6rem; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+  .editor__popover button em { color: var(--muted); font: 500 0.54rem var(--font-mono); text-transform: uppercase; }
+  .editor__menu-icon { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--accent); font: 600 0.86rem/1 var(--font-brand); }
+  .editor__menu-icon--yellow { color: #b7791f; background: #fef3c7; border-color: #fde68a; }
+  .editor__menu-icon--ok { color: var(--ok); }
+  .editor__menu-icon--bad { color: var(--accent); }
+  .editor__signature-panel { width: 17.25rem; }
+  .editor__signature-panel button { grid-template-columns: 4.2rem minmax(0, 1fr); }
+  .editor__signature-glyph { display: grid; place-items: center; min-height: 2.2rem; border: 1px dashed var(--line-strong); border-radius: 7px; color: var(--ink-2); font: italic 0.82rem Georgia, serif; white-space: nowrap; }
+  .editor__signature-glyph--initials { font: 700 0.85rem var(--font-brand); }
+  .editor__signature-glyph--stamp { color: var(--accent); font: 600 0.5rem var(--font-mono); letter-spacing: 0.05em; }
+  .editor__signature-note { margin: 0.35rem 0.5rem 0.25rem; color: var(--muted); font-size: 0.61rem; line-height: 1.35; }
+  .editor__tool-footnote { margin: auto 0.12rem 0.1rem; color: var(--muted); font-size: 0.57rem; line-height: 1.3; text-align: center; }
 
   .editor__pages { min-width: 0; border-right: 1px solid var(--line); background: var(--paper-raised); }
   .editor__pages-head { display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
@@ -686,7 +1071,9 @@
   .editor__page canvas, .editor__page svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .editor__page svg { touch-action: none; }
   .editor__page svg[data-tool='text'] { cursor: text; }
-  .editor__page svg[data-tool='highlight'], .editor__page svg[data-tool='ink'], .editor__page svg[data-tool='rectangle'], .editor__page svg[data-tool='whiteout'] { cursor: crosshair; }
+  .editor__page svg[data-tool='highlight'], .editor__page svg[data-tool='ink'], .editor__page svg[data-tool='rectangle'], .editor__page svg[data-tool='whiteout'], .editor__page svg[data-tool='line'], .editor__page svg[data-tool='arrow'], .editor__page svg[data-tool='callout'] { cursor: crosshair; }
+  .editor__page svg[data-tool='pan'] { cursor: grab; }
+  .editor__viewport[data-panning='true'] .editor__page svg[data-tool='pan'] { cursor: grabbing; }
   :global(.editor-mark) { pointer-events: stroke; }
   :global(text.editor-mark), :global(rect.editor-mark) { pointer-events: all; }
   :global(.editor-mark.is-selected) { filter: drop-shadow(0 0 3px rgb(225 29 72 / 0.9)); stroke-dasharray: 7 4; }
@@ -702,6 +1089,7 @@
   .editor__properties input:not([type='color']), .editor__properties select { min-height: 2.25rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); padding: 0.4rem 0.55rem; font: inherit; }
   .editor__properties input[type='color'] { width: 2.4rem; height: 2.25rem; padding: 0.18rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); }
   .editor__properties p { flex: 1 1 14rem; margin: 0 0 0.25rem; color: var(--muted); font-size: var(--step--2); }
+  .editor__properties .editor__feedback { flex-basis: 100%; min-height: 1.1rem; margin: 0; color: var(--accent); font-size: 0.68rem; }
 
   .editor__footer { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 0.75rem 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
   .editor__footer [data-editor-count]:not(:only-child) { color: var(--ink-2); font-weight: 500; }
@@ -713,6 +1101,8 @@
     .editor__shell { grid-template-columns: 1fr; min-height: 0; }
     .editor__tools { position: sticky; top: 0; z-index: 3; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
     .editor__tools button { min-width: 3.6rem; }
+    .editor__tool-rail-label, .editor__tool-footnote { display: none; }
+    .editor__popover { top: calc(100% + 0.5rem); left: 0; }
     .editor__tool-rule { width: 1px; height: auto; margin: 0 0.2rem; }
     .editor__pages { border-right: 0; border-bottom: 1px solid var(--line); }
     .editor__pages-head { display: none; }

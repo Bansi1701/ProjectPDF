@@ -200,7 +200,20 @@ async function run(request: WorkerRequest): Promise<OpResult> {
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
 ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
-  const request = event.data;
+  // This worker is intentionally a closed, local-only boundary: it never
+  // fetches URLs or forwards document bytes. Keep a small runtime guard here
+  // because postMessage data is untrusted at runtime even though the caller is
+  // typed as WorkerRequest.
+  const candidate = event.data as unknown;
+  if (!candidate || typeof candidate !== 'object') {
+    ctx.postMessage({ id: -1, result: { ok: false, error: 'Invalid worker request.' } } satisfies WorkerResponse);
+    return;
+  }
+  const request = candidate as WorkerRequest;
+  if (!Number.isInteger(request.id) || !Array.isArray(request.files)) {
+    ctx.postMessage({ id: Number.isInteger(request.id) ? request.id : -1, result: { ok: false, error: 'Invalid worker request.' } } satisfies WorkerResponse);
+    return;
+  }
 
   try {
     const result = await run(request);
