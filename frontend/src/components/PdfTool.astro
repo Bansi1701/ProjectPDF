@@ -814,6 +814,16 @@ const dropTitle = takesExcel
     /** Identifies the grid's open documents across messages, unlike a job id. */
     let gridSession = 0;
 
+    /** Must match SOURCE_COLOURS in PageGrid, or the two views disagree. */
+    const SOURCE_COLOURS = [
+      'oklch(62% 0.17 250)',
+      'oklch(66% 0.16 35)',
+      'oklch(68% 0.15 150)',
+      'oklch(64% 0.16 300)',
+      'oklch(72% 0.14 90)',
+      'oklch(60% 0.14 200)',
+    ];
+
     interface SaveDialogElement extends HTMLElement {
       ask(request: { name: string; siblings: string[]; index: number }): Promise<{
         name: string;
@@ -1269,18 +1279,107 @@ const dropTitle = takesExcel
       }
     }
 
-    function showFiles(next: File[]) {
-      const kept = next.filter(usable);
-
-      files = takesMany ? kept : kept.slice(0, 1);
+    /**
+     * The chosen files, in the order they will be combined.
+     *
+     * A merge is an ordering decision before it is anything else, and the list
+     * was read-only — the only way to change the order was to clear everything
+     * and pick the files again in a different sequence. Each row can now be
+     * moved and removed, and where several files are involved each carries the
+     * colour its pages wear in the grid below, so the two views are obviously
+     * the same thing.
+     */
+    function renderFileList() {
+      const many = files.length > 1;
+      list.dataset.rich = String(many && takesMany);
 
       list.replaceChildren(
-        ...files.map((file) => {
+        ...files.map((file, index) => {
           const li = document.createElement('li');
-          li.textContent = `${file.name} · ${size(file.size)}`;
+          li.className = 'file';
+
+          if (many && takesMany) {
+            const chip = document.createElement('span');
+            chip.className = 'file__chip';
+            chip.style.background = SOURCE_COLOURS[index % SOURCE_COLOURS.length];
+            chip.setAttribute('aria-hidden', 'true');
+            li.append(chip);
+          }
+
+          const name = document.createElement('span');
+          name.className = 'file__name';
+          name.textContent = file.name;
+
+          const meta = document.createElement('span');
+          meta.className = 'file__meta';
+          meta.textContent = size(file.size);
+          li.append(name, meta);
+
+          if (many && takesMany) {
+            const controls = document.createElement('span');
+            controls.className = 'file__controls';
+
+            const move = (to: number, glyph: string, label: string) => {
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.className = 'file__btn';
+              button.textContent = glyph;
+              button.title = label;
+              button.setAttribute('aria-label', `${label}: ${file.name}`);
+              button.disabled = to < 0 || to >= files.length;
+              button.addEventListener('click', () => {
+                const [moved] = files.splice(index, 1);
+                files.splice(to, 0, moved);
+                renderFileList();
+                // The grid is built from the file order, so it has to be rebuilt
+                // — and rebuilding it drops any page edits, which is why the
+                // order is settled here first rather than page by page below.
+                if (grid) void openGrid();
+              });
+              return button;
+            };
+
+            controls.append(
+              move(index - 1, '\u2191', 'Move up'),
+              move(index + 1, '\u2193', 'Move down')
+            );
+
+            const drop = document.createElement('button');
+            drop.type = 'button';
+            drop.className = 'file__btn file__btn--drop';
+            drop.textContent = '\u2715';
+            drop.title = 'Remove this file';
+            drop.setAttribute('aria-label', `Remove ${file.name}`);
+            drop.addEventListener('click', () => {
+              files.splice(index, 1);
+              renderFileList();
+              workspace.hidden = files.length === 0;
+              if (grid) void openGrid();
+            });
+            controls.append(drop);
+            li.append(controls);
+          }
+
           return li;
         })
       );
+    }
+
+    function showFiles(next: File[], append = false) {
+      const kept = next.filter(usable);
+
+      if (takesMany && append && files.length > 0) {
+        // Picking again on a tool that takes several files means "and these
+        // too". Replacing the lot was the old behaviour and it silently threw
+        // away an order somebody had just arranged. Same name and size twice
+        // is a double-click on the picker, not a deliberate duplicate.
+        const seen = new Set(files.map((file) => `${file.name}:${file.size}`));
+        files = files.concat(kept.filter((file) => !seen.has(`${file.name}:${file.size}`)));
+      } else {
+        files = takesMany ? kept : kept.slice(0, 1);
+      }
+
+      renderFileList();
 
       workspace.hidden = files.length === 0;
       result.hidden = true;
@@ -1301,7 +1400,10 @@ const dropTitle = takesExcel
       fileBar.hidden = !hasFiles;
       if (hasFiles) {
         fileBarLabel.textContent =
-          files.length === 1 ? files[0].name : `${files.length} files selected`;
+          files.length === 1 ? files[0].name : `${files.length} files, in this order`;
+        if (changeFileBtn) {
+          changeFileBtn.textContent = takesMany ? 'Add more' : 'Change file';
+        }
       }
 
       if ((mode === 'pdf-to-images' || mode === 'forms' || mode === 'metadata') && files[0]) {
@@ -1709,7 +1811,9 @@ const dropTitle = takesExcel
       });
     }
 
-    input.addEventListener('change', () => showFiles(Array.from(input.files ?? [])));
+    input.addEventListener('change', () =>
+      showFiles(Array.from(input.files ?? []), takesMany && files.length > 0)
+    );
     clearBtn.addEventListener('click', () => {
       input.value = '';
       showFiles([]);
@@ -1727,7 +1831,9 @@ const dropTitle = takesExcel
         delete drop.dataset.over;
       });
     }
-    drop.addEventListener('drop', (e) => showFiles(Array.from(e.dataTransfer?.files ?? [])));
+    drop.addEventListener('drop', (e) =>
+      showFiles(Array.from(e.dataTransfer?.files ?? []), takesMany && files.length > 0)
+    );
 
     /**
      * Hands the grid a way to talk to the worker.
@@ -2055,6 +2161,58 @@ const dropTitle = takesExcel
   .files {
     margin: 0; padding-left: 1.2rem; display: grid; gap: 0.3rem;
     font-size: var(--step--1); color: var(--ink-2);
+  }
+
+  /* With one file the list is a caption and a bare line is right. With several
+     it is the running order, so it becomes a set of rows you can act on.
+     The rows are built by script and so carry no scope attribute, which is why
+     every selector reaching them is :global — the page grid hit this too. */
+  .files[data-rich='true'] {
+    padding-left: 0;
+    list-style: none;
+    gap: 0.35rem;
+  }
+
+  .files[data-rich='true'] :global(.file) {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 0.55);
+    background: var(--paper-raised, transparent);
+  }
+
+  .files[data-rich='true'] :global(.file:hover) { border-color: var(--line-strong); }
+
+  .files :global(.file__chip) {
+    width: 0.55rem; height: 1.5rem; border-radius: 999px;
+  }
+
+  .files :global(.file__name) {
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--ink);
+  }
+
+  .files :global(.file__meta) { color: var(--muted); font-size: var(--step--2); font-variant-numeric: tabular-nums; }
+
+  .files :global(.file__controls) { display: inline-flex; gap: 0.2rem; }
+
+  .files :global(.file__btn) {
+    font: inherit; font-size: var(--step--2); line-height: 1;
+    width: 1.7rem; height: 1.7rem; display: grid; place-items: center;
+    border: 1px solid var(--line); border-radius: calc(var(--radius) * 0.4);
+    background: transparent; color: var(--ink); cursor: pointer;
+  }
+
+  .files :global(.file__btn:hover:not(:disabled)) { border-color: var(--accent); color: var(--accent); }
+  .files :global(.file__btn:disabled) { opacity: 0.35; cursor: default; }
+  .files :global(.file__btn--drop:hover) { border-color: var(--seal); color: var(--seal); }
+
+  @media (max-width: 30rem) {
+    .files[data-rich='true'] :global(.file) { grid-template-columns: auto 1fr auto; }
+    .files[data-rich='true'] :global(.file__meta) { display: none; }
   }
 
   .preview__head {

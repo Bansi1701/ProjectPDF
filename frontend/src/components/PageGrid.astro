@@ -155,7 +155,13 @@ const { mode } = Astro.props;
   .page-cell__frame {
     position: relative;
     width: 100%;
-    aspect-ratio: var(--frame-aspect, 0.7071);
+    /* One height for every cell, with the page contained inside it.
+       Reserving each page's own aspect ratio made rows ragged — a landscape
+       or quarter-turned page is much shorter than a portrait one, so its
+       caption rode up and the row broke. A fixed box also means turning a
+       page reflows nothing at all. */
+    height: var(--cell-height, 8.25rem);
+    container-type: size;
     background: color-mix(in srgb, var(--ink) 4%, transparent);
     border: 1px solid var(--line);
     border-radius: calc(var(--radius) * 0.4);
@@ -167,12 +173,33 @@ const { mode } = Astro.props;
     top: 50%;
     left: 50%;
     display: block;
-    /* A quarter-turned page is laid out at the width its ROTATED height needs,
-       so the turned result is exactly as wide as the frame. */
-    width: var(--canvas-width, 100%);
+    width: auto;
     height: auto;
+    /* Container units, so the page fits the cell whichever way round it is:
+       a quarter turn swaps which side of the box constrains it. */
+    max-width: 100cqw;
+    max-height: 100cqh;
     transform: translate(-50%, -50%) rotate(var(--turn, 0deg));
     transition: transform 160ms ease;
+  }
+
+  .page-cell[data-quarter='true'] .page-cell__frame canvas {
+    max-width: 100cqh;
+    max-height: 100cqw;
+  }
+
+  /* A rail in the colour of the file the page came from. Merging three
+     documents produces one grid of pages that all look alike, and knowing
+     which came from where is the whole reason the order matters. */
+  .page-cell[data-source]::before {
+    content: '';
+    position: absolute;
+    left: 0.3rem;
+    right: 0.3rem;
+    top: 0.3rem;
+    height: 3px;
+    border-radius: 3px;
+    background: var(--source-colour, transparent);
   }
 
   /* A page whose picture has not arrived, or is past the preview limit. */
@@ -444,6 +471,19 @@ const { mode } = Astro.props;
   }
 
   /**
+   * One per source document, in order. Chosen to stay apart for the common
+   * kinds of colour blindness rather than to look like a palette.
+   */
+  const SOURCE_COLOURS = [
+    'oklch(62% 0.17 250)',
+    'oklch(66% 0.16 35)',
+    'oklch(68% 0.15 150)',
+    'oklch(64% 0.16 300)',
+    'oklch(72% 0.14 90)',
+    'oklch(60% 0.14 200)',
+  ];
+
+  /**
    * Live bitmaps kept at once.
    *
    * Scrolling a long document past the grid would otherwise accumulate every
@@ -473,6 +513,8 @@ const { mode } = Astro.props;
     private flushTimer = 0;
     private recent: Cell[] = [];
     private previewLimit = Number.POSITIVE_INFINITY;
+    /** How many distinct files the grid is showing. */
+    private sources = 1;
     private viewer: HTMLDialogElement | null = null;
     private viewing: Cell | null = null;
     private viewToken = 0;
@@ -525,6 +567,7 @@ const { mode } = Astro.props;
     }
 
     private build(geometry: PageGeometry[]): void {
+      this.sources = new Set(geometry.map((page) => page.file)).size;
       const fragment = document.createDocumentFragment();
       this.cells = geometry.map((page) => this.makeCell(page));
       for (const cell of this.cells) fragment.append(cell.el);
@@ -562,7 +605,6 @@ const { mode } = Astro.props;
 
       const frame = document.createElement('div');
       frame.className = 'page-cell__frame';
-      frame.style.setProperty('--frame-aspect', String(page.width / Math.max(page.height, 1)));
 
       const placeholder = document.createElement('div');
       placeholder.className = 'page-cell__placeholder';
@@ -610,6 +652,13 @@ const { mode } = Astro.props;
         cut.textContent = '✂';
         cut.title = 'Cut after this page';
         el.append(cut);
+      }
+
+      // Only worth showing when there is more than one file to tell apart;
+      // a single document does not need a legend.
+      if (this.sources > 1) {
+        el.dataset.source = String(page.file);
+        el.style.setProperty('--source-colour', SOURCE_COLOURS[page.file % SOURCE_COLOURS.length]);
       }
 
       return {
@@ -886,11 +935,9 @@ const { mode } = Astro.props;
      * reserves its upright height just overlaps the neighbours instead.
      */
     private applyRotation(cell: Cell): void {
-      const quarter = cell.rotate % 180 !== 0;
-      const natural = cell.width / Math.max(cell.height, 1);
-
-      cell.frame.style.setProperty('--frame-aspect', String(quarter ? 1 / natural : natural));
-      cell.frame.style.setProperty('--canvas-width', quarter ? `${natural * 100}%` : '100%');
+      // The cell is a fixed box and the page is contained inside it, so a turn
+      // is only a transform plus a flag telling CSS which side now constrains.
+      cell.el.dataset.quarter = String(cell.rotate % 180 !== 0);
       cell.frame.style.setProperty('--turn', `${cell.rotate}deg`);
     }
 
