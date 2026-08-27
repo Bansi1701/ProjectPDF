@@ -30,7 +30,6 @@ export const CATEGORIES: ToolCategory[] = ['Organise', 'Convert', 'Edit', 'Secur
  */
 export const TOOLS: Tool[] = [
   // --- Organise ---
-  { slug: 'scan-pdf', name: 'Scan to PDF', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Photograph pages. Straightened and sharpened on your device.' },
   { slug: 'merge-pdf', name: 'Merge', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Combine files and reorder pages before you export.' },
   { slug: 'split-pdf', name: 'Split', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Cut one document into many, at the pages you choose.' },
   { slug: 'rotate-pdf', name: 'Rotate', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Fix sideways scans. Lossless — only the page dictionary changes.' },
@@ -40,6 +39,7 @@ export const TOOLS: Tool[] = [
 
   // --- Convert ---
   { slug: 'split-by', name: 'Split by size or bookmark', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Every N pages, into equal parts, at a size, or at each chapter.' },
+  { slug: 'scan-pdf', name: 'Scan to PDF', category: 'Organise', runsWhere: 'local', status: 'live', blurb: 'Photograph pages. Straightened and sharpened on your device.' },
   { slug: 'compress-pdf', name: 'Compress', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Smaller file, checked against the original before you get it.' },
   { slug: 'jpg-to-pdf', name: 'Images to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'JPG, PNG or WebP into one document. JPG and PNG are not re-encoded.' },
   { slug: 'pdf-to-jpg', name: 'PDF to image', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Export pages as JPG or PNG at the DPI you pick.' },

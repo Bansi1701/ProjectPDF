@@ -138,11 +138,12 @@ import Lens from './Lens.astro';
 
       <div class="scan__modes">
         <label class="scan__mode">
-          <input type="radio" name="scan-finish" value="text" data-scan-finish checked />
+          <input type="radio" name="scan-finish" value="colour" data-scan-finish checked />
           <span class="scan__mode-body">
-            <span class="scan__mode-name">Text</span>
+            <span class="scan__mode-name">Colour</span>
             <span class="scan__mode-note">
-              Black on white. Sharpest for typed or handwritten pages, and much the smallest file.
+              Keeps everything on the page as it is. The safe choice, and the one to leave alone
+              if you are not sure.
             </span>
           </span>
         </label>
@@ -152,17 +153,18 @@ import Lens from './Lens.astro';
           <span class="scan__mode-body">
             <span class="scan__mode-name">Greyscale</span>
             <span class="scan__mode-note">
-              Keeps the shading. For pages with a photograph, a shaded diagram or a stamp on them.
+              Drops the colour but keeps the shading. For photographs, shaded diagrams and stamps.
             </span>
           </span>
         </label>
 
         <label class="scan__mode">
-          <input type="radio" name="scan-finish" value="colour" data-scan-finish />
+          <input type="radio" name="scan-finish" value="text" data-scan-finish />
           <span class="scan__mode-body">
-            <span class="scan__mode-name">Colour</span>
+            <span class="scan__mode-name">Text</span>
             <span class="scan__mode-note">
-              Keeps the colour. For logos, highlighter, coloured forms and receipts.
+              Black on white. Sharpest for typed or handwritten pages, and by far the smallest
+              file — often a fifth the size.
             </span>
           </span>
         </label>
@@ -180,9 +182,10 @@ import Lens from './Lens.astro';
       </div>
 
       <p class="scan__note">
-        Text thresholds every pixel to black or white, so a photograph or a coloured logo comes out
-        as a flat black shape. If a page looks like that in the previews, Greyscale or Colour is
-        the fix.
+        Colour is the default because it never throws anything away. Text is the one to reach for
+        on a plain typed page: it turns every pixel black or white, which is sharp and very small,
+        but a photograph or a coloured logo comes out as a flat black shape. Check the previews
+        before you build.
       </p>
 
       <label class="scan__toggle">
