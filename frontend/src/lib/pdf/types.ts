@@ -413,6 +413,17 @@ export interface WorkerRequest {
   scanMode?: 'text' | 'grey' | 'colour';
   /** Scan only: find the page in the frame and straighten it. */
   detectEdges?: boolean;
+  /**
+   * Scan only: corners set by hand, per file, as fractions of each frame.
+   * Null entries are left to the detector. Fractions rather than pixels so
+   * resampling on the way in cannot shift them.
+   */
+  quads?: (readonly [
+    { x: number; y: number },
+    { x: number; y: number },
+    { x: number; y: number },
+    { x: number; y: number },
+  ] | null)[];
 
   // --- the cheap-win tools, each carrying its own option shape ----------
   flattenOptions?: FlattenOptions;

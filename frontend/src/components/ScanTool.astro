@@ -11,6 +11,17 @@
  * often a passport, a payslip or a prescription. It is never uploaded, never
  * recorded, and the track is stopped the moment the page is left. That is the
  * whole reason this tool belongs on this site rather than in an app store.
+ *
+ * Two pieces of the interface exist because detection is a guess and a scanner
+ * may not be:
+ *
+ *  - The finish selector. Sauvola thresholding is right for a typed page and
+ *    catastrophic for a photograph, which comes back as a flat black shape.
+ *    The choice is the user's, stated in plain words, and it is one control
+ *    rather than a mode and a "clean up" switch that can contradict it.
+ *  - The corner editor. When the detector picks the table edge, or finds
+ *    nothing, four draggable corners over the captured frame are the whole
+ *    difference between a tool that usually works and one that always does.
  */
 import Lens from './Lens.astro';
 ---
@@ -23,6 +34,30 @@ import Lens from './Lens.astro';
     tab — no frame is uploaded, and nothing is kept when you leave.
   </p>
 
+  <!-- First run. Static HTML, so it is on screen before any script has run and
+       the page is never a heading above an empty rectangle. -->
+  <div class="scan__intro" data-scan-intro>
+    <ol class="scan__steps">
+      <li>
+        <b>Point at the page.</b> A live outline follows the sheet of paper, so the crop is
+        something you watch rather than something you discover afterwards.
+      </li>
+      <li>
+        <b>Check every shot.</b> Open any page to see it big — drag its corners onto the paper,
+        turn it, reshoot it, or drop it. Nothing is final until you say so.
+      </li>
+      <li>
+        <b>Build the PDF here.</b> Straightened, evened out, and saved to your device by the same
+        browser tab you are reading this in.
+      </li>
+    </ol>
+    <p class="scan__creed">
+      There is no upload step to opt out of and no account to delete. The code that finds the page
+      and writes the PDF is the code already running in this tab; the camera indicator goes out the
+      moment you turn it off, leave, or switch to another tab.
+    </p>
+  </div>
+
   <!-- Nothing here needs a camera until it is asked for: the permission prompt
        fires on the button, not on page load, which is the difference between a
        tool and something that feels like it is watching. -->
@@ -32,6 +67,13 @@ import Lens from './Lens.astro';
       Your browser will ask first. Nothing starts until you allow it.
     </p>
   </Lens>
+
+  <!-- Lives outside the stage: a retake can be asked for while the camera is
+       off, and the request has to survive turning it back on. -->
+  <p class="scan__retake" data-scan-retake hidden>
+    <span data-scan-retake-label></span>
+    <button class="scan__act" data-scan-retake-cancel type="button">Keep the shot I have</button>
+  </p>
 
   <div class="scan__stage" data-scan-stage hidden>
     <div class="scan__viewport">
@@ -55,16 +97,66 @@ import Lens from './Lens.astro';
   <div class="scan__shots" data-scan-shots hidden>
     <div class="scan__shots-head">
       <h2 class="scan__shots-title" data-scan-count></h2>
-      <button class="btn btn--quiet" data-scan-clear type="button">Discard all</button>
+      <button class="scan__act" data-scan-clear type="button">Discard all</button>
     </div>
     <ol class="scan__list" data-scan-list></ol>
+    <p class="scan__listhint">
+      Open a page to check it full size, drag its corners onto the paper, turn it, reshoot it or
+      drop it. The arrows put the pages in the order you want them bound.
+    </p>
 
     <fieldset class="scan__options">
-      <legend class="sr-only">Output options</legend>
-      <label class="scan__toggle">
-        <input type="checkbox" data-scan-enhance checked />
-        <span>Clean up the page — straighten, sharpen, even out the lighting</span>
-      </label>
+      <legend class="scan__legend">How should the pages come out?</legend>
+
+      <div class="scan__modes">
+        <label class="scan__mode">
+          <input type="radio" name="scan-finish" value="text" data-scan-finish checked />
+          <span class="scan__mode-body">
+            <span class="scan__mode-name">Text</span>
+            <span class="scan__mode-note">
+              Black on white. Sharpest for typed or handwritten pages, and much the smallest file.
+            </span>
+          </span>
+        </label>
+
+        <label class="scan__mode">
+          <input type="radio" name="scan-finish" value="grey" data-scan-finish />
+          <span class="scan__mode-body">
+            <span class="scan__mode-name">Greyscale</span>
+            <span class="scan__mode-note">
+              Keeps the shading. For pages with a photograph, a shaded diagram or a stamp on them.
+            </span>
+          </span>
+        </label>
+
+        <label class="scan__mode">
+          <input type="radio" name="scan-finish" value="colour" data-scan-finish />
+          <span class="scan__mode-body">
+            <span class="scan__mode-name">Colour</span>
+            <span class="scan__mode-note">
+              Keeps the colour. For logos, highlighter, coloured forms and receipts.
+            </span>
+          </span>
+        </label>
+
+        <label class="scan__mode">
+          <input type="radio" name="scan-finish" value="photo" data-scan-finish />
+          <span class="scan__mode-body">
+            <span class="scan__mode-name">Photo, unchanged</span>
+            <span class="scan__mode-note">
+              No cropping, no straightening, no clean-up — the frames exactly as the camera took
+              them.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <p class="scan__note">
+        Text thresholds every pixel to black or white, so a photograph or a coloured logo comes out
+        as a flat black shape. If a page looks like that in the previews, Greyscale or Colour is
+        the fix.
+      </p>
+
       <label class="scan__toggle">
         <input type="checkbox" data-scan-searchable />
         <span>Make the text searchable (runs recognition here; adds time)</span>
@@ -84,6 +176,66 @@ import Lens from './Lens.astro';
   </section>
 
   <p class="error" data-error hidden role="alert"></p>
+
+  <!--
+    Per-page review. Authored here rather than built by the script on purpose:
+    a <dialog> in the markup gets Astro's scoped styles, native focus trapping
+    and Escape for free, and the four corner handles are real focusable buttons
+    from the first paint rather than nodes a stylesheet cannot reach.
+  -->
+  <dialog class="scan__review" data-scan-review aria-labelledby="scan-review-title">
+    <div class="scan__review-inner">
+      <header class="scan__review-head">
+        <h2 class="scan__review-title" id="scan-review-title" data-review-title>Page</h2>
+        <button class="btn btn--primary scan__done" data-review-close type="button">Done</button>
+      </header>
+
+      <div class="scan__panes">
+        <div class="scan__editor" data-review-editor>
+          <img class="scan__editor-frame" data-review-frame alt="" decoding="async" />
+          <svg
+            class="scan__editor-quad"
+            data-review-quad
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            <polygon data-review-poly points="0,0 100,0 100,100 0,100"></polygon>
+          </svg>
+
+          <button class="scan__handle" data-review-handle="0" type="button" aria-describedby="scan-review-help"></button>
+          <button class="scan__handle" data-review-handle="1" type="button" aria-describedby="scan-review-help"></button>
+          <button class="scan__handle" data-review-handle="2" type="button" aria-describedby="scan-review-help"></button>
+          <button class="scan__handle" data-review-handle="3" type="button" aria-describedby="scan-review-help"></button>
+
+          <!-- A thumb covers exactly the pixel it is aiming at, so the corner
+               under it is drawn again, larger, somewhere the thumb is not. -->
+          <canvas class="scan__loupe" data-review-loupe width="136" height="136" aria-hidden="true" hidden></canvas>
+        </div>
+
+        <figure class="scan__proof">
+          <img class="scan__proof-img" data-review-proof alt="" decoding="async" />
+          <figcaption class="scan__proof-note" data-review-proofnote></figcaption>
+        </figure>
+      </div>
+
+      <p class="scan__help" id="scan-review-help">
+        Drag a corner onto the paper, or move focus to one and nudge it with the arrow keys — hold
+        Shift to move ten times as far.
+      </p>
+      <p class="scan__readout" data-review-readout role="status" aria-live="polite"></p>
+
+      <div class="scan__review-actions">
+        <button class="scan__act" data-review-whole type="button">Use the whole frame</button>
+        <button class="scan__act" data-review-detect type="button">Find the page again</button>
+        <button class="scan__act" data-review-rotate type="button">Rotate right</button>
+        <button class="scan__act" data-review-earlier type="button">Move earlier</button>
+        <button class="scan__act" data-review-later type="button">Move later</button>
+        <button class="scan__act" data-review-retake type="button">Retake this page</button>
+        <button class="scan__act scan__act--warn" data-review-delete type="button">Remove this page</button>
+      </div>
+    </div>
+  </dialog>
 </section>
 
 <style>
@@ -115,6 +267,39 @@ import Lens from './Lens.astro';
     max-width: 34rem;
   }
 
+  /* ---- first run ------------------------------------------------------ */
+
+  .scan__intro {
+    display: grid;
+    gap: 0.9rem;
+    border-left: 2px solid var(--line);
+    padding-left: clamp(0.9rem, 0.6rem + 1vw, 1.4rem);
+  }
+
+  .scan__steps {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.55rem;
+    color: var(--ink-2);
+    font-size: var(--step--1);
+    line-height: 1.55;
+    max-width: 40rem;
+  }
+
+  .scan__steps b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .scan__creed {
+    margin: 0;
+    max-width: 40rem;
+    font-size: var(--step--1);
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
   .scan__start {
     display: grid;
     gap: 0.6rem;
@@ -127,6 +312,23 @@ import Lens from './Lens.astro';
     margin: 0;
     font-size: var(--step--1);
     color: var(--muted);
+  }
+
+  /* ---- the stage ------------------------------------------------------ */
+
+  .scan__retake {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.9rem;
+    margin: 0;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--disclose);
+    border-radius: calc(var(--radius) * 0.5);
+    background: var(--paper-raised);
+    font-size: var(--step--1);
+    color: var(--ink-2);
   }
 
   .scan__viewport {
@@ -182,6 +384,8 @@ import Lens from './Lens.astro';
     color: var(--ink-2);
   }
 
+  /* ---- the captured pages --------------------------------------------- */
+
   .scan__shots-head {
     display: flex;
     justify-content: space-between;
@@ -199,53 +403,328 @@ import Lens from './Lens.astro';
     margin: 0.75rem 0 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
     gap: 0.75rem;
   }
 
-  .scan__shot {
-    position: relative;
-    border: 1px solid var(--line);
-    border-radius: calc(var(--radius) * 0.6);
-    overflow: hidden;
-    background: var(--paper-raised);
-  }
-
-  .scan__shot img {
-    display: block;
-    width: 100%;
-    height: auto;
-  }
-
-  .scan__shot figcaption {
+  .scan__listhint {
+    margin: 0.6rem 0 0;
     font-size: var(--step--2);
     color: var(--muted);
-    padding: 0.25rem 0.4rem;
-    display: flex;
-    justify-content: space-between;
-    gap: 0.3rem;
+    max-width: 38rem;
   }
 
-  .scan__drop {
-    border: 0;
-    background: transparent;
-    color: var(--seal);
-    cursor: pointer;
-    font: inherit;
-    font-size: var(--step--2);
-    padding: 0;
-  }
+  /* ---- finish selector ------------------------------------------------- */
 
   .scan__options {
     border: 0;
     padding: 0;
-    margin: 1rem 0 0;
+    margin: 1.25rem 0 0;
     display: grid;
+    gap: 0.7rem;
+  }
+
+  .scan__legend {
+    padding: 0;
+    font-size: var(--step-0);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .scan__modes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
     gap: 0.5rem;
+  }
+
+  .scan__mode {
+    display: flex;
+    gap: 0.55rem;
+    align-items: start;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 0.5);
+    background: var(--paper-raised);
+    cursor: pointer;
+  }
+
+  .scan__mode:hover {
+    border-color: var(--line-strong);
+  }
+
+  /* :has is the whole point of the card — the checked input decides the
+     surface, and there is no JS in this file keeping a class in step. */
+  .scan__mode:has(input:checked) {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+
+  .scan__mode:has(input:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .scan__mode input {
+    margin-top: 0.2rem;
+    accent-color: var(--accent);
+    flex: none;
+  }
+
+  .scan__mode-body {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .scan__mode-name {
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .scan__mode-note {
+    font-size: var(--step--2);
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .scan__note {
+    margin: 0;
+    font-size: var(--step--2);
+    line-height: 1.5;
+    color: var(--muted);
+    max-width: 40rem;
   }
 
   .scan__actions {
     margin-top: 1rem;
+  }
+
+  /* ---- a small, quiet button --------------------------------------------
+     Not .btn: these sit in rows of six and .btn is sized for one decision. */
+
+  .scan__act {
+    font: inherit;
+    font-size: var(--step--2);
+    color: var(--ink);
+    background: var(--paper-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    padding: 0.45rem 0.85rem;
+    min-height: 2.2rem;
+    cursor: pointer;
+  }
+
+  .scan__act:hover {
+    border-color: var(--ink-2);
+  }
+
+  .scan__act:disabled {
+    color: var(--muted);
+    border-color: var(--line);
+    cursor: default;
+  }
+
+  .scan__act--warn {
+    color: var(--seal);
+  }
+
+  /* ---- the review dialog ----------------------------------------------- */
+
+  .scan__review {
+    width: min(60rem, calc(100vw - 1.5rem));
+    max-width: none;
+    max-height: min(94dvh, 94vh);
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--paper-raised);
+    color: var(--ink);
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+
+  .scan__review::backdrop {
+    background: rgb(0 0 0 / 0.55);
+    backdrop-filter: blur(2px);
+  }
+
+  .scan__review-inner {
+    display: grid;
+    gap: 0.8rem;
+    padding: clamp(0.8rem, 0.6rem + 1vw, 1.25rem);
+  }
+
+  .scan__review-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .scan__review-title {
+    margin: 0;
+    font-size: var(--step-1);
+  }
+
+  .scan__done {
+    padding: 0.5rem 1.1rem;
+    font-size: var(--step--1);
+  }
+
+  .scan__panes {
+    display: grid;
+    gap: 0.8rem;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  @media (max-width: 48em) {
+    .scan__panes {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* The editor is a plain positioned box. The picture inside it is placed in
+     pixels by the script — object-fit would letterbox it somewhere the corner
+     handles cannot be told about, and the handles must land on the paper. */
+  .scan__editor {
+    position: relative;
+    height: clamp(15rem, 46vh, 32rem);
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 0.5);
+    background: var(--paper-sunk);
+    overflow: hidden;
+  }
+
+  /* Zero until the script has measured the box: for one frame otherwise the
+     picture is drawn at its own 4000 px and the editor is a crop of a corner. */
+  .scan__editor-frame {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: block;
+    width: 0;
+    height: 0;
+    max-width: none;
+  }
+
+  .scan__editor-quad {
+    position: absolute;
+    left: 0;
+    top: 0;
+    pointer-events: none;
+    overflow: visible;
+    max-width: none;
+  }
+
+  .scan__editor-quad polygon {
+    fill: rgb(255 255 255 / 0.14);
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    /* The viewBox is stretched to the picture's aspect, so without this the
+       stroke is stretched with it and one pair of sides draws thicker. */
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* 44px of target for a thumb, 20px of dot for the eye. */
+  .scan__handle {
+    position: absolute;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: grab;
+    /* Without this the browser claims the gesture for a scroll and the corner
+       stops following the finger halfway through the drag. */
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .scan__handle::before {
+    content: '';
+    position: absolute;
+    inset: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow:
+      0 0 0 3px var(--paper-raised),
+      0 1px 4px rgb(0 0 0 / 0.35);
+  }
+
+  .scan__handle:active {
+    cursor: grabbing;
+  }
+
+  .scan__handle:focus-visible {
+    outline: none;
+  }
+
+  .scan__handle:focus-visible::before {
+    inset: 9px;
+    box-shadow:
+      0 0 0 3px var(--paper-raised),
+      0 0 0 6px var(--accent);
+  }
+
+  .scan__handle[disabled] {
+    display: none;
+  }
+
+  .scan__loupe {
+    position: absolute;
+    width: 136px;
+    height: 136px;
+    border-radius: 50%;
+    border: 2px solid var(--paper-raised);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+    pointer-events: none;
+    background: var(--paper-sunk);
+  }
+
+  .scan__proof {
+    margin: 0;
+    display: grid;
+    gap: 0.4rem;
+    align-content: start;
+  }
+
+  .scan__proof-img {
+    display: block;
+    width: 100%;
+    height: clamp(11rem, 34vh, 24rem);
+    object-fit: contain;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 0.5);
+    background: var(--paper-sunk);
+  }
+
+  .scan__proof-note {
+    font-size: var(--step--2);
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .scan__help,
+  .scan__readout {
+    margin: 0;
+    font-size: var(--step--2);
+    color: var(--muted);
+  }
+
+  .scan__readout {
+    font-variant-numeric: tabular-nums;
+    min-height: 1.2em;
+  }
+
+  .scan__review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
   }
 
   /* Defined locally: .sr-only is scoped inside PdfTool and does not reach here. */
@@ -268,8 +747,9 @@ import Lens from './Lens.astro';
    *
    * The division of labour is deliberate. Everything that touches pixels for
    * real — detection, unwarping, enhancement, PDF assembly — is `lib/pdf/scan.ts`
-   * running in the worker. This file owns the camera, the viewfinder outline and
-   * the list of shots, and nothing else. Two consequences worth stating up front:
+   * running in the worker. This file owns the camera, the viewfinder outline,
+   * the list of shots and the geometry the user can correct, and nothing else.
+   * Three consequences worth stating up front:
    *
    *  - A shot is kept as the JPEG the camera produced, not as a processed
    *    bitmap. scan.ts is built to take encoded bytes for exactly this reason:
@@ -281,12 +761,201 @@ import Lens from './Lens.astro';
    *    when the PDF is built. A thumbnail can therefore disagree with the final
    *    page on a marginal frame, and the caption says which of the two found a
    *    page edge rather than pretending they always agree.
+   *  - Corners the user has set are the one thing the worker must not re-guess,
+   *    so they travel with the request as `quads` — fractions of each frame, not
+   *    pixels, so no resampling step can shift them. A quad is sent only for a
+   *    page somebody actually adjusted; the rest are `null` and the worker
+   *    detects them at its own, higher, resolution.
    *
    * Nothing here uploads, records or stores a frame. The only bytes that leave
    * this module go to the worker, which is the same tab.
    */
-  import type { ImageLike, Quad, ScanMode } from '../lib/pdf/scan';
+  import type { ImageLike, Point, Quad, ScanMode } from '../lib/pdf/scan';
   import type { OutputFile, WorkerRequest, WorkerResponse } from '../lib/pdf/types';
+
+  /* ================================================================== *
+   * Pure geometry — no DOM, no canvas, no state.
+   *
+   * Everything the corner editor gets wrong if it is wrong lives here, in
+   * functions that can be run outside a browser: where the picture sits inside
+   * its box, how a pointer position becomes a fraction of that picture, which
+   * quadrilaterals are worth accepting, and what a quarter-turn does to a set
+   * of corners. Kept together at the top of the module so the whole lot can be
+   * exercised in node.
+   * ================================================================== */
+
+  /** Corners as fractions of their own frame: 0–1 across, 0–1 down. */
+  type Corners = Quad;
+
+  /** Where a picture lands when it is letterboxed into a box, in box pixels. */
+  interface Fit {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    /** Box pixels per source pixel. */
+    scale: number;
+  }
+
+  const clamp = (n: number, low: number, high: number): number =>
+    n < low ? low : n > high ? high : n;
+
+  const clamp01 = (n: number): number => clamp(n, 0, 1);
+
+  /**
+   * `object-fit: contain`, done in numbers so the handles can be told about it.
+   *
+   * The editor shows the frame as shot — some frames are portrait, some
+   * landscape, the box is neither — so the picture is letterbox-fitted and the
+   * bars are dead space. A corner dropped in the bar is not a corner of the
+   * page, and every mapping below runs through this one rectangle so there is
+   * only one place for that to be wrong.
+   */
+  function fitBox(boxWidth: number, boxHeight: number, srcWidth: number, srcHeight: number): Fit {
+    if (!(srcWidth > 0) || !(srcHeight > 0) || !(boxWidth > 0) || !(boxHeight > 0)) {
+      return { x: 0, y: 0, w: 0, h: 0, scale: 0 };
+    }
+    const scale = Math.min(boxWidth / srcWidth, boxHeight / srcHeight);
+    const w = srcWidth * scale;
+    const h = srcHeight * scale;
+    return { x: (boxWidth - w) / 2, y: (boxHeight - h) / 2, w, h, scale };
+  }
+
+  /** A point in the editor's box → the same point as a fraction of the picture. */
+  function toFraction(fit: Fit, x: number, y: number): Point {
+    if (fit.w <= 0 || fit.h <= 0) return { x: 0, y: 0 };
+    return { x: clamp01((x - fit.x) / fit.w), y: clamp01((y - fit.y) / fit.h) };
+  }
+
+  /** …and back, which is where the handles and the loupe are put. */
+  function toBoxPoint(fit: Fit, point: Point): Point {
+    return { x: fit.x + point.x * fit.w, y: fit.y + point.y * fit.h };
+  }
+
+  const WHOLE_FRAME: Corners = [
+    { x: 0, y: 0 },
+    { x: 1, y: 0 },
+    { x: 1, y: 1 },
+    { x: 0, y: 1 },
+  ];
+
+  const cross = (o: Point, a: Point, b: Point): number =>
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+
+  const areaOf = (quad: Corners): number => {
+    let sum = 0;
+    for (let i = 0; i < 4; i += 1) {
+      const a = quad[i];
+      const b = quad[(i + 1) % 4];
+      sum += a.x * b.y - b.x * a.y;
+    }
+    return Math.abs(sum) / 2;
+  };
+
+  /** A side shorter than this is a corner that has been dragged onto another. */
+  const MIN_SIDE = 0.04;
+  /** Below this the "page" is a sliver and the unwarp output is unreadable. */
+  const MIN_AREA = 0.02;
+
+  /**
+   * Is this still a page-shaped quadrilateral?
+   *
+   * A sheet of paper photographed through a lens is convex, in bounds and not
+   * degenerate. Rejecting a drag that breaks any of those — rather than letting
+   * it through and handing the homography a bow-tie — is why dragging a corner
+   * past its neighbour leaves the corner where it was instead of turning the
+   * page inside out.
+   */
+  function quadOk(quad: Corners): boolean {
+    let sign = 0;
+    for (let i = 0; i < 4; i += 1) {
+      const current = quad[i];
+      if (!(current.x >= 0 && current.x <= 1 && current.y >= 0 && current.y <= 1)) return false;
+
+      const previous = quad[(i + 3) % 4];
+      const next = quad[(i + 1) % 4];
+
+      const turn = cross(previous, current, next);
+      if (turn === 0) return false;
+      const way = turn > 0 ? 1 : -1;
+      if (sign === 0) sign = way;
+      else if (sign !== way) return false;
+
+      if (Math.hypot(next.x - current.x, next.y - current.y) < MIN_SIDE) return false;
+    }
+    return areaOf(quad) >= MIN_AREA;
+  }
+
+  /** Replace one corner, or keep the quad as it was if that would break it. */
+  function withCorner(quad: Corners, index: number, point: Point): Corners {
+    const next = quad.slice() as Point[];
+    next[index] = { x: clamp01(point.x), y: clamp01(point.y) };
+    const candidate = next as unknown as Corners;
+    return quadOk(candidate) ? candidate : quad;
+  }
+
+  /**
+   * The same corners after the picture is turned a quarter-turn clockwise.
+   *
+   * Two things move at once and it is easy to do only one. Each point rotates
+   * — (x, y) becomes (1 − y, x) — and the ORDER rotates with it, because the
+   * array is defined as clockwise from the top-left and after the turn the old
+   * bottom-left corner is the one at the top left.
+   */
+  function rotateCornersCW(quad: Corners): Corners {
+    const turn = (point: Point): Point => ({ x: 1 - point.y, y: point.x });
+    return [turn(quad[3]), turn(quad[0]), turn(quad[1]), turn(quad[2])] as Corners;
+  }
+
+  /** Frame pixels → fractions, and back. The engine works in pixels. */
+  const toFractions = (quad: Quad, width: number, height: number): Corners =>
+    [
+      { x: clamp01(quad[0].x / width), y: clamp01(quad[0].y / height) },
+      { x: clamp01(quad[1].x / width), y: clamp01(quad[1].y / height) },
+      { x: clamp01(quad[2].x / width), y: clamp01(quad[2].y / height) },
+      { x: clamp01(quad[3].x / width), y: clamp01(quad[3].y / height) },
+    ] as Corners;
+
+  const toPixels = (quad: Corners, width: number, height: number): Quad =>
+    [
+      { x: quad[0].x * width, y: quad[0].y * height },
+      { x: quad[1].x * width, y: quad[1].y * height },
+      { x: quad[2].x * width, y: quad[2].y * height },
+      { x: quad[3].x * width, y: quad[3].y * height },
+    ] as Quad;
+
+  /** Move one item of a list to another index. Used by the page reorder. */
+  function moveItem<T>(items: readonly T[], from: number, to: number): T[] {
+    const out = items.slice();
+    if (from < 0 || from >= out.length || to < 0 || to >= out.length || from === to) return out;
+    const [item] = out.splice(from, 1);
+    out.splice(to, 0, item);
+    return out;
+  }
+
+  /**
+   * Where to park the loupe so the hand holding the phone is not in front of it.
+   *
+   * Above the corner by preference, flipped below when the corner is near the
+   * top of the frame, and always inside the editor.
+   */
+  function loupeSpot(
+    handleX: number,
+    handleY: number,
+    boxWidth: number,
+    boxHeight: number,
+    size: number,
+    gap: number
+  ): Point {
+    const above = handleY - gap - size;
+    const y = above >= 0 ? above : handleY + gap;
+    return {
+      x: clamp(handleX - size / 2, 0, Math.max(0, boxWidth - size)),
+      y: clamp(y, 0, Math.max(0, boxHeight - size)),
+    };
+  }
+
+  /* ================= end pure geometry ================= */
 
   const root = document.querySelector<HTMLElement>('[data-scan]');
 
@@ -300,6 +969,7 @@ import Lens from './Lens.astro';
       root.querySelector<HTMLElement>('[data-scan-start]') ?? q<HTMLElement>('.scan__start');
     const hint = startBlock.querySelector<HTMLElement>('.scan__hint');
     const hintText = hint?.textContent ?? '';
+    const intro = q('[data-scan-intro]');
     const openBtn = q<HTMLButtonElement>('[data-scan-open]');
     const stage = q('[data-scan-stage]');
     const video = q<HTMLVideoElement>('[data-scan-video]');
@@ -309,14 +979,41 @@ import Lens from './Lens.astro';
     const autoBox = q<HTMLInputElement>('[data-scan-auto]');
     const stopBtn = q<HTMLButtonElement>('[data-scan-stop]');
 
+    const retakeBar = q('[data-scan-retake]');
+    const retakeLabel = q('[data-scan-retake-label]');
+    const retakeCancel = q<HTMLButtonElement>('[data-scan-retake-cancel]');
+
     const shotsBlock = q('[data-scan-shots]');
     const countEl = q('[data-scan-count]');
     const clearBtn = q<HTMLButtonElement>('[data-scan-clear]');
     const list = q<HTMLOListElement>('[data-scan-list]');
-    const enhanceBox = q<HTMLInputElement>('[data-scan-enhance]');
+    const finishInputs = Array.from(
+      root.querySelectorAll<HTMLInputElement>('[data-scan-finish]')
+    );
     const searchableBox = q<HTMLInputElement>('[data-scan-searchable]');
     const runBtn = q<HTMLButtonElement>('[data-scan-run]');
     const progress = q('[data-scan-progress]');
+
+    const review = q<HTMLDialogElement>('[data-scan-review]');
+    const reviewTitle = q('[data-review-title]');
+    const reviewClose = q<HTMLButtonElement>('[data-review-close]');
+    const editor = q('[data-review-editor]');
+    const frameImg = q<HTMLImageElement>('[data-review-frame]');
+    // Not via `q`: its constraint is HTMLElement, and an <svg> is not one.
+    const quadSvg = root.querySelector<SVGSVGElement>('[data-review-quad]')!;
+    const quadPoly = root.querySelector<SVGPolygonElement>('[data-review-poly]')!;
+    const handles = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-review-handle]'));
+    const loupe = q<HTMLCanvasElement>('[data-review-loupe]');
+    const proofImg = q<HTMLImageElement>('[data-review-proof]');
+    const proofNote = q('[data-review-proofnote]');
+    const readout = q('[data-review-readout]');
+    const wholeBtn = q<HTMLButtonElement>('[data-review-whole]');
+    const detectBtn = q<HTMLButtonElement>('[data-review-detect]');
+    const rotateBtn = q<HTMLButtonElement>('[data-review-rotate]');
+    const earlierBtn = q<HTMLButtonElement>('[data-review-earlier]');
+    const laterBtn = q<HTMLButtonElement>('[data-review-later]');
+    const retakeBtn = q<HTMLButtonElement>('[data-review-retake]');
+    const deleteBtn = q<HTMLButtonElement>('[data-review-delete]');
 
     const result = q('[data-result]');
     const notesEl = q('[data-notes]');
@@ -345,6 +1042,25 @@ import Lens from './Lens.astro';
 
     /** Thumbnail rehearsal size. Big enough to see the crop, small enough to be free. */
     const PREVIEW_EDGE = 560;
+
+    /**
+     * "Find the page again" analyses this much of the frame.
+     *
+     * Twice the rehearsal's resolution, because this one is asked for: somebody
+     * has looked at a bad crop and pressed a button, so a hundred milliseconds
+     * of main thread is a fair price for the detector's best answer rather than
+     * its cheapest.
+     */
+    const DETECT_EDGE = 1024;
+
+    /** The loupe: its diameter, how far it stands off the finger, what it shows. */
+    const LOUPE_SIZE = 136;
+    const LOUPE_GAP = 26;
+    /** Box pixels across the magnified circle — about 4× at the default size. */
+    const LOUPE_SPAN = 34;
+
+    /** Arrow-key nudge, in editor pixels. Shift multiplies it by ten. */
+    const NUDGE = 1;
 
     /**
      * Auto-capture rule, stated once here so it is not folded out of the code:
@@ -521,7 +1237,11 @@ import Lens from './Lens.astro';
         pickerBtn.className = 'btn btn--quiet scan__picker';
         pickerBtn.addEventListener('click', () => picker?.click());
 
-        startBlock.append(picker, pickerBtn);
+        // Inside the lens BODY, not the lens root. The frost and rim layers
+        // paint above any non-positioned sibling, so appending to the root put
+        // the only way out of a no-camera dead end underneath the glass.
+        const body = startBlock.querySelector('.lens__body') ?? startBlock;
+        body.append(picker, pickerBtn);
       }
       if (pickerBtn) pickerBtn.textContent = label;
     }
@@ -546,7 +1266,21 @@ import Lens from './Lens.astro';
      * deliberately over-subscribed: stopping twice costs nothing, stopping never
      * costs trust.
      */
+    /**
+     * Bumped by every stop, and captured by every start.
+     *
+     * getUserMedia can be waiting on a permission prompt for as long as
+     * someone takes to answer it, and until it resolves `stream` is still
+     * null — so stopCamera had nothing to stop and every teardown guarded on
+     * `stream` was a no-op. Leaving the page mid-prompt therefore armed a
+     * camera that switched on afterwards, attached itself to a video nobody
+     * was looking at, and started polling. On this site of all sites that is
+     * the one bug that must not exist.
+     */
+    let cameraEpoch = 0;
+
     function stopCamera(message = ''): void {
+      cameraEpoch += 1;
       if (loop) cancelAnimationFrame(loop);
       loop = 0;
 
@@ -586,9 +1320,11 @@ import Lens from './Lens.astro';
       // The engine fetch and the permission prompt are independent; run them
       // together so the outline is ready the moment the feed is.
       const engineReady = loadEngine();
+      const epoch = cameraEpoch;
+      let opened: MediaStream;
 
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        opened = await navigator.mediaDevices.getUserMedia({
           video: {
             // `ideal`, never `exact`: a laptop has no rear camera and an `exact`
             // facingMode there is an OverconstrainedError instead of a webcam.
@@ -600,9 +1336,20 @@ import Lens from './Lens.astro';
       } catch (error) {
         openBtn.disabled = false;
         openBtn.textContent = 'Turn on the camera';
-        describeCameraFailure(error);
+        // A refusal that arrives after the user gave up on it is not news.
+        if (epoch === cameraEpoch) describeCameraFailure(error);
         return;
       }
+
+      // The session this belongs to is over — someone stopped the camera, or
+      // left the page, while the permission prompt was still up. Release the
+      // hardware immediately and show nothing.
+      if (epoch !== cameraEpoch) {
+        for (const track of opened.getTracks()) track.stop();
+        return;
+      }
+
+      stream = opened;
 
       // Reveal the stage BEFORE attaching the stream and BEFORE awaiting
       // anything. The video sits inside it, `hidden` resolves to
@@ -613,6 +1360,9 @@ import Lens from './Lens.astro';
       // disabled saying "Waiting for permission…" forever.
       used = true;
       startBlock.hidden = true;
+      // The three steps have happened by the time the feed is up; leaving them
+      // there just pushes the viewfinder down the screen.
+      intro.hidden = true;
       stage.hidden = false;
       openBtn.disabled = false;
       // Put the label back. The start block is hidden now, but it comes back
@@ -635,7 +1385,11 @@ import Lens from './Lens.astro';
         say('Page detection is unavailable, so captures will use the whole frame.');
       });
       if (hint) hint.textContent = hintText;
-      say('Camera on. Nothing is being recorded or uploaded — looking for a page…');
+      say(
+        retakeTarget
+          ? 'Camera on. Line up the page you are reshooting.'
+          : 'Camera on. Nothing is being recorded or uploaded — looking for a page…'
+      );
 
       fitOverlay();
       resetAuto();
@@ -708,17 +1462,11 @@ import Lens from './Lens.astro';
      * moment a tall frame meets a short viewport. Drawing as though the picture
      * filled the element puts the outline in the black bars.
      */
-    function pictureBox(): { x: number; y: number; scale: number } | null {
+    function pictureBox(): Fit | null {
       const vw = video.videoWidth;
       const vh = video.videoHeight;
       if (!vw || !vh || !overlay.width || !overlay.height) return null;
-
-      const scale = Math.min(overlay.width / vw, overlay.height / vh);
-      return {
-        x: (overlay.width - vw * scale) / 2,
-        y: (overlay.height - vh * scale) / 2,
-        scale,
-      };
+      return fitBox(overlay.width, overlay.height, vw, vh);
     }
 
     /** `analysisScale` is analysis pixels per video pixel, so its inverse maps back. */
@@ -735,7 +1483,7 @@ import Lens from './Lens.astro';
       // of the page uses. The literal is only reached if it has not resolved.
       outlineColour ||= getComputedStyle(overlay).getPropertyValue('--accent').trim() || '#e11d48';
 
-      const to = (point: { x: number; y: number }) => ({
+      const to = (point: Point) => ({
         x: box.x + (point.x / analysisScale) * box.scale,
         y: box.y + (point.y / analysisScale) * box.scale,
       });
@@ -768,9 +1516,9 @@ import Lens from './Lens.astro';
      * ---------------------------------------------------------------- */
 
     /** Corners in fractions of the frame's long edge, so the rule is resolution-free. */
-    let steadyQuad: { x: number; y: number }[] | null = null;
+    let steadyQuad: Point[] | null = null;
     let steadySince = 0;
-    let shotQuad: { x: number; y: number }[] | null = null;
+    let shotQuad: Point[] | null = null;
     let lostPolls = 0;
 
     function resetAuto(): void {
@@ -780,7 +1528,7 @@ import Lens from './Lens.astro';
       lostPolls = 0;
     }
 
-    const drift = (a: { x: number; y: number }[], b: { x: number; y: number }[]): number => {
+    const drift = (a: Point[], b: Point[]): number => {
       let worst = 0;
       for (let i = 0; i < 4; i += 1) worst = Math.max(worst, Math.hypot(a[i].x - b[i].x, a[i].y - b[i].y));
       return worst;
@@ -866,54 +1614,91 @@ import Lens from './Lens.astro';
 
     interface Shot {
       id: number;
-      /** The frame as the camera encoded it. This is what the worker gets. */
+      /** The frame as it is encoded now. This is what the worker gets. */
       bytes: ArrayBuffer;
       type: string;
+      /** Pixel size of those bytes. Follows a rotation. */
+      width: number;
+      height: number;
+      /**
+       * The page inside the frame, in fractions of it, or null for "no idea".
+       * Fractions rather than pixels because every stage of this — the 560 px
+       * rehearsal, the editor at whatever size the window happens to be, the
+       * worker's 2600 px working copy — is a different resolution of the same
+       * frame, and a fraction survives all of them unchanged.
+       */
+      quad: Corners | null;
+      /** Did a person put those corners there? Only then are they sent. */
+      manual: boolean;
       /** Preview object URL. Revoked when the shot goes. */
       url: string;
-      /** Did the low-resolution rehearsal find a page edge? */
+      /** Did the rehearsal end up with a page rather than the whole frame? */
       detected: boolean;
       node: HTMLLIElement;
     }
 
     let shots: Shot[] = [];
     let nextId = 1;
+    /** The page the next capture replaces, instead of appending. */
+    let retakeTarget: Shot | null = null;
 
-    /** What the pipeline is asked for, from the one checkbox the markup offers. */
-    const mode = (): ScanMode => 'text';
-    const cleaning = (): boolean => enhanceBox.checked;
+    /** The one control that decides how a page comes out. */
+    type Finish = ScanMode | 'photo';
+
+    const finish = (): Finish => {
+      const chosen = finishInputs.find((input) => input.checked);
+      return (chosen?.value as Finish) ?? 'text';
+    };
+
+    /** `photo` is not a scan mode; it is the absence of one. */
+    const mode = (): ScanMode => {
+      const chosen = finish();
+      return chosen === 'photo' ? 'text' : chosen;
+    };
+
+    const cleaning = (): boolean => finish() !== 'photo';
 
     /**
-     * The rehearsal: detect, unwarp, clean, at thumbnail size.
+     * The rehearsal: crop, unwarp, clean, at thumbnail size.
      *
      * Detection here runs on a 560 px copy where the worker uses 1024, so this
      * is the more pessimistic of the two — it will occasionally miss an edge the
      * real pass finds. That is the right way round for a preview: it never
-     * promises a crop it cannot deliver.
+     * promises a crop it cannot deliver. When corners are handed in, nothing is
+     * detected at all and the preview is exactly the crop that was asked for.
      */
+    /** What a rehearsal produces: the picture, where it decided the page was, and whether it found one. */
+    type Preview = { blob: Blob; quad: Corners | null; detected: boolean };
+
     async function rehearse(
       source: CanvasImageSource,
       width: number,
-      height: number
-    ): Promise<{ blob: Blob; detected: boolean } | null> {
+      height: number,
+      corners: Corners | null
+    ): Promise<Preview | null> {
       const module = engine ?? (await loadEngine());
 
       const image = frameOf(source, width, height, PREVIEW_EDGE);
       if (!image) return null;
 
       if (!cleaning()) {
-        // Cleaning off means the photograph goes into the PDF as it is, so the
-        // preview has to be the photograph as it is.
+        // "Photo, unchanged" means the photograph goes into the PDF as it is,
+        // so the preview has to be the photograph as it is.
         const plain = pad(image.width, image.height);
         if (!plain) return null;
         plain.ctx.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
-        return { blob: await toBlob(plain.canvas, 'image/jpeg', 0.82), detected: false };
+        return { blob: await toBlob(plain.canvas, 'image/jpeg', 0.82), quad: corners, detected: false };
       }
 
       await paint();
 
-      const found = module.detectPageQuad(image);
-      const page = found ? module.unwarp(image, found.quad) : null;
+      let quad = corners;
+      if (!quad) {
+        const found = module.detectPageQuad(image);
+        quad = found ? toFractions(found.quad, image.width, image.height) : null;
+      }
+
+      const page = quad ? module.unwarp(image, toPixels(quad, image.width, image.height)) : null;
       const flat = page ?? image;
 
       await paint();
@@ -930,36 +1715,65 @@ import Lens from './Lens.astro';
       const text = mode() === 'text';
       return {
         blob: await toBlob(surface.canvas, text ? 'image/png' : 'image/jpeg', text ? undefined : 0.82),
+        quad,
         detected: page !== null,
       };
+    }
+
+    /** Detection on its own, at the resolution somebody asking for it deserves. */
+    async function findPage(shot: Shot): Promise<Corners | null> {
+      const module = engine ?? (await loadEngine());
+      const bitmap = await createImageBitmap(new Blob([shot.bytes], { type: shot.type }));
+      try {
+        const image = frameOf(bitmap, bitmap.width, bitmap.height, DETECT_EDGE);
+        if (!image) return null;
+        const found = module.detectPageQuad(image);
+        return found ? toFractions(found.quad, image.width, image.height) : null;
+      } finally {
+        bitmap.close();
+      }
     }
 
     function shotNode(shot: Shot): HTMLLIElement {
       const li = document.createElement('li');
       li.className = 'scan__shot';
 
-      const figure = document.createElement('figure');
+      // The thumbnail IS the button. A page you cannot open is a page you find
+      // out about after the PDF is written, which is the failure this whole
+      // review path exists to stop.
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.className = 'scan__shot-open';
+      open.dataset.scanPage = '';
 
       const img = document.createElement('img');
       img.src = shot.url;
       img.alt = '';
       img.decoding = 'async';
 
-      const caption = document.createElement('figcaption');
+      const badge = document.createElement('span');
+      badge.className = 'scan__shot-badge';
+      badge.dataset.badge = '';
 
-      const label = document.createElement('span');
-      label.dataset.label = '';
+      open.append(img, badge);
+      open.addEventListener('click', () => void openReview(shot));
 
-      const actions = document.createElement('span');
-      actions.className = 'scan__shot-actions';
+      const bar = document.createElement('div');
+      bar.className = 'scan__shot-bar';
 
-      const button = (text: string, title: string, run: () => void): HTMLButtonElement => {
+      const note = document.createElement('span');
+      note.className = 'scan__shot-note';
+      note.dataset.label = '';
+
+      const moves = document.createElement('span');
+      moves.className = 'scan__shot-moves';
+
+      const button = (text: string, run: () => void, move: string): HTMLButtonElement => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'scan__drop';
+        btn.className = 'scan__step';
         btn.textContent = text;
-        btn.title = title;
-        btn.setAttribute('aria-label', title);
+        btn.dataset.move = move;
         btn.addEventListener('click', run);
         return btn;
       };
@@ -968,73 +1782,155 @@ import Lens from './Lens.astro';
       // phone held in one hand: a drag target inside a scrolling grid fights the
       // scroll, and the buttons are reachable by keyboard and screen reader for
       // free, which a pointer drag is not.
-      const earlier = button('←', 'Move this page earlier', () => move(shot, -1, earlier));
-      const later = button('→', 'Move this page later', () => move(shot, 1, later));
-      const remove = button('Remove', 'Remove this page', () => drop(shot));
+      const earlier = button('←', () => move(shot, -1, earlier), '-1');
+      const later = button('→', () => move(shot, 1, later), '1');
+      const remove = button('✕', () => drop(shot), 'drop');
 
-      actions.append(earlier, later, remove);
-      caption.append(label, actions);
-      figure.append(img, caption);
-      li.append(figure);
+      moves.append(earlier, later, remove);
+      bar.append(note, moves);
+      li.append(open, bar);
       return li;
     }
+
+    /** What the caption says about a page, in three words or so. */
+    const shotNote = (shot: Shot): string => {
+      if (!cleaning()) return 'as shot';
+      if (shot.manual) return 'corners set';
+      return shot.detected ? 'edges found' : 'whole frame';
+    };
 
     function render(): void {
       list.replaceChildren(...shots.map((shot) => shot.node));
 
       shots.forEach((shot, index) => {
+        const badge = shot.node.querySelector<HTMLElement>('[data-badge]');
+        if (badge) badge.textContent = String(index + 1);
+
         const label = shot.node.querySelector<HTMLElement>('[data-label]');
-        if (label) {
-          label.textContent = `${index + 1} · ${shot.detected ? 'edges found' : 'whole frame'}`;
+        if (label) label.textContent = shotNote(shot);
+
+        const open = shot.node.querySelector<HTMLButtonElement>('[data-scan-page]');
+        if (open) {
+          open.setAttribute(
+            'aria-label',
+            `Open page ${index + 1} of ${shots.length} to check its corners, turn it, reshoot it or remove it`
+          );
         }
+
         const img = shot.node.querySelector('img');
         if (img) img.alt = `Preview of captured page ${index + 1}`;
+
+        const earlier = shot.node.querySelector<HTMLButtonElement>('[data-move="-1"]');
+        if (earlier) {
+          earlier.disabled = index === 0;
+          earlier.setAttribute('aria-label', `Move page ${index + 1} earlier`);
+        }
+        const later = shot.node.querySelector<HTMLButtonElement>('[data-move="1"]');
+        if (later) {
+          later.disabled = index === shots.length - 1;
+          later.setAttribute('aria-label', `Move page ${index + 1} later`);
+        }
+        const remove = shot.node.querySelector<HTMLButtonElement>('[data-move="drop"]');
+        if (remove) remove.setAttribute('aria-label', `Remove page ${index + 1}`);
       });
 
       const n = shots.length;
       countEl.textContent = n === 0 ? 'No pages yet' : `${n} page${n === 1 ? '' : 's'} captured`;
       shotsBlock.hidden = n === 0;
       runBtn.disabled = n === 0;
+
+      if (reviewing) updateReviewHead();
     }
 
-    function move(shot: Shot, delta: number, focus: HTMLElement): void {
+    function move(shot: Shot, delta: number, focus?: HTMLElement): void {
       const from = shots.indexOf(shot);
-      const to = from + delta;
-      if (from < 0 || to < 0 || to >= shots.length) return;
-      shots.splice(from, 1);
-      shots.splice(to, 0, shot);
+      if (from < 0) return;
+      shots = moveItem(shots, from, from + delta);
       render();
       // replaceChildren detaches and re-inserts, which drops focus. Put it back
       // so a keyboard user can press the same key again.
-      focus.focus();
+      focus?.focus();
     }
 
     function drop(shot: Shot): void {
+      if (reviewing === shot) closeReview();
       URL.revokeObjectURL(shot.url);
       shots = shots.filter((item) => item !== shot);
+      if (retakeTarget === shot) {
+        retakeTarget = null;
+        updateRetakeBar();
+      }
       render();
     }
 
     function discardAll(): void {
+      closeReview();
       for (const shot of shots) URL.revokeObjectURL(shot.url);
       shots = [];
+      retakeTarget = null;
+      updateRetakeBar();
       result.hidden = true;
       render();
     }
 
-    /** One captured frame becomes one shot. Errors are the shot's, not the app's. */
-    async function keep(bytes: ArrayBuffer, type: string, source: CanvasImageSource, width: number, height: number): Promise<void> {
+    /** Hand a freshly rehearsed preview to a shot, thumbnail and all. */
+    function applyPreview(
+      shot: Shot,
+      preview: { blob: Blob; quad: Corners | null; detected: boolean }
+    ): void {
+      URL.revokeObjectURL(shot.url);
+      shot.url = URL.createObjectURL(preview.blob);
+      shot.detected = preview.detected;
+      if (!shot.manual) shot.quad = preview.quad;
+      const img = shot.node.querySelector('img');
+      if (img) img.src = shot.url;
+    }
+
+    /** One captured frame becomes one shot — or replaces the one being retaken. */
+    async function keep(
+      bytes: ArrayBuffer,
+      type: string,
+      source: CanvasImageSource,
+      width: number,
+      height: number
+    ): Promise<void> {
       // A preview that cannot be built is a cosmetic failure. Falling back to
       // the frame itself keeps the capture — throwing away a photograph of
       // someone's passport because the thumbnail would not encode is not a
       // trade this tool gets to make.
-      const preview = await rehearse(source, width, height).catch(() => null);
+      const preview = await rehearse(source, width, height, null).catch(() => null);
       const blob = preview?.blob ?? new Blob([bytes], { type });
+
+      const target = retakeTarget;
+      retakeTarget = null;
+      updateRetakeBar();
+
+      if (target && shots.includes(target)) {
+        URL.revokeObjectURL(target.url);
+        target.bytes = bytes;
+        target.type = type;
+        target.width = width;
+        target.height = height;
+        target.url = URL.createObjectURL(blob);
+        // A retake is a new photograph: the corners of the old one described a
+        // page that is no longer in the frame.
+        target.quad = preview?.quad ?? null;
+        target.manual = false;
+        target.detected = preview?.detected ?? false;
+        const img = target.node.querySelector('img');
+        if (img) img.src = target.url;
+        render();
+        return;
+      }
 
       const shot: Shot = {
         id: nextId++,
         bytes,
         type,
+        width,
+        height,
+        quad: preview?.quad ?? null,
+        manual: false,
         url: URL.createObjectURL(blob),
         detected: preview?.detected ?? false,
         node: document.createElement('li'),
@@ -1060,7 +1956,7 @@ import Lens from './Lens.astro';
         const blob = await toBlob(full.canvas, 'image/jpeg', 0.92);
         const bytes = await blob.arrayBuffer();
 
-        say('Captured.');
+        say(retakeTarget ? 'Replaced.' : 'Captured.');
         await keep(bytes, 'image/jpeg', full.canvas, full.canvas.width, full.canvas.height);
 
         // Release the full-resolution surface; on a phone it is 50 MB of RGBA.
@@ -1104,33 +2000,36 @@ import Lens from './Lens.astro';
     }
 
     /**
-     * Rebuild every thumbnail after the cleaning switch is flipped.
+     * Rebuild thumbnails after the finish is changed, or after one page's
+     * corners are moved.
      *
      * A preview that no longer matches what the button will produce is worse
      * than no preview. Rebuilt one at a time with a frame between each so a
-     * dozen pages does not freeze the page; a second flip cancels the first.
+     * dozen pages does not freeze the page; a second change cancels the first.
      */
     let restyleToken = 0;
 
-    async function restyleShots(): Promise<void> {
-      if (shots.length === 0) return;
+    async function restyleShots(only?: Shot): Promise<void> {
+      const wanted = only ? [only] : shots.slice();
+      if (wanted.length === 0) return;
       const token = ++restyleToken;
-      progress.textContent = 'Updating the previews…';
+      if (!only) progress.textContent = 'Updating the previews…';
 
-      for (const shot of shots.slice()) {
+      for (const shot of wanted) {
         if (token !== restyleToken) return;
         try {
           const bitmap = await createImageBitmap(new Blob([shot.bytes], { type: shot.type }));
-          const preview = await rehearse(bitmap, bitmap.width, bitmap.height);
-          bitmap.close();
+          // finally, not a plain statement: a rehearse that throws would
+          // otherwise pin a full-resolution decoded surface, and this loop runs
+          // once per captured page.
+          let preview: Preview | null = null;
+          try {
+            preview = await rehearse(bitmap, bitmap.width, bitmap.height, shot.quad);
+          } finally {
+            bitmap.close();
+          }
           if (token !== restyleToken) return;
-          if (!preview) continue;
-
-          URL.revokeObjectURL(shot.url);
-          shot.url = URL.createObjectURL(preview.blob);
-          shot.detected = preview.detected;
-          const img = shot.node.querySelector('img');
-          if (img) img.src = shot.url;
+          if (preview) applyPreview(shot, preview);
         } catch {
           // A shot whose preview cannot be rebuilt keeps the old one. The bytes
           // are untouched, so the PDF is unaffected either way.
@@ -1140,13 +2039,336 @@ import Lens from './Lens.astro';
 
       if (token === restyleToken) {
         render();
-        progress.textContent = '';
+        if (!only) progress.textContent = '';
+      }
+    }
+
+    /* ---------------------------------------------------------------- *
+     * Retake
+     * ---------------------------------------------------------------- */
+
+    function updateRetakeBar(): void {
+      const target = retakeTarget;
+      if (!target) {
+        retakeBar.hidden = true;
+        retakeLabel.textContent = '';
+        return;
+      }
+      const number = shots.indexOf(target) + 1;
+      retakeLabel.textContent = `Reshooting page ${number}. The next photo you take replaces it; every other page is kept.`;
+      retakeBar.hidden = false;
+    }
+
+    function startRetake(shot: Shot): void {
+      retakeTarget = shot;
+      closeReview();
+      updateRetakeBar();
+      if (stream) {
+        say('Line up that page again — the next capture replaces it.');
+      } else if (hint) {
+        hint.textContent = 'Turn the camera on to reshoot that page. Everything else is kept.';
+      }
+      (stream ? shootBtn : openBtn).focus();
+    }
+
+    /* ---------------------------------------------------------------- *
+     * Per-page review and the corner editor
+     * ---------------------------------------------------------------- */
+
+    let reviewing: Shot | null = null;
+    /** The working corners. Written straight back to the shot on every change. */
+    let working: Corners = WHOLE_FRAME;
+    let fit: Fit = { x: 0, y: 0, w: 0, h: 0, scale: 0 };
+    let reviewUrl = '';
+    let proofUrl = '';
+    let proofToken = 0;
+    let dragging = -1;
+    let nudgeTimer = 0;
+
+    const CORNER_NAMES = ['Top left', 'Top right', 'Bottom right', 'Bottom left'];
+
+    function updateReviewHead(): void {
+      const shot = reviewing;
+      if (!shot) return;
+      const index = shots.indexOf(shot);
+      reviewTitle.textContent = `Page ${index + 1} of ${shots.length}`;
+      earlierBtn.disabled = index <= 0;
+      laterBtn.disabled = index < 0 || index >= shots.length - 1;
+    }
+
+    /**
+     * "Photo, unchanged" has no geometry to edit — the frame goes in whole —
+     * so the corners are taken away rather than left there doing nothing.
+     */
+    function updateReviewMode(): void {
+      const editable = cleaning();
+      for (const handle of handles) handle.disabled = !editable;
+      // `hidden` as an attribute rather than a property: SVGElement does not
+      // carry the property, and the global [hidden] rule covers both anyway.
+      if (editable) quadSvg.removeAttribute('hidden');
+      else quadSvg.setAttribute('hidden', '');
+      wholeBtn.disabled = !editable;
+      detectBtn.disabled = !editable;
+      loupe.hidden = true;
+    }
+
+    function layoutEditor(): void {
+      const shot = reviewing;
+      if (!shot) return;
+
+      const width = frameImg.naturalWidth || shot.width;
+      const height = frameImg.naturalHeight || shot.height;
+      fit = fitBox(editor.clientWidth, editor.clientHeight, width, height);
+      if (fit.w <= 0) return;
+
+      const px = (n: number): string => `${n}px`;
+      frameImg.style.left = px(fit.x);
+      frameImg.style.top = px(fit.y);
+      frameImg.style.width = px(fit.w);
+      frameImg.style.height = px(fit.h);
+
+      quadSvg.style.left = px(fit.x);
+      quadSvg.style.top = px(fit.y);
+      quadSvg.style.width = px(fit.w);
+      quadSvg.style.height = px(fit.h);
+
+      placeHandles();
+      labelHandles();
+    }
+
+    function placeHandles(): void {
+      // The viewBox is 0–100 in both axes and the aspect is not preserved, so a
+      // fraction is a percentage and no pixel arithmetic is needed here at all.
+      quadPoly.setAttribute(
+        'points',
+        working.map((point) => `${point.x * 100},${point.y * 100}`).join(' ')
+      );
+
+      handles.forEach((handle, index) => {
+        const spot = toBoxPoint(fit, working[index]);
+        handle.style.left = `${spot.x}px`;
+        handle.style.top = `${spot.y}px`;
+      });
+    }
+
+    /**
+     * The labels carry the position, so they are rewritten when the position
+     * has settled — not sixty times a second mid-drag, which is a screen reader
+     * reading a number that has already changed.
+     */
+    function labelHandles(): void {
+      handles.forEach((handle, index) => {
+        handle.setAttribute(
+          'aria-label',
+          `${CORNER_NAMES[index]} corner, ${Math.round(working[index].x * 100)}% across and ${Math.round(working[index].y * 100)}% down. Drag it, or nudge it with the arrow keys.`
+        );
+      });
+    }
+
+    /** Take the corners as the user's own, and show what they produce. */
+    function setCorners(next: Corners, manual: boolean): void {
+      const shot = reviewing;
+      if (!shot) return;
+      working = next;
+      shot.quad = next;
+      shot.manual = manual;
+      placeHandles();
+      // Deliberately no render() here. This runs on every pointermove, and
+      // render() calls replaceChildren over the whole list; the caption that
+      // needs to change ("corners set") is repainted when the drag ends and
+      // the new preview lands, a frame or two later.
+    }
+
+    function moveCorner(index: number, point: Point, announce: boolean): void {
+      const next = withCorner(working, index, point);
+      if (next === working) {
+        // Refused, so say so. A corner that stops dead under the finger with no
+        // explanation reads as a broken drag rather than a guard rail.
+        readout.textContent =
+          'A page cannot fold over itself, so that corner stopped where it was. Move the corner next to it first.';
+        return;
+      }
+      setCorners(next, true);
+      if (announce) {
+        labelHandles();
+        readout.textContent = `${CORNER_NAMES[index]}: ${Math.round(next[index].x * 100)}% across, ${Math.round(next[index].y * 100)}% down.`;
+      }
+    }
+
+    /**
+     * The loupe.
+     *
+     * The source square is clamped to stay inside the frame and the crosshair
+     * is offset by however far it had to move, so a corner dropped in the very
+     * corner of the photograph is still shown under the cross rather than
+     * drifting off-centre as the sample rectangle is clipped.
+     */
+    function showLoupe(index: number): void {
+      const shot = reviewing;
+      const ctx = loupe.getContext('2d');
+      if (!shot || !ctx || !frameImg.naturalWidth || fit.scale <= 0) return;
+
+      const spot = loupeSpot(
+        toBoxPoint(fit, working[index]).x,
+        toBoxPoint(fit, working[index]).y,
+        editor.clientWidth,
+        editor.clientHeight,
+        LOUPE_SIZE,
+        LOUPE_GAP
+      );
+      loupe.style.left = `${spot.x}px`;
+      loupe.style.top = `${spot.y}px`;
+      loupe.hidden = false;
+
+      const span = LOUPE_SPAN / fit.scale;
+      const sx = working[index].x * frameImg.naturalWidth;
+      const sy = working[index].y * frameImg.naturalHeight;
+      const cx = clamp(sx, span / 2, Math.max(span / 2, frameImg.naturalWidth - span / 2));
+      const cy = clamp(sy, span / 2, Math.max(span / 2, frameImg.naturalHeight - span / 2));
+
+      ctx.clearRect(0, 0, LOUPE_SIZE, LOUPE_SIZE);
+      ctx.drawImage(frameImg, cx - span / 2, cy - span / 2, span, span, 0, 0, LOUPE_SIZE, LOUPE_SIZE);
+
+      const zoom = LOUPE_SIZE / span;
+      const markX = LOUPE_SIZE / 2 + (sx - cx) * zoom;
+      const markY = LOUPE_SIZE / 2 + (sy - cy) * zoom;
+
+      outlineColour ||= getComputedStyle(loupe).getPropertyValue('--accent').trim() || '#e11d48';
+      ctx.strokeStyle = outlineColour;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(markX - 14, markY);
+      ctx.lineTo(markX + 14, markY);
+      ctx.moveTo(markX, markY - 14);
+      ctx.lineTo(markX, markY + 14);
+      ctx.stroke();
+    }
+
+    /** Re-unwarp with the corners as they now are, and show the result. */
+    async function refreshProof(): Promise<void> {
+      const shot = reviewing;
+      if (!shot) return;
+      const token = ++proofToken;
+      proofNote.textContent = 'Straightening…';
+
+      try {
+        const bitmap = await createImageBitmap(new Blob([shot.bytes], { type: shot.type }));
+        let preview: Preview | null = null;
+        try {
+          preview = await rehearse(bitmap, bitmap.width, bitmap.height, shot.quad);
+        } finally {
+          bitmap.close();
+        }
+        if (token !== proofToken || reviewing !== shot) return;
+        if (!preview) {
+          proofNote.textContent = 'That page could not be previewed here, but the bytes are fine.';
+          return;
+        }
+
+        if (proofUrl) URL.revokeObjectURL(proofUrl);
+        proofUrl = URL.createObjectURL(preview.blob);
+        proofImg.src = proofUrl;
+        applyPreview(shot, preview);
+        render();
+
+        proofNote.textContent = cleaning()
+          ? 'This is the page as it will go into the PDF. The worker repeats the same crop at full resolution.'
+          : 'Photo, unchanged: the frame goes into the PDF exactly as your camera took it.';
+      } catch {
+        if (token === proofToken) {
+          proofNote.textContent = 'That page could not be previewed here, but the bytes are fine.';
+        }
+      }
+    }
+
+    async function openReview(shot: Shot): Promise<void> {
+      reviewing = shot;
+      working = shot.quad ?? WHOLE_FRAME;
+      readout.textContent = '';
+      proofNote.textContent = '';
+
+      if (reviewUrl) URL.revokeObjectURL(reviewUrl);
+      reviewUrl = URL.createObjectURL(new Blob([shot.bytes], { type: shot.type }));
+      frameImg.src = reviewUrl;
+
+      updateReviewHead();
+      updateReviewMode();
+      if (!review.open) review.showModal();
+
+      try {
+        await frameImg.decode();
+      } catch {
+        // Safari rejects decode() on an image that is swapped mid-flight. The
+        // load listener below covers it; naturalWidth guards the rest.
+      }
+      if (reviewing !== shot) return;
+      layoutEditor();
+      void refreshProof();
+    }
+
+    function closeReview(): void {
+      if (review.open) review.close();
+    }
+
+    function releaseReview(): void {
+      reviewing = null;
+      dragging = -1;
+      loupe.hidden = true;
+      if (nudgeTimer) window.clearTimeout(nudgeTimer);
+      nudgeTimer = 0;
+      frameImg.removeAttribute('src');
+      if (reviewUrl) URL.revokeObjectURL(reviewUrl);
+      reviewUrl = '';
+      if (proofUrl) URL.revokeObjectURL(proofUrl);
+      proofUrl = '';
+      proofImg.removeAttribute('src');
+    }
+
+    /**
+     * Turn the page a quarter-turn.
+     *
+     * The bytes themselves are rotated, not a flag on the shot: the worker takes
+     * `InputFile[]` and has nowhere to carry a per-page rotation, and a
+     * compositor-side drawImage plus one JPEG encode is cheap next to being
+     * wrong. The corners come along — see rotateCornersCW for the half of that
+     * which is easy to forget.
+     */
+    async function rotateShot(shot: Shot): Promise<void> {
+      const bitmap = await createImageBitmap(new Blob([shot.bytes], { type: shot.type }));
+      try {
+        const surface = pad(bitmap.height, bitmap.width);
+        if (!surface) return;
+        surface.ctx.translate(bitmap.height, 0);
+        surface.ctx.rotate(Math.PI / 2);
+        surface.ctx.drawImage(bitmap, 0, 0);
+
+        const blob = await toBlob(surface.canvas, 'image/jpeg', 0.92);
+        shot.bytes = await blob.arrayBuffer();
+        shot.type = 'image/jpeg';
+        shot.width = bitmap.height;
+        shot.height = bitmap.width;
+        if (shot.quad) shot.quad = rotateCornersCW(shot.quad);
+        surface.canvas.width = surface.canvas.height = 1;
+      } finally {
+        bitmap.close();
       }
     }
 
     /* ---------------------------------------------------------------- *
      * Building the PDF
      * ---------------------------------------------------------------- */
+
+    /**
+     * The scan request, plus the one field this UI adds.
+     *
+     * `quads` is per file and aligned with `files`. Each entry is either four
+     * corners as fractions of that frame — clockwise from the top-left, exactly
+     * what `scan.ts` wants once multiplied by the working copy's width and
+     * height — or null, meaning "you find it". Only pages a person adjusted
+     * carry corners; everything else is null so the worker's own detector, which
+     * runs at a higher resolution than anything on this thread, still decides.
+     */
+    type ScanRequest = WorkerRequest & { quads?: (Corners | null)[] };
 
     let worker: Worker | null = null;
     let jobId = 0;
@@ -1225,7 +2447,7 @@ import Lens from './Lens.astro';
       stageOfJob = 'scan';
       scanNotes = [];
 
-      const request: WorkerRequest = clean
+      const request: ScanRequest = clean
         ? {
             id: jobId,
             op: 'scan',
@@ -1235,12 +2457,13 @@ import Lens from './Lens.astro';
             // Forcing A4 would letterbox a receipt and crop nothing usefully.
             pageSize: 'fit',
             detectEdges: true,
+            quads: shots.map((shot) => (shot.manual ? shot.quad : null)),
           }
         : {
-            // Cleaning off is not "scan with the cleaning turned down" — every
-            // scan mode flattens or thresholds. It is "put these photographs in
-            // a PDF", which is a different operation, and the one that keeps the
-            // JPEG bytes verbatim.
+            // "Photo, unchanged" is not "scan with the cleaning turned down" —
+            // every scan mode flattens or thresholds. It is "put these
+            // photographs in a PDF", which is a different operation, and the one
+            // that keeps the JPEG bytes verbatim.
             id: jobId,
             op: 'images-to-pdf',
             files,
@@ -1375,12 +2598,180 @@ import Lens from './Lens.astro';
     shootBtn.addEventListener('click', () => void capture());
     clearBtn.addEventListener('click', discardAll);
     runBtn.addEventListener('click', build);
-    enhanceBox.addEventListener('change', () => void restyleShots());
+
+    for (const input of finishInputs) {
+      input.addEventListener('change', () => {
+        updateReviewMode();
+        void restyleShots().then(() => {
+          if (reviewing) void refreshProof();
+        });
+      });
+    }
+
+    retakeCancel.addEventListener('click', () => {
+      retakeTarget = null;
+      updateRetakeBar();
+    });
 
     autoBox.addEventListener('change', () => {
       resetAuto();
       if (autoBox.checked) say('Hold the page still and it will take itself.');
     });
+
+    /* ---- the corner handles ------------------------------------------ */
+
+    handles.forEach((handle, index) => {
+      handle.addEventListener('pointerdown', (event: PointerEvent) => {
+        if (!reviewing || !cleaning()) return;
+        // Capture on the handle, so a finger that outruns the dot still drives
+        // it and a pointerup outside the editor still ends the drag.
+        handle.setPointerCapture(event.pointerId);
+        dragging = index;
+        event.preventDefault();
+        handle.focus();
+        showLoupe(index);
+      });
+
+      handle.addEventListener('pointermove', (event: PointerEvent) => {
+        if (dragging !== index) return;
+        event.preventDefault();
+        const box = editor.getBoundingClientRect();
+        moveCorner(index, toFraction(fit, event.clientX - box.left, event.clientY - box.top), false);
+        showLoupe(index);
+      });
+
+      const end = (): void => {
+        if (dragging !== index) return;
+        dragging = -1;
+        loupe.hidden = true;
+        labelHandles();
+        render();
+        readout.textContent = `${CORNER_NAMES[index]}: ${Math.round(working[index].x * 100)}% across, ${Math.round(working[index].y * 100)}% down.`;
+        void refreshProof();
+      };
+
+      handle.addEventListener('pointerup', end);
+      handle.addEventListener('pointercancel', end);
+
+      handle.addEventListener('keydown', (event: KeyboardEvent) => {
+        if (!reviewing || fit.w <= 0) return;
+        const step = (event.shiftKey ? 10 : 1) * NUDGE;
+        let dx = 0;
+        let dy = 0;
+        if (event.key === 'ArrowLeft') dx = -step;
+        else if (event.key === 'ArrowRight') dx = step;
+        else if (event.key === 'ArrowUp') dy = -step;
+        else if (event.key === 'ArrowDown') dy = step;
+        else return;
+
+        event.preventDefault();
+        const point = working[index];
+        moveCorner(index, { x: point.x + dx / fit.w, y: point.y + dy / fit.h }, true);
+        showLoupe(index);
+
+        // Re-unwarping on every key press would run the pipeline thirty times
+        // for one held-down arrow. Once the keys stop, once.
+        if (nudgeTimer) window.clearTimeout(nudgeTimer);
+        nudgeTimer = window.setTimeout(() => {
+          loupe.hidden = true;
+          void refreshProof();
+        }, 320);
+      });
+
+      handle.addEventListener('blur', () => {
+        if (dragging !== index) loupe.hidden = true;
+      });
+    });
+
+    /* ---- the review buttons ------------------------------------------ */
+
+    reviewClose.addEventListener('click', () => closeReview());
+    // 'close' fires for Escape too, so there is no 'cancel' listener here.
+    review.addEventListener('close', releaseReview);
+
+    frameImg.addEventListener('load', layoutEditor);
+
+    wholeBtn.addEventListener('click', () => {
+      if (!reviewing) return;
+      setCorners(WHOLE_FRAME, true);
+      readout.textContent = 'Using the whole frame.';
+      void refreshProof();
+    });
+
+    detectBtn.addEventListener('click', () => {
+      const shot = reviewing;
+      if (!shot) return;
+      detectBtn.disabled = true;
+      readout.textContent = 'Looking for the page…';
+      void findPage(shot)
+        .then((found) => {
+          if (reviewing !== shot) return;
+          if (!found) {
+            readout.textContent =
+              'No page edge found in this shot. Drag the corners onto the paper yourself, or use the whole frame.';
+            return;
+          }
+          // Found by the detector, not by a person: leave it re-detectable so
+          // the worker's better pass at full resolution still gets its say.
+          setCorners(found, false);
+          readout.textContent = 'Found a page. Drag any corner that is not on the paper.';
+          void refreshProof();
+        })
+        .catch(() => {
+          readout.textContent = 'Page detection is unavailable here. Set the corners by hand.';
+        })
+        .finally(() => {
+          detectBtn.disabled = !cleaning();
+        });
+    });
+
+    rotateBtn.addEventListener('click', () => {
+      const shot = reviewing;
+      if (!shot) return;
+      rotateBtn.disabled = true;
+      void rotateShot(shot)
+        .then(async () => {
+          if (reviewing !== shot) return;
+          working = shot.quad ?? WHOLE_FRAME;
+          if (reviewUrl) URL.revokeObjectURL(reviewUrl);
+          reviewUrl = URL.createObjectURL(new Blob([shot.bytes], { type: shot.type }));
+          frameImg.src = reviewUrl;
+          try {
+            await frameImg.decode();
+          } catch {
+            // The load listener re-lays out either way.
+          }
+          layoutEditor();
+          void refreshProof();
+        })
+        .catch(() => fail('That page could not be turned. It is unchanged.'))
+        .finally(() => {
+          rotateBtn.disabled = false;
+        });
+    });
+
+    earlierBtn.addEventListener('click', () => {
+      if (reviewing) move(reviewing, -1, earlierBtn);
+    });
+
+    laterBtn.addEventListener('click', () => {
+      if (reviewing) move(reviewing, 1, laterBtn);
+    });
+
+    retakeBtn.addEventListener('click', () => {
+      if (reviewing) startRetake(reviewing);
+    });
+
+    deleteBtn.addEventListener('click', () => {
+      if (reviewing) drop(reviewing);
+    });
+
+    // The editor's box changes with the window, with the phone turning, and
+    // when the dialog first opens; the handles are placed in its pixels.
+    const editorObserver = new ResizeObserver(() => {
+      if (reviewing) layoutEditor();
+    });
+    editorObserver.observe(editor);
 
     // The overlay's pixel size follows the video's box, which changes on rotate,
     // on resize, and when the stream's own dimensions finally arrive.
@@ -1405,6 +2796,8 @@ import Lens from './Lens.astro';
     // Harmless without view transitions; the teardown hook if they are ever on.
     document.addEventListener('astro:before-swap', () => stopCamera());
 
+    updateReviewMode();
+    updateRetakeBar();
     render();
   }
 </script>
@@ -1418,6 +2811,9 @@ import Lens from './Lens.astro';
    * gets that attribute, so the `.scan__shot` rules in the scoped block cannot
    * reach these nodes. Hence `is:global` — every selector here is namespaced
    * under `.scan` so "global" is a mechanism, not a blast radius.
+   *
+   * The review dialog is NOT here: it is written in the markup above and its
+   * styles are scoped like any other authored element.
    */
   .scan .scan__shot {
     position: relative;
@@ -1425,47 +2821,93 @@ import Lens from './Lens.astro';
     border-radius: calc(var(--radius) * 0.6);
     overflow: hidden;
     background: var(--paper-raised);
+    display: grid;
+    grid-template-rows: 1fr auto;
   }
 
-  .scan .scan__shot figure {
-    margin: 0;
+  /* The thumbnail is the way in to the page, so it has to look like one. */
+  .scan .scan__shot-open {
+    position: relative;
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: var(--paper-sunk);
+    cursor: pointer;
   }
 
-  .scan .scan__shot img {
+  .scan .scan__shot-open img {
     display: block;
     width: 100%;
     height: auto;
     background: var(--paper-sunk);
   }
 
-  .scan .scan__shot figcaption {
+  .scan .scan__shot-open:hover img {
+    opacity: 0.92;
+  }
+
+  .scan .scan__shot-open:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .scan .scan__shot-badge {
+    position: absolute;
+    left: 0.35rem;
+    top: 0.35rem;
+    min-width: 1.4rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: 999px;
+    font-size: var(--step--2);
+    font-variant-numeric: tabular-nums;
+    background: rgb(0 0 0 / 0.62);
+    color: #fff;
+  }
+
+  .scan .scan__shot-bar {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.3rem 0.4rem 0.4rem;
+  }
+
+  .scan .scan__shot-note {
     font-size: var(--step--2);
     color: var(--muted);
-    padding: 0.3rem 0.4rem;
+  }
+
+  .scan .scan__shot-moves {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.3rem;
+    gap: 0.25rem;
   }
 
-  .scan .scan__shot-actions {
-    display: inline-flex;
-    gap: 0.35rem;
-  }
-
-  .scan .scan__drop {
-    border: 0;
+  /* 30px is small for a thumb, which is why these are the shortcut and the
+     dialog is the place where a page is actually worked on. */
+  .scan .scan__step {
+    flex: 1;
+    min-height: 30px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
     background: transparent;
-    color: var(--seal);
-    cursor: pointer;
+    color: var(--ink-2);
     font: inherit;
     font-size: var(--step--2);
-    padding: 0.1rem 0.15rem;
-    border-radius: 4px;
+    line-height: 1;
+    cursor: pointer;
   }
 
-  .scan .scan__drop:hover {
+  .scan .scan__step:hover:not(:disabled) {
     background: var(--paper-sunk);
+    color: var(--ink);
+  }
+
+  .scan .scan__step:disabled {
+    color: var(--line-strong);
+    cursor: default;
+  }
+
+  .scan .scan__step:last-child {
+    color: var(--seal);
   }
 
   .scan .scan__picker {

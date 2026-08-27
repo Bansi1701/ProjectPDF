@@ -183,7 +183,8 @@ async function run(request: WorkerRequest): Promise<OpResult> {
         request.files,
         request.scanMode ?? 'text',
         request.pageSize ?? 'fit',
-        request.detectEdges ?? true
+        request.detectEdges ?? true,
+        request.quads ?? []
       );
     case 'compose':
       return compose(
