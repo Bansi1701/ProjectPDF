@@ -94,18 +94,6 @@ export interface GrayscaleOptions {
   jpegQuality?: number;
 }
 
-/** What actually happened, for callers that want more than the summary line. */
-export interface GrayscaleReport {
-  contentStreams: number;
-  colourOperators: number;
-  imagesConverted: number;
-  palettesConverted: number;
-  jpegsReEncoded: number;
-  imagesAlreadyGrey: number;
-  /** Reason → how many times it was hit. Everything left in colour is in here. */
-  leftInColour: Record<string, number>;
-}
-
 const baseName = (name: string): string => name.replace(/\.pdf$/i, '');
 
 /**
@@ -313,19 +301,28 @@ function classify(obj: PDFObject | undefined, doc: PDFDocument, depth = 0): Spac
   }
 }
 
-/** Resolves a name used by `cs`/`CS` or by an image, against a resources dict. */
+/**
+ * Resolves a colour space the way a content stream or an image names one.
+ *
+ * `/DeviceRGB` means itself; `/CS0` means whatever the resources dictionary in
+ * scope says it means. Anything that is not a name — an inline array, a
+ * reference to one — goes straight to the classifier.
+ */
 function spaceFromResources(
   obj: PDFObject | undefined,
   resources: PDFDict | undefined,
   doc: PDFDocument
 ): SpaceKind {
   const asName = nameOf(obj instanceof PDFRef ? doc.context.lookup(obj) : obj);
-  if (asName && !DEVICE_SPACES[asName]) {
-    const table = resources?.lookupMaybe(PDFName.of('ColorSpace'), PDFDict);
-    const entry = table?.lookup(PDFName.of(asName));
-    return classify(entry, doc);
-  }
-  return classify(obj, doc);
+  if (!asName) return classify(obj, doc);
+
+  const device = DEVICE_SPACES[asName];
+  if (device) return device;
+
+  const table = resources?.lookupMaybe(PDFName.of('ColorSpace'), PDFDict);
+  const entry = table?.get(PDFName.of(asName));
+  if (!entry) return { kind: 'other', reason: 'a colour space named by a resource that is missing' };
+  return classify(entry, doc);
 }
 
 /* ------------------------------------------------------------------ *
@@ -337,9 +334,34 @@ interface ColourState {
   kind: SpaceKind['kind'];
   /** True when the space has been swapped for DeviceGray and operands must collapse. */
   converted: boolean;
+  /** False while this is only the DeviceGray the spec starts every stream with. */
+  explicit: boolean;
 }
 
-const GREY_STATE: ColourState = { kind: 'grey', converted: false };
+/**
+ * The colour part of the graphics state as it stands between streams.
+ *
+ * It has to survive between them. A page's /Contents is allowed to be an ARRAY
+ * of streams, and the spec is explicit that they are one stream cut at token
+ * boundaries — so a producer can legally set `/CS0 cs` at the end of one part
+ * and write `0.2 0.4 0.6 scn` at the start of the next. Rewriting each part as
+ * if it began fresh would convert the first and not the second, leaving three
+ * operands aimed at a one-channel space: a page that renders wrong, from a
+ * file that parses fine.
+ */
+interface StreamState {
+  fill: ColourState;
+  stroke: ColourState;
+  stack: ColourState[];
+}
+
+const GREY_STATE: ColourState = { kind: 'grey', converted: false, explicit: false };
+
+const freshState = (): StreamState => ({
+  fill: { ...GREY_STATE },
+  stroke: { ...GREY_STATE },
+  stack: [],
+});
 
 interface Edit {
   start: number;
@@ -349,6 +371,8 @@ interface Edit {
 
 interface RewriteResult {
   text: string;
+  /** The colour state at the end, for the next part of a split content stream. */
+  state: StreamState;
   /** Colour operators actually changed. */
   operators: number;
   inlineImages: number;
@@ -454,18 +478,26 @@ function scanContent(text: string): { tokens: Token[]; inlineImages: number; ok:
  */
 function rewriteColour(
   text: string,
-  lookup: (name: string) => SpaceKind
+  lookup: (name: string) => SpaceKind,
+  carried: StreamState = freshState()
 ): RewriteResult {
   const scan = scanContent(text);
   if (!scan.ok) {
-    return { text, operators: 0, inlineImages: scan.inlineImages, skipped: [], ok: false };
+    return {
+      text,
+      state: carried,
+      operators: 0,
+      inlineImages: scan.inlineImages,
+      skipped: [],
+      ok: false,
+    };
   }
 
   const edits: Edit[] = [];
   const skipped: string[] = [];
-  const stack: ColourState[] = [];
-  let fill: ColourState = { ...GREY_STATE };
-  let stroke: ColourState = { ...GREY_STATE };
+  const stack: ColourState[] = carried.stack;
+  let fill: ColourState = carried.fill;
+  let stroke: ColourState = carried.stroke;
   let operands: Token[] = [];
   let operators = 0;
 
@@ -508,10 +540,10 @@ function rewriteColour(
       }
 
       case 'g':
-        fill = { kind: 'grey', converted: false };
+        fill = { kind: 'grey', converted: false, explicit: true };
         break;
       case 'G':
-        stroke = { kind: 'grey', converted: false };
+        stroke = { kind: 'grey', converted: false, explicit: true };
         break;
 
       case 'rg':
@@ -523,7 +555,7 @@ function rewriteColour(
         }
         const grey = greyOfRgb(values[0], values[1], values[2]);
         collapse(token, values, grey, token.value === 'rg' ? 'g' : 'G');
-        const state: ColourState = { kind: 'rgb', converted: true };
+        const state: ColourState = { kind: 'rgb', converted: true, explicit: true };
         if (token.value === 'rg') fill = state;
         else stroke = state;
         break;
@@ -538,7 +570,7 @@ function rewriteColour(
         }
         const grey = greyOfCmyk(values[0], values[1], values[2], values[3]);
         collapse(token, values, grey, token.value === 'k' ? 'g' : 'G');
-        const state: ColourState = { kind: 'cmyk', converted: true };
+        const state: ColourState = { kind: 'cmyk', converted: true, explicit: true };
         if (token.value === 'k') fill = state;
         else stroke = state;
         break;
@@ -553,14 +585,14 @@ function rewriteColour(
           break;
         }
         const space = lookup(asName);
-        let state: ColourState = { kind: space.kind, converted: false };
+        let state: ColourState = { kind: space.kind, converted: false, explicit: true };
 
         if (space.kind === 'rgb' || space.kind === 'cmyk') {
           // /DeviceGray is one of the three names the spec lets a content
           // stream use without a matching resource entry, so this needs no
           // edit to the page's /Resources.
           edits.push({ start: operand.start, end: operand.end, replacement: '/DeviceGray' });
-          state = { kind: space.kind, converted: true };
+          state = { kind: space.kind, converted: true, explicit: true };
           operators += 1;
         } else if (space.kind === 'other') {
           skipped.push(space.reason);
@@ -588,7 +620,21 @@ function rewriteColour(
       case 'SC':
       case 'SCN': {
         const state = token.value === 'sc' || token.value === 'scn' ? fill : stroke;
-        if (!state.converted) break;
+        if (!state.converted) {
+          // Nothing in this stream set the space, yet three or four numbers
+          // are arriving — which the DeviceGray every stream starts in cannot
+          // take. So the space was set by whatever invoked this form, and a
+          // form inherits the graphics state of its caller. We do not know
+          // what that space was, so the colour stays and is declared.
+          if (
+            !state.explicit &&
+            state.kind === 'grey' &&
+            (operands.length === 3 || operands.length === 4)
+          ) {
+            skipped.push('a colour set in a space this stream inherited from whatever drew it');
+          }
+          break;
+        }
         const count = state.kind === 'cmyk' ? 4 : 3;
         const values = tail(count);
         if (!values) {
@@ -617,8 +663,10 @@ function rewriteColour(
     operands = [];
   }
 
+  const state: StreamState = { fill, stroke, stack };
+
   if (edits.length === 0) {
-    return { text, operators: 0, inlineImages: scan.inlineImages, skipped, ok: true };
+    return { text, state, operators: 0, inlineImages: scan.inlineImages, skipped, ok: true };
   }
 
   let out = '';
@@ -630,7 +678,7 @@ function rewriteColour(
   }
   out += text.slice(cursor);
 
-  return { text: out, operators, inlineImages: scan.inlineImages, skipped, ok: true };
+  return { text: out, state, operators, inlineImages: scan.inlineImages, skipped, ok: true };
 }
 
 /* ------------------------------------------------------------------ *
@@ -856,47 +904,55 @@ class Converter {
   /** Colour-space names resolve against whichever resources dict is in scope. */
   private lookupFor(resources: PDFDict | undefined): (name: string) => SpaceKind {
     return (name) => {
-      const device = DEVICE_SPACES[name];
-      if (device) return device;
-      const table = resources?.lookupMaybe(PDFName.of('ColorSpace'), PDFDict);
-      const entry = table?.get(PDFName.of(name));
-      if (!entry) return { kind: 'other', reason: 'a colour space named by a resource that is missing' };
-      const space = classify(entry, this.doc);
+      const space = spaceFromResources(PDFName.of(name), resources, this.doc);
+      // Seeing an Indexed space named by a `cs` is enough reason to grey its
+      // palette: the operands that follow are indexes and stay valid.
       if (space.kind === 'indexed') this.convertPalette(space.array);
       return space;
     };
   }
 
-  async rewriteStream(ref: PDFRef, resources: PDFDict | undefined): Promise<void> {
+  /**
+   * Rewrites one content stream and reports the colour state it ends in, so a
+   * page whose /Contents is an array can hand it to the next part.
+   */
+  async rewriteStream(
+    ref: PDFRef,
+    resources: PDFDict | undefined,
+    carried?: StreamState
+  ): Promise<StreamState | undefined> {
     const key = ref.toString();
     // A form XObject drawn on two pages is one object. Rewriting it twice
     // would grey the already-grey and, worse, count it twice.
-    if (this.seenStreams.has(key)) return;
+    if (this.seenStreams.has(key)) return carried;
     this.seenStreams.add(key);
 
     const stream = this.doc.context.lookup(ref);
-    if (!(stream instanceof PDFRawStream)) return;
+    if (!(stream instanceof PDFRawStream)) return carried;
 
     let text: string;
     try {
       text = decodeLatin1(decodePDFRawStream(stream).decode());
     } catch {
       this.tally.skip('a content stream this tool could not decode');
-      return;
+      return undefined;
     }
 
-    const result = rewriteColour(text, this.lookupFor(resources));
+    const result = rewriteColour(text, this.lookupFor(resources), carried);
     if (result.inlineImages > 0) this.tally.skip('an inline image', result.inlineImages);
     if (!result.ok) {
       this.tally.skip('a content stream whose inline image data could not be stepped over safely');
-      return;
+      return undefined;
     }
     for (const reason of result.skipped) this.tally.skip(reason);
 
-    if (result.text === text) return;
-    replaceStream(this.doc, ref, encodeLatin1(result.text));
-    this.tally.contentStreams += 1;
-    this.tally.colourOperators += result.operators;
+    if (result.text !== text) {
+      replaceStream(this.doc, ref, encodeLatin1(result.text));
+      this.tally.contentStreams += 1;
+      this.tally.colourOperators += result.operators;
+    }
+
+    return result.state;
   }
 
   /**
@@ -1619,8 +1675,10 @@ export async function grayscale(
         page.node.Resources() ??
         (page.node.getInheritableAttribute(PDFName.of('Resources')) as PDFDict | undefined);
 
+      // One page, one graphics state — even when /Contents is several streams.
+      let carried: StreamState | undefined;
       for (const ref of contentRefs(page.node, doc)) {
-        await converter.rewriteStream(ref, resources);
+        carried = await converter.rewriteStream(ref, resources, carried);
       }
       await converter.walk(resources);
       await converter.walkAnnotations(page.node.Annots(), resources);
@@ -1657,7 +1715,9 @@ export async function grayscale(
       summary: 'Already greyscale',
       unchanged: true,
       notes: [
-        'Nothing in this document was in colour, so you have your original file back, unchanged.',
+        tally.leftInColour.size === 0
+          ? 'Nothing in this document was in colour, so you have your original file back, byte for byte.'
+          : 'Nothing here could be converted that was not already grey, so you have your original file back, byte for byte. What colour is left is the kind this tool will not touch:',
         ...describeSkipped(tally),
       ],
     };
