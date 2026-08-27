@@ -26,7 +26,7 @@
 import Lens from './Lens.astro';
 ---
 
-<section class="scan" data-scan>
+<section class="scan wrap" data-scan>
   <p class="eyebrow">Your camera, your device</p>
   <h1>Scan to PDF</h1>
   <p class="lede">
@@ -34,6 +34,8 @@ import Lens from './Lens.astro';
     tab — no frame is uploaded, and nothing is kept when you leave.
   </p>
 
+  <div class="scan__hero">
+   <div class="scan__pitch">
   <!-- First run. Static HTML, so it is on screen before any script has run and
        the page is never a heading above an empty rectangle. -->
   <div class="scan__intro" data-scan-intro>
@@ -60,13 +62,37 @@ import Lens from './Lens.astro';
 
   <!-- Nothing here needs a camera until it is asked for: the permission prompt
        fires on the button, not on page load, which is the difference between a
-       tool and something that feels like it is watching. -->
-  <Lens variant="loupe" class="scan__start" data-scan-start>
-    <button class="btn btn--primary" data-scan-open type="button">Turn on the camera</button>
-    <p class="scan__hint">
-      Your browser will ask first. Nothing starts until you allow it.
-    </p>
-  </Lens>
+       tool and something that feels like it is watching.
+
+       A plain panel rather than the Lens component. Lens renders its slot
+       inside .lens__body behind two decorative overlay layers, and anything
+       appended to it at runtime lands outside that body and under the frost —
+       which is how the no-camera fallback button became invisible, and how
+       this block's own button ended up sitting outside its glass. A control
+       this important should not be arranged around an ornament. -->
+  <div class="scan__cta" data-scan-start>
+    <button class="btn btn--primary scan__go" data-scan-open type="button">
+      Turn on the camera
+    </button>
+    <p class="scan__hint">Your browser will ask first. Nothing starts until you allow it.</p>
+  </div>
+   </div>
+
+   <!-- The subject of the page, and on a wide screen the reason the right half
+        is not empty. Before the camera is on it shows what it is for; after,
+        the live feed takes the same slot so nothing jumps. -->
+   <div class="scan__side">
+     <div class="scan__idle" data-scan-idle>
+       <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+         <rect x="6" y="12" width="36" height="26" rx="3" />
+         <circle cx="24" cy="25" r="7.5" />
+         <path d="M18 12l2.5-4h7L30 12" stroke-linejoin="round" />
+       </svg>
+       <p>The viewfinder appears here.</p>
+       <p class="scan__idle-note">
+         Point the camera at a page and a live outline follows the paper.
+       </p>
+     </div>
 
   <!-- Lives outside the stage: a retake can be asked for while the camera is
        off, and the request has to survive turning it back on. -->
@@ -92,6 +118,8 @@ import Lens from './Lens.astro';
       </label>
       <button class="btn btn--quiet" data-scan-stop type="button">Turn the camera off</button>
     </div>
+  </div>
+   </div>
   </div>
 
   <div class="scan__shots" data-scan-shots hidden>
@@ -243,7 +271,20 @@ import Lens from './Lens.astro';
     padding-block: clamp(2rem, 1.5rem + 2vw, 3rem) clamp(3.5rem, 3rem + 4vw, 6rem);
     display: grid;
     gap: clamp(1.25rem, 1rem + 1vw, 1.75rem);
-    max-width: 46rem;
+    /* Wider than a reading column, because this page is a workspace rather
+       than an article: a viewfinder, a grid of captured pages and a finish
+       picker all want room. `.wrap` still supplies the gutter and centring.
+       PdfTool does the same for its live workspaces. */
+    --content: 76rem;
+  }
+
+  /* The heading and the standfirst stay at a comfortable measure even though
+     the page around them is wide — a line of body text 76rem long is unreadable
+     however much space there is. */
+  .scan > .eyebrow,
+  .scan > h1,
+  .scan > .lede {
+    max-width: 34rem;
   }
 
   .eyebrow {
@@ -300,12 +341,73 @@ import Lens from './Lens.astro';
     color: var(--muted);
   }
 
-  .scan__start {
+  /* Lens renders its slot inside .lens__body, so padding on the root pads the
+     glass rather than the content. Anything appended to the root at runtime —
+     the no-camera fallback used to be — lands outside the body and under the
+     frost, which is exactly how that button became invisible. */
+  /* Two columns once there is room: the pitch reads at a comfortable measure
+     on the left, and the viewfinder — the actual subject — occupies the right
+     instead of leaving half the screen dark. One column below that, with the
+     camera button ahead of the viewfinder because on a phone the button is the
+     first thing you want. */
+  .scan__hero {
     display: grid;
-    gap: 0.6rem;
+    gap: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+    align-items: start;
+  }
+
+  @media (min-width: 62rem) {
+    .scan__hero {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+      gap: clamp(2rem, 1rem + 3vw, 3.5rem);
+    }
+    .scan__side { position: sticky; top: 1.5rem; }
+  }
+
+  .scan__pitch,
+  .scan__side {
+    display: grid;
+    gap: clamp(1rem, 0.75rem + 1vw, 1.5rem);
+    min-width: 0;
+  }
+
+  .scan__cta {
+    display: grid;
+    gap: 0.5rem;
+    justify-items: start;
+  }
+
+  .scan__go {
+    font-size: var(--step-0);
+    padding-block: 0.75rem;
+    padding-inline: 1.35rem;
+  }
+
+  /* A placeholder that says what the space is for, rather than an empty box.
+     Replaced in the same slot by the live feed, so nothing shifts. */
+  .scan__idle {
+    display: grid;
+    gap: 0.5rem;
     justify-items: center;
+    align-content: center;
     text-align: center;
+    min-height: min(58vh, 26rem);
     padding: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--ink) 3%, transparent);
+    color: var(--muted);
+  }
+
+  .scan__idle svg { width: 2.5rem; height: 2.5rem; opacity: 0.55; }
+  .scan__idle p { margin: 0; }
+  .scan__idle-note { font-size: var(--step--1); max-width: 22rem; }
+
+  @media (max-width: 61.99rem) {
+    /* The viewfinder placeholder is a promise, not information — on a phone it
+       would push the real controls below the fold, so it only appears where
+       there is a column to fill. */
+    .scan__idle { display: none; }
   }
 
   .scan__hint {
@@ -1240,8 +1342,21 @@ import Lens from './Lens.astro';
         // Inside the lens BODY, not the lens root. The frost and rim layers
         // paint above any non-positioned sibling, so appending to the root put
         // the only way out of a no-camera dead end underneath the glass.
-        const body = startBlock.querySelector('.lens__body') ?? startBlock;
-        body.append(picker, pickerBtn);
+        startBlock.append(picker, pickerBtn);
+
+        // The viewfinder promise is now a lie: there is no camera to show. Say
+        // what the space is really for instead of leaving a panel that waits
+        // for something that is never coming.
+        const idle = root.querySelector('[data-scan-idle]');
+        if (idle) {
+          const heading = idle.querySelector('p');
+          const note = idle.querySelector('.scan__idle-note');
+          if (heading) heading.textContent = 'No camera here.';
+          if (note) {
+            note.textContent =
+              'Pick photos you have already taken and they go through exactly the same straightening and clean-up.';
+          }
+        }
       }
       if (pickerBtn) pickerBtn.textContent = label;
     }
