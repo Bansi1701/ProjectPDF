@@ -6,15 +6,20 @@
  * page shell stays static, pdf.js loads only after a file is chosen, and the
  * element exposes a tiny `open / release / getEdits` contract to PdfTool.
  */
+interface Props {
+  profile?: 'full' | 'sign';
+}
+
+const { profile = 'full' } = Astro.props;
 ---
 
-<live-pdf-editor class="editor" data-live-pdf-editor hidden>
+<live-pdf-editor class="editor" data-live-pdf-editor data-editor-profile={profile} hidden>
   <header class="editor__topbar">
     <div>
-      <p class="editor__eyebrow">Live document workspace</p>
-      <h2>Edit the page before you export</h2>
+      <p class="editor__eyebrow">{profile === 'sign' ? 'Signature workspace' : 'Live document workspace'}</p>
+      <h2>{profile === 'sign' ? 'Place a signature on the page' : 'Edit the page before you export'}</h2>
     </div>
-    <span class="editor__privacy">Local preview · edits stay in this tab</span>
+    <span class="editor__privacy">{profile === 'sign' ? 'Local preview · signature stays in this tab' : 'Local preview · edits stay in this tab'}</span>
   </header>
 
   <div class="editor__shell">
@@ -31,66 +36,70 @@
 
       <span class="editor__tool-rule"></span>
 
-      <div class="editor__tool-group">
-        <button class="editor__tool-menu" type="button" data-editor-menu-trigger="comment" aria-expanded="false" aria-controls="editor-menu-comment" title="Comments and text tools">
-          <span class="editor__tool-icon editor__tool-icon--comment" aria-hidden="true">⌁</span>
-          <span>Comment</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
-        </button>
-        <div class="editor__popover" id="editor-menu-comment" data-editor-menu="comment" hidden>
-          <div class="editor__popover-heading"><strong>Comment</strong><span>Add context to the page</span></div>
-          <button type="button" data-editor-action="comment" data-editor-tool="text"><span class="editor__menu-icon">◌</span><span><strong>Comment</strong><small>Place a visible note</small></span></button>
-          <button type="button" data-editor-action="replace" data-editor-tool="rectangle"><span class="editor__menu-icon">↺</span><span><strong>Replace text area</strong><small>Cover text, then place replacement text</small></span></button>
-          <button type="button" data-editor-action="insert-text" data-editor-tool="text"><span class="editor__menu-icon">T</span><span><strong>Insert text</strong><small>Type on the page</small></span></button>
-          <button type="button" data-editor-action="text-comment" data-editor-tool="text"><span class="editor__menu-icon">☷</span><span><strong>Text comment</strong><small>Place a visible review note</small></span></button>
-        </div>
-      </div>
+      {profile === 'full' && (
+        <Fragment>
+          <div class="editor__tool-group">
+            <button class="editor__tool-menu" type="button" data-editor-menu-trigger="comment" aria-expanded="false" aria-controls="editor-menu-comment" title="Comments and text tools">
+              <span class="editor__tool-icon editor__tool-icon--comment" aria-hidden="true">⌁</span>
+              <span>Comment</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="editor__popover" id="editor-menu-comment" data-editor-menu="comment" hidden>
+              <div class="editor__popover-heading"><strong>Comment</strong><span>Add context to the page</span></div>
+              <button type="button" data-editor-action="comment" data-editor-tool="text"><span class="editor__menu-icon">◌</span><span><strong>Comment</strong><small>Place a visible note</small></span></button>
+              <button type="button" data-editor-action="replace" data-editor-tool="rectangle"><span class="editor__menu-icon">↺</span><span><strong>Replace text area</strong><small>Cover text, then place replacement text</small></span></button>
+              <button type="button" data-editor-action="insert-text" data-editor-tool="text"><span class="editor__menu-icon">T</span><span><strong>Insert text</strong><small>Type on the page</small></span></button>
+              <button type="button" data-editor-action="text-comment" data-editor-tool="text"><span class="editor__menu-icon">☷</span><span><strong>Text comment</strong><small>Place a visible review note</small></span></button>
+            </div>
+          </div>
 
-      <div class="editor__tool-group">
-        <button class="editor__tool-menu" type="button" data-editor-menu-trigger="markup" aria-expanded="false" aria-controls="editor-menu-markup" title="Markup tools">
-          <span class="editor__tool-icon editor__tool-icon--markup" aria-hidden="true">▰</span>
-          <span>Markup</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
-        </button>
-        <div class="editor__popover" id="editor-menu-markup" data-editor-menu="markup" hidden>
-          <div class="editor__popover-heading"><strong>Markup</strong><span>Call attention to content</span></div>
-          <button type="button" data-editor-action="highlight" data-editor-tool="highlight"><span class="editor__menu-icon editor__menu-icon--yellow">▰</span><span><strong>Highlight</strong><small>Emphasise an area</small></span></button>
-          <button type="button" data-editor-action="underline" data-editor-tool="highlight"><span class="editor__menu-icon">U̲</span><span><strong>Underline</strong><small>Draw a clean underline</small></span></button>
-          <button type="button" data-editor-action="strike" data-editor-tool="highlight"><span class="editor__menu-icon">S̶</span><span><strong>Strike through</strong><small>Mark content for removal</small></span></button>
-        </div>
-      </div>
+          <div class="editor__tool-group">
+            <button class="editor__tool-menu" type="button" data-editor-menu-trigger="markup" aria-expanded="false" aria-controls="editor-menu-markup" title="Markup tools">
+              <span class="editor__tool-icon editor__tool-icon--markup" aria-hidden="true">▰</span>
+              <span>Markup</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="editor__popover" id="editor-menu-markup" data-editor-menu="markup" hidden>
+              <div class="editor__popover-heading"><strong>Markup</strong><span>Call attention to content</span></div>
+              <button type="button" data-editor-action="highlight" data-editor-tool="highlight"><span class="editor__menu-icon editor__menu-icon--yellow">▰</span><span><strong>Highlight</strong><small>Emphasise an area</small></span></button>
+              <button type="button" data-editor-action="underline" data-editor-tool="highlight"><span class="editor__menu-icon">U̲</span><span><strong>Underline</strong><small>Draw a clean underline</small></span></button>
+              <button type="button" data-editor-action="strike" data-editor-tool="highlight"><span class="editor__menu-icon">S̶</span><span><strong>Strike through</strong><small>Mark content for removal</small></span></button>
+            </div>
+          </div>
 
-      <div class="editor__tool-group">
-        <button class="editor__tool-menu" type="button" data-editor-menu-trigger="draw" aria-expanded="false" aria-controls="editor-menu-draw" title="Drawing tools">
-          <span class="editor__tool-icon editor__tool-icon--draw" aria-hidden="true">⌁</span>
-          <span>Draw</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
-        </button>
-        <div class="editor__popover" id="editor-menu-draw" data-editor-menu="draw" hidden>
-          <div class="editor__popover-heading"><strong>Draw</strong><span>Build a simple shape</span></div>
-          <button type="button" data-editor-action="ink" data-editor-tool="ink"><span class="editor__menu-icon">〰</span><span><strong>Free draw</strong><small>Pen, mouse, or touch</small></span></button>
-          <button type="button" data-editor-action="line" data-editor-tool="line"><span class="editor__menu-icon">╱</span><span><strong>Line</strong><small>Draw a straight line</small></span></button>
-          <button type="button" data-editor-action="arrow" data-editor-tool="arrow"><span class="editor__menu-icon">↗</span><span><strong>Arrow</strong><small>Point to a detail</small></span></button>
-          <button type="button" data-editor-action="rectangle" data-editor-tool="rectangle"><span class="editor__menu-icon">□</span><span><strong>Rectangle</strong><small>Outline an area</small></span></button>
-          <button type="button" data-editor-action="circle" data-editor-tool="rectangle"><span class="editor__menu-icon">○</span><span><strong>Circle</strong><small>Outline an area</small></span></button>
-          <button type="button" data-editor-action="callout" data-editor-tool="callout"><span class="editor__menu-icon">⌑</span><span><strong>Callout</strong><small>Draw a pointer and box</small></span></button>
-          <button type="button" data-editor-action="polygon" data-editor-tool="rectangle"><span class="editor__menu-icon">⬡</span><span><strong>Polygon</strong><small>Draw a six-sided outline</small></span></button>
-          <button type="button" data-editor-action="cloud" data-editor-tool="rectangle"><span class="editor__menu-icon">☁</span><span><strong>Cloud</strong><small>Outline a revision area</small></span></button>
-        </div>
-      </div>
+          <div class="editor__tool-group">
+            <button class="editor__tool-menu" type="button" data-editor-menu-trigger="draw" aria-expanded="false" aria-controls="editor-menu-draw" title="Drawing tools">
+              <span class="editor__tool-icon editor__tool-icon--draw" aria-hidden="true">⌁</span>
+              <span>Draw</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="editor__popover" id="editor-menu-draw" data-editor-menu="draw" hidden>
+              <div class="editor__popover-heading"><strong>Draw</strong><span>Build a simple shape</span></div>
+              <button type="button" data-editor-action="ink" data-editor-tool="ink"><span class="editor__menu-icon">〰</span><span><strong>Free draw</strong><small>Pen, mouse, or touch</small></span></button>
+              <button type="button" data-editor-action="line" data-editor-tool="line"><span class="editor__menu-icon">╱</span><span><strong>Line</strong><small>Draw a straight line</small></span></button>
+              <button type="button" data-editor-action="arrow" data-editor-tool="arrow"><span class="editor__menu-icon">↗</span><span><strong>Arrow</strong><small>Point to a detail</small></span></button>
+              <button type="button" data-editor-action="rectangle" data-editor-tool="rectangle"><span class="editor__menu-icon">□</span><span><strong>Rectangle</strong><small>Outline an area</small></span></button>
+              <button type="button" data-editor-action="circle" data-editor-tool="rectangle"><span class="editor__menu-icon">○</span><span><strong>Circle</strong><small>Outline an area</small></span></button>
+              <button type="button" data-editor-action="callout" data-editor-tool="callout"><span class="editor__menu-icon">⌑</span><span><strong>Callout</strong><small>Draw a pointer and box</small></span></button>
+              <button type="button" data-editor-action="polygon" data-editor-tool="rectangle"><span class="editor__menu-icon">⬡</span><span><strong>Polygon</strong><small>Draw a six-sided outline</small></span></button>
+              <button type="button" data-editor-action="cloud" data-editor-tool="rectangle"><span class="editor__menu-icon">☁</span><span><strong>Cloud</strong><small>Outline a revision area</small></span></button>
+            </div>
+          </div>
 
-      <div class="editor__tool-group">
-        <button class="editor__tool-menu" type="button" data-editor-menu-trigger="stamp" aria-expanded="false" aria-controls="editor-menu-stamp" title="Text and stamp tools">
-          <span class="editor__tool-icon editor__tool-icon--stamp" aria-hidden="true">T·</span>
-          <span>Stamp</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
-        </button>
-        <div class="editor__popover" id="editor-menu-stamp" data-editor-menu="stamp" hidden>
-          <div class="editor__popover-heading"><strong>Text &amp; stamps</strong><span>Place a quick response</span></div>
-          <button type="button" data-editor-action="text" data-editor-tool="text"><span class="editor__menu-icon">T</span><span><strong>Type text</strong><small>Place editable text</small></span></button>
-          <button type="button" data-editor-action="check" data-editor-tool="stamp"><span class="editor__menu-icon editor__menu-icon--ok">✓</span><span><strong>Check</strong><small>Positive response</small></span></button>
-          <button type="button" data-editor-action="cross" data-editor-tool="stamp"><span class="editor__menu-icon editor__menu-icon--bad">×</span><span><strong>Cross</strong><small>Negative response</small></span></button>
-          <button type="button" data-editor-action="dot" data-editor-tool="stamp"><span class="editor__menu-icon">•</span><span><strong>Dot</strong><small>Mark a location</small></span></button>
-          <button type="button" data-editor-action="circle-stamp" data-editor-tool="stamp"><span class="editor__menu-icon">○</span><span><strong>Circle</strong><small>Circle response</small></span></button>
-          <button type="button" data-editor-action="crossout" data-editor-tool="stamp"><span class="editor__menu-icon">╳</span><span><strong>Crossout</strong><small>Mark for removal</small></span></button>
-        </div>
-      </div>
+          <div class="editor__tool-group">
+            <button class="editor__tool-menu" type="button" data-editor-menu-trigger="stamp" aria-expanded="false" aria-controls="editor-menu-stamp" title="Text and stamp tools">
+              <span class="editor__tool-icon editor__tool-icon--stamp" aria-hidden="true">T·</span>
+              <span>Stamp</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
+            </button>
+            <div class="editor__popover" id="editor-menu-stamp" data-editor-menu="stamp" hidden>
+              <div class="editor__popover-heading"><strong>Text &amp; stamps</strong><span>Place a quick response</span></div>
+              <button type="button" data-editor-action="text" data-editor-tool="text"><span class="editor__menu-icon">T</span><span><strong>Type text</strong><small>Place editable text</small></span></button>
+              <button type="button" data-editor-action="check" data-editor-tool="stamp"><span class="editor__menu-icon editor__menu-icon--ok">✓</span><span><strong>Check</strong><small>Positive response</small></span></button>
+              <button type="button" data-editor-action="cross" data-editor-tool="stamp"><span class="editor__menu-icon editor__menu-icon--bad">×</span><span><strong>Cross</strong><small>Negative response</small></span></button>
+              <button type="button" data-editor-action="dot" data-editor-tool="stamp"><span class="editor__menu-icon">•</span><span><strong>Dot</strong><small>Mark a location</small></span></button>
+              <button type="button" data-editor-action="circle-stamp" data-editor-tool="stamp"><span class="editor__menu-icon">○</span><span><strong>Circle</strong><small>Circle response</small></span></button>
+              <button type="button" data-editor-action="crossout" data-editor-tool="stamp"><span class="editor__menu-icon">╳</span><span><strong>Crossout</strong><small>Mark for removal</small></span></button>
+            </div>
+          </div>
+        </Fragment>
+      )}
 
       <div class="editor__tool-group">
         <button class="editor__tool-menu" type="button" data-editor-signature-trigger aria-expanded="false" aria-controls="editor-signature-panel" title="Signature palette">
@@ -105,16 +114,27 @@
           </label>
           <button type="button" data-editor-signature-kind="signature"><span class="editor__signature-glyph">Signature</span><span><strong>Place signature</strong><small>Handwriting-style text</small></span></button>
           <button type="button" data-editor-signature-kind="initials"><span class="editor__signature-glyph editor__signature-glyph--initials">IN</span><span><strong>Place initials</strong><small>Compact review mark</small></span></button>
-          <a class="editor__signature-link" href="/ProjectPDF/sign-pdf/">Need to draw it? Open Sign PDF →</a>
+          <div class="editor__signature-draw">
+            <span>Draw by hand</span>
+            <canvas data-editor-signature-canvas width="600" height="180" aria-label="Draw your signature"></canvas>
+            <div>
+              <button type="button" class="editor__signature-clear" data-editor-signature-clear>Clear</button>
+              <button type="button" class="editor__signature-place" data-editor-signature-drawn>Place drawn signature</button>
+            </div>
+          </div>
           <p class="editor__signature-note">Nothing is saved to an account. The mark is included only when you export.</p>
         </div>
       </div>
 
-      <span class="editor__tool-rule"></span>
-      <button class="editor__tool-secondary" type="button" data-editor-tool="whiteout" aria-pressed="false" title="Cover an area in white">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 15 8-9 6 5-8 9H5v-5Z"></path><path d="M13 6l6 5"></path></svg>
-        <span>Whiteout</span>
-      </button>
+      {profile === 'full' && (
+        <Fragment>
+          <span class="editor__tool-rule"></span>
+          <button class="editor__tool-secondary" type="button" data-editor-tool="whiteout" aria-pressed="false" title="Cover an area in white">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 15 8-9 6 5-8 9H5v-5Z"></path><path d="M13 6l6 5"></path></svg>
+            <span>Whiteout</span>
+          </button>
+        </Fragment>
+      )}
       <button class="editor__tool-secondary" type="button" data-editor-undo title="Undo last edit" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8 5 12l4 4"></path><path d="M5 12h8a6 6 0 0 1 6 6"></path></svg>
         <span>Undo</span>
@@ -123,7 +143,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3M8 10v8M12 10v8M16 10v8M7 7l1 14h8l1-14"></path></svg>
         <span>Delete</span>
       </button>
-      <p class="editor__tool-footnote">Choose a tool, then place it on the page.</p>
+      <p class="editor__tool-footnote">{profile === 'sign' ? 'Place a signature, then drag it where it belongs.' : 'Choose a tool, then place it on the page.'}</p>
     </nav>
 
     <aside class="editor__pages" aria-label="Document pages">
@@ -156,7 +176,7 @@
         <p class="editor__loading" data-editor-loading>Choose a PDF to open the workspace.</p>
       </div>
 
-      <div class="editor__properties">
+      <div class="editor__properties" hidden={profile === 'sign'}>
         <label data-editor-text-control>
           <span>Text</span>
           <input data-editor-text value="Add your text" maxlength="160" />
@@ -213,6 +233,7 @@
   }
 
   class LivePdfEditorElement extends HTMLElement {
+    private profile: 'full' | 'sign' = 'full';
     private doc: PdfDocument | null = null;
     private marks: EditMark[] = [];
     private history: EditMark[][] = [];
@@ -230,7 +251,8 @@
     private markupStyle: MarkStyle = 'highlight';
     private stampKind: StampKind = 'check';
     private replaceMode = false;
-    private signatureStyle: 'signature' | 'initials' = 'signature';
+    private signatureStyle: 'signature' | 'initials' | 'drawn' = 'signature';
+    private drawnSignature: { bytes: Uint8Array; dataUrl: string; aspect: number } | null = null;
 
     private canvas = this.querySelector<HTMLCanvasElement>('[data-editor-canvas]')!;
     private overlay = this.querySelector<SVGSVGElement>('[data-editor-overlay]')!;
@@ -241,6 +263,7 @@
     private feedback = this.querySelector<HTMLElement>('[data-editor-feedback]')!;
 
     connectedCallback() {
+      this.profile = this.dataset.editorProfile === 'sign' ? 'sign' : 'full';
       this.querySelectorAll<HTMLButtonElement>('[data-editor-tool]').forEach((button) => {
         button.addEventListener('click', () => this.setTool(button.dataset.editorTool as Tool));
       });
@@ -264,6 +287,7 @@
           this.setFeedback(`Click the page to place your ${this.signatureStyle}.`);
         });
       });
+      this.setupSignaturePad();
       this.addEventListener('click', (event) => {
         const target = event.target as HTMLElement;
         if (!target.closest('[data-editor-menu-trigger], [data-editor-signature-trigger], [data-editor-menu], #editor-signature-panel')) this.closeMenus();
@@ -297,6 +321,115 @@
       this.setTool('select');
     }
 
+    private setupSignaturePad(): void {
+      const canvas = this.querySelector<HTMLCanvasElement>('[data-editor-signature-canvas]');
+      const clear = this.querySelector<HTMLButtonElement>('[data-editor-signature-clear]');
+      const place = this.querySelector<HTMLButtonElement>('[data-editor-signature-drawn]');
+      const context = canvas?.getContext('2d');
+      if (!canvas || !context || !clear || !place) return;
+
+      context.strokeStyle = '#0f172a';
+      context.lineWidth = 5;
+      context.lineCap = 'round';
+      context.lineJoin = 'round';
+      let drawing = false;
+
+      const point = (event: PointerEvent) => {
+        const bounds = canvas.getBoundingClientRect();
+        return {
+          x: ((event.clientX - bounds.left) / bounds.width) * canvas.width,
+          y: ((event.clientY - bounds.top) / bounds.height) * canvas.height,
+        };
+      };
+
+      canvas.addEventListener('pointerdown', (event) => {
+        drawing = true;
+        canvas.setPointerCapture(event.pointerId);
+        const at = point(event);
+        context.beginPath();
+        context.moveTo(at.x, at.y);
+      });
+      canvas.addEventListener('pointermove', (event) => {
+        if (!drawing) return;
+        event.preventDefault();
+        const at = point(event);
+        context.lineTo(at.x, at.y);
+        context.stroke();
+      });
+      for (const eventName of ['pointerup', 'pointercancel', 'pointerleave'] as const) {
+        canvas.addEventListener(eventName, () => { drawing = false; });
+      }
+
+      clear.addEventListener('click', () => {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        this.drawnSignature = null;
+        this.setFeedback('Signature pad cleared.');
+      });
+
+      place.addEventListener('click', () => {
+        const cropped = this.trimCanvas(canvas);
+        if (!cropped) {
+          this.setFeedback('Draw your signature in the pad first.');
+          return;
+        }
+        const dataUrl = cropped.toDataURL('image/png');
+        this.drawnSignature = {
+          bytes: this.dataUrlBytes(dataUrl),
+          dataUrl,
+          aspect: cropped.height / Math.max(1, cropped.width),
+        };
+        this.signatureStyle = 'drawn';
+        this.setTool('signature');
+        this.setFeedback('Click the visible PDF page to place your drawn signature.');
+      });
+    }
+
+    private trimCanvas(source: HTMLCanvasElement): HTMLCanvasElement | null {
+      const context = source.getContext('2d');
+      if (!context) return null;
+      const { data } = context.getImageData(0, 0, source.width, source.height);
+      let minX = source.width;
+      let minY = source.height;
+      let maxX = -1;
+      let maxY = -1;
+      for (let y = 0; y < source.height; y += 1) {
+        for (let x = 0; x < source.width; x += 1) {
+          if (data[(y * source.width + x) * 4 + 3] < 8) continue;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+      if (maxX < 0) return null;
+      const padding = 10;
+      minX = Math.max(0, minX - padding);
+      minY = Math.max(0, minY - padding);
+      maxX = Math.min(source.width - 1, maxX + padding);
+      maxY = Math.min(source.height - 1, maxY + padding);
+      const output = document.createElement('canvas');
+      output.width = maxX - minX + 1;
+      output.height = maxY - minY + 1;
+      output.getContext('2d')?.drawImage(source, minX, minY, output.width, output.height, 0, 0, output.width, output.height);
+      return output;
+    }
+
+    private dataUrlBytes(dataUrl: string): Uint8Array {
+      const binary = atob(dataUrl.slice(dataUrl.indexOf(',') + 1));
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+      return bytes;
+    }
+
+    private imageDataUrl(payload: ArrayBuffer | Uint8Array): string {
+      const bytes = payload instanceof Uint8Array ? payload : new Uint8Array(payload);
+      let binary = '';
+      for (let start = 0; start < bytes.length; start += 8192) {
+        binary += String.fromCharCode(...bytes.subarray(start, start + 8192));
+      }
+      return `data:image/png;base64,${btoa(binary)}`;
+    }
+
     async open(file: File): Promise<void> {
       await this.release();
       this.hidden = false;
@@ -326,6 +459,11 @@
 
     async release(): Promise<void> {
       this.renderToken += 1;
+      this.drawnSignature = null;
+      const signaturePad = this.querySelector<HTMLCanvasElement>('[data-editor-signature-canvas]');
+      signaturePad?.getContext('2d')?.clearRect(0, 0, signaturePad.width, signaturePad.height);
+      const signatureText = this.querySelector<HTMLInputElement>('[data-editor-signature-text]');
+      if (signatureText) signatureText.value = '';
       this.thumbObserver?.disconnect();
       this.thumbObserver = null;
       this.thumbs.replaceChildren();
@@ -480,7 +618,9 @@
 
     private chooseAction(action: string): void {
       this.closeMenus();
-      const textInput = this.querySelector<HTMLInputElement>('[data-editor-text]')!;
+      if (this.profile === 'sign' && !['check', 'cross', 'dot', 'circle-stamp', 'crossout'].includes(action)) return;
+      const textInput = this.querySelector<HTMLInputElement>('[data-editor-text]');
+      if (!textInput) return;
       if (action !== 'replace') this.replaceMode = false;
       switch (action) {
         case 'comment':
@@ -569,11 +709,14 @@
         button.setAttribute('aria-pressed', String(button.dataset.editorTool === tool));
       });
       this.overlay.dataset.tool = tool;
-      this.querySelector<HTMLElement>('[data-editor-text-control]')!.hidden = !(['text', 'stamp'].includes(tool) || this.replaceMode);
-      this.querySelector<HTMLElement>('[data-editor-size-control]')!.hidden = !(['text', 'stamp'].includes(tool) || this.replaceMode);
-      this.querySelector<HTMLElement>('[data-editor-width-control]')!.hidden = !['ink', 'rectangle', 'line', 'arrow', 'callout'].includes(tool);
+      const textControl = this.querySelector<HTMLElement>('[data-editor-text-control]');
+      const sizeControl = this.querySelector<HTMLElement>('[data-editor-size-control]');
+      const widthControl = this.querySelector<HTMLElement>('[data-editor-width-control]');
+      if (textControl) textControl.hidden = this.profile === 'sign' || !(['text', 'stamp'].includes(tool) || this.replaceMode);
+      if (sizeControl) sizeControl.hidden = this.profile === 'sign' || !(['text', 'stamp'].includes(tool) || this.replaceMode);
+      if (widthControl) widthControl.hidden = this.profile === 'sign' || !['ink', 'rectangle', 'line', 'arrow', 'callout'].includes(tool);
       const hints: Record<Tool, string> = {
-        select: 'Click an edit to select it. Drag selected text to reposition it.',
+        select: 'Click an edit to select it. Drag text or a signature to reposition it.',
         pan: 'Drag the page to move around the workspace.',
         text: 'Type the text below, then click where it should appear.',
         stamp: 'Choose a stamp, then click where it should appear.',
@@ -586,7 +729,12 @@
         signature: `Click where your ${this.signatureStyle} should appear.`,
         whiteout: 'Drag over an area to cover it with white. This is not secure redaction.',
       };
-      this.querySelector<HTMLElement>('[data-editor-hint]')!.textContent = hints[tool];
+      const hint = this.querySelector<HTMLElement>('[data-editor-hint]');
+      if (hint) {
+        hint.textContent = this.profile === 'sign'
+          ? 'Signatures can be typed or drawn, then placed on the page and dragged into position.'
+          : hints[tool];
+      }
       this.renderMarks();
     }
 
@@ -614,7 +762,7 @@
       if (this.tool === 'select') {
         this.selectedId = id;
         const mark = this.marks.find((item) => item.id === id);
-        if (mark?.kind === 'text') {
+        if (mark?.kind === 'text' || mark?.kind === 'signature' || mark?.kind === 'signature-text') {
           this.moving = { id, x: at.x, y: at.y, originX: mark.x, originY: mark.y };
           this.overlay.setPointerCapture(event.pointerId);
         }
@@ -641,6 +789,33 @@
       }
 
       if (this.tool === 'signature') {
+        if (this.signatureStyle === 'drawn') {
+          if (!this.drawnSignature) {
+            this.history.pop();
+            this.setFeedback('Draw your signature in the Sign menu first.');
+            this.setTool('select');
+            return;
+          }
+          const width = 0.28;
+          const pageAspect = this.canvas.width / Math.max(1, this.canvas.height);
+          const height = Math.min(0.18, Math.max(0.04, width * this.drawnSignature.aspect * pageAspect));
+          this.marks.push({
+            id: idValue,
+            kind: 'signature',
+            page: this.activePage,
+            x: Math.min(at.x, 1 - width),
+            y: Math.min(at.y, 1 - height),
+            width,
+            height,
+            bytes: new Uint8Array(this.drawnSignature.bytes),
+            mimeType: 'image/png',
+            color,
+          });
+          this.setTool('select');
+          this.selectedId = idValue;
+          this.changed();
+          return;
+        }
         const value = this.querySelector<HTMLInputElement>('[data-editor-signature-text]')?.value.trim() ?? '';
         if (!value) {
           this.history.pop();
@@ -736,9 +911,11 @@
       const at = this.point(event);
       if (this.moving) {
         const mark = this.marks.find((item) => item.id === this.moving?.id);
-        if (mark?.kind === 'text') {
-          mark.x = Math.max(0, Math.min(0.98, this.moving.originX + at.x - this.moving.x));
-          mark.y = Math.max(0, Math.min(0.98, this.moving.originY + at.y - this.moving.y));
+        if (mark?.kind === 'text' || mark?.kind === 'signature' || mark?.kind === 'signature-text') {
+          const width = mark.kind === 'text' ? 0.02 : mark.width;
+          const height = mark.kind === 'text' ? 0.02 : mark.height;
+          mark.x = Math.max(0, Math.min(1 - width, this.moving.originX + at.x - this.moving.x));
+          mark.y = Math.max(0, Math.min(1 - height, this.moving.originY + at.y - this.moving.y));
           this.renderMarks();
         }
         return;
@@ -769,7 +946,7 @@
         return;
       }
       if (this.moving) {
-        this.snapshot(this.marks.map((mark) => mark.id === this.moving?.id && mark.kind === 'text'
+        this.snapshot(this.marks.map((mark) => mark.id === this.moving?.id && (mark.kind === 'text' || mark.kind === 'signature' || mark.kind === 'signature-text')
           ? { ...mark, x: this.moving.originX, y: this.moving.originY }
           : structuredClone(mark)));
         this.moving = null;
@@ -954,16 +1131,28 @@
         } else if (mark.kind === 'signature' || mark.kind === 'signature-text') {
           const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark' });
           if (selected) group.append(this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String(mark.width * 1000), height: String(mark.height * 1000), rx: '8', fill: 'none', stroke: mark.color ?? '#0f172a', 'stroke-width': '2', 'stroke-dasharray': '8 5' }));
-          const label = this.svg('text', {
-            x: String((mark.x + 0.006) * 1000),
-            y: String((mark.y + mark.height * 0.72) * 1000),
-            fill: mark.color ?? '#0f172a',
-            'font-size': String(Math.max(18, Math.min(42, (mark.size ?? 22) * 1.35))),
-            'font-family': 'Georgia, serif',
-            'font-style': 'italic',
-          });
-          label.textContent = mark.text?.trim() || 'Signature';
-          group.append(label);
+          const imagePayload = mark.image ?? mark.bytes;
+          if (imagePayload && imagePayload.byteLength > 0) {
+            group.append(this.svg('image', {
+              x: String(mark.x * 1000),
+              y: String(mark.y * 1000),
+              width: String(mark.width * 1000),
+              height: String(mark.height * 1000),
+              href: this.imageDataUrl(imagePayload),
+              preserveAspectRatio: 'xMidYMid meet',
+            }));
+          } else {
+            const label = this.svg('text', {
+              x: String((mark.x + 0.006) * 1000),
+              y: String((mark.y + mark.height * 0.72) * 1000),
+              fill: mark.color ?? '#0f172a',
+              'font-size': String(Math.max(18, Math.min(42, (mark.size ?? 22) * 1.35))),
+              'font-family': 'Georgia, serif',
+              'font-style': 'italic',
+            });
+            label.textContent = mark.text?.trim() || 'Signature';
+            group.append(label);
+          }
           node = group;
         } else if (mark.kind === 'replace-text' || mark.kind === 'replace') {
           const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark' });
@@ -1107,6 +1296,12 @@
   .editor__signature-input { display: grid; gap: 0.3rem; margin: 0.35rem 0.45rem 0.55rem; color: var(--muted); font-size: 0.62rem; }
   .editor__signature-input input { min-height: 2.25rem; padding: 0.45rem 0.55rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); font: inherit; }
   .editor__signature-input input:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .editor__signature-draw { display: grid; gap: 0.35rem; margin: 0.65rem 0.45rem 0.3rem; color: var(--muted); font-size: 0.62rem; }
+  .editor__signature-draw canvas { display: block; width: 100%; height: 4.8rem; border: 1px dashed var(--line-strong); border-radius: 9px; background: #fff; cursor: crosshair; touch-action: none; }
+  .editor__signature-draw > div { display: grid; grid-template-columns: 0.7fr 1.3fr; gap: 0.4rem; }
+  .editor__signature-draw .editor__signature-clear,
+  .editor__signature-draw .editor__signature-place { display: block; min-height: 2rem; padding: 0.35rem 0.45rem; border: 1px solid var(--line-strong); border-radius: 7px; text-align: center; font-size: 0.6rem; }
+  .editor__signature-draw .editor__signature-place { border-color: var(--accent); background: var(--accent); color: white; }
   .editor__signature-link { display: block; margin: 0.55rem 0.5rem 0.2rem; color: var(--accent); font-size: 0.64rem; font-weight: 600; text-decoration: none; }
   .editor__signature-link:hover { text-decoration: underline; }
   .editor__signature-glyph { display: grid; place-items: center; min-height: 2.2rem; border: 1px dashed var(--line-strong); border-radius: 7px; color: var(--ink-2); font: italic 0.82rem Georgia, serif; white-space: nowrap; }
@@ -1163,14 +1358,26 @@
     .editor__topbar { align-items: flex-start; }
     .editor__privacy { display: none; }
     .editor__shell { grid-template-columns: 1fr; min-height: 0; }
-    .editor__tools { position: sticky; top: 0; z-index: 3; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    .editor__tools { position: sticky; top: 0; z-index: 8; flex-direction: row; overflow-x: auto; overflow-y: visible; border-right: 0; border-bottom: 1px solid var(--line); }
     .editor__tools button { min-width: 3.6rem; }
     .editor__tool-rail-label, .editor__tool-footnote { display: none; }
-    .editor__popover { top: calc(100% + 0.5rem); left: 0; }
+    .editor__tool-group { position: static; }
+    .editor__popover {
+      position: fixed;
+      top: calc(4.75rem + env(safe-area-inset-top, 0px));
+      left: 0.75rem;
+      right: 0.75rem;
+      width: auto;
+      max-width: none;
+      max-height: calc(100dvh - 6.25rem);
+      overflow: auto;
+      z-index: 40;
+    }
+    .editor__signature-panel { width: auto; }
     .editor__tool-rule { width: 1px; height: auto; margin: 0 0.2rem; }
     .editor__pages { border-right: 0; border-bottom: 1px solid var(--line); }
     .editor__pages-head { display: none; }
-    .editor__thumbs { grid-auto-flow: column; grid-auto-columns: 5.2rem; overflow-x: auto; overflow-y: hidden; max-height: none; }
+    .editor__thumbs { grid-auto-flow: column; grid-auto-columns: minmax(5.2rem, 1fr); overflow-x: auto; overflow-y: hidden; max-height: none; padding-bottom: 0.45rem; }
     :global(.editor-thumb canvas) { min-height: 3.5rem; }
     .editor__viewport { min-height: 24rem; }
     .editor__footer span:last-child { display: none; }

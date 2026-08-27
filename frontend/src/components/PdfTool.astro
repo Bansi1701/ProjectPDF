@@ -42,7 +42,7 @@ const ACTIONS: Record<Operation, string> = {
   unlock: 'Unlock',
   'pdf-to-markdown': 'Convert to Markdown',
   forms: 'Fill the form',
-  sign: 'Place the signature',
+  sign: 'Save signed PDF',
   'pdf-a': 'Convert to PDF/A',
   repair: 'Repair',
   ocr: 'Read the text',
@@ -87,18 +87,11 @@ const takesSlides = mode === 'powerpoint-to-pdf';
 const takesText = mode === 'text-to-pdf';
 
 /**
- * The page workspace needs one readable PDF. Organise tools already have the
- * specialised all-page grid; conversion inputs such as DOCX and XLSX do not
- * have a PDF page to preview until after their conversion.
+ * The live editor belongs on Edit PDF, while Sign PDF gets a narrower signing
+ * profile so it can still place signatures directly on the page.
  */
-const supportsLiveEditor =
-  !gridMode &&
-  !takesImages &&
-  !takesWord &&
-  !takesExcel &&
-  !takesSlides &&
-  !takesText &&
-  !['url-to-pdf', 'compare', 'overlay', 'unlock', 'repair'].includes(mode);
+const editorProfile = mode === 'edit' ? 'full' : mode === 'sign' ? 'sign' : null;
+const supportsLiveEditor = editorProfile !== null;
 
 const accept = takesImages
   ? 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
@@ -188,7 +181,7 @@ const dropTitle = takesExcel
 
     {gridMode && <PageGrid mode={gridMode} />}
 
-    {supportsLiveEditor && <LivePdfEditor />}
+    {supportsLiveEditor && <LivePdfEditor profile={editorProfile} />}
 
     <section class="preview" data-preview hidden>
       <div class="preview__head">
@@ -312,6 +305,7 @@ const dropTitle = takesExcel
       mode === 'sign' && (
         <Fragment>
           <div class="sign">
+            <p class="sign__mode-note"><strong>Quick corner placement</strong> — or use <strong>Sign</strong> in the page editor above to draw, click anywhere, and drag the mark into position.</p>
             <div class="sign__tabs" role="group" aria-label="Signature style">
               <button type="button" data-sign-tab="draw" class="is-on">Draw</button>
               <button type="button" data-sign-tab="type">Type</button>
@@ -1933,9 +1927,11 @@ const dropTitle = takesExcel
       const picked = (name: string) =>
         root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
 
-      const signature = signatureBytes();
-      if (mode === 'sign' && !signature) {
-        fail('Draw a signature or choose Type and enter your name first.');
+      const edits = liveEditor?.getEdits() ?? [];
+      const hasPlacedSignature = edits.some((mark) => mark.kind === 'signature' || mark.kind === 'signature-text');
+      const signature = hasPlacedSignature ? undefined : signatureBytes();
+      if (mode === 'sign' && !signature && !hasPlacedSignature) {
+        fail('Use Sign in the page editor to draw and place a signature, or use the quick corner signature below.');
         runBtn.disabled = false;
         status.textContent = '';
         return;
@@ -1948,7 +1944,7 @@ const dropTitle = takesExcel
         ranges: root.querySelector<HTMLInputElement>('[data-ranges]')?.value,
         pageOrder: readOrder(),
         text: root.querySelector<HTMLInputElement>('[data-text]')?.value,
-        edits: liveEditor?.getEdits() ?? [],
+        edits,
         targetPage: readTargetPage(),
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
         prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
@@ -2321,6 +2317,9 @@ const dropTitle = takesExcel
     display: grid;
     gap: 0.75rem;
   }
+
+  .sign__mode-note { margin: 0; max-width: 70ch; color: var(--muted); font-size: var(--step--1); line-height: 1.5; }
+  .sign__mode-note strong { color: var(--ink-2); }
 
   .sign__tabs {
     display: inline-flex;

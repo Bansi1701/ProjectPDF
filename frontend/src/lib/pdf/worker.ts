@@ -73,6 +73,26 @@ async function run(request: WorkerRequest): Promise<OpResult> {
   // transaction as the selected tool. The dedicated editor returns them
   // directly; other tools receive an in-memory edited input and continue as
   // normal. No intermediate file is downloaded or uploaded.
+  if (
+    request.op === 'sign' &&
+    !request.signature &&
+    request.edits?.some((mark) => mark.kind === 'signature' || mark.kind === 'signature-text')
+  ) {
+    const placed = await editDocument(request.files, request.edits);
+    if (!placed.ok || !('files' in placed)) return placed;
+    const sourceName = request.files[0]?.name ?? 'document.pdf';
+    return {
+      ...placed,
+      files: placed.files.map((file, index) => index === 0
+        ? { ...file, name: `${sourceName.replace(/\.pdf$/i, '')}-signed.pdf` }
+        : file),
+      summary: 'Placed the signature on the page',
+      notes: [
+        'This is a visual signature placed exactly where you chose in the page editor.',
+        'It is not a certificate-backed digital signature and does not prove the PDF was unchanged later.',
+      ],
+    };
+  }
   if (request.edits?.length) {
     if (request.op === 'edit') return editDocument(request.files, request.edits);
     request = { ...request, files: await applyEdits(request.files, request.edits) };
