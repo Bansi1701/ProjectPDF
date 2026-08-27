@@ -12,8 +12,8 @@ const { slug, size = '3.25rem', tone: suppliedTone, class: className = '' } = As
 const resolvedTone = suppliedTone ?? NAVIGATION_GROUPS.find((group) => group.tools.some((tool) => tool.slug === slug))?.tone ?? 'organize';
 
 /**
- * One semantic drawing per live tool. The shared folded page and low curved
- * stroke make the marks a family; the inner drawing is the tool's identity.
+ * One semantic drawing per live tool. The asymmetric document tile, clipped
+ * corner, and bright white action mark make the set a recognizable family.
  * These are original ProjectPDF assets and contain no third-party artwork.
  */
 const marks: Record<string, string> = {
@@ -50,7 +50,7 @@ const marks: Record<string, string> = {
   'compare-pdf': '<path d="M17 19h7v13h-7Zm7 0h7v13h-7"/><path d="M19 23h3m-3 4h3m4-4h3m-3 4h3"/><path d="M24 17v17" opacity=".45"/>',
   'ocr-pdf': '<path d="M18 22v-4h4m8 4v-4h-4m-8 9v4h4m8-4v4h-4"/><path d="M17 25h14"/><circle cx="21" cy="28" r="1" fill="currentColor" stroke="none"/><circle cx="25" cy="28" r="1" fill="currentColor" stroke="none"/><circle cx="29" cy="28" r="1" fill="currentColor" stroke="none"/>',
   'pdf-forms': '<rect x="17" y="19" width="5" height="5" rx="1"/><path d="m18 21 1.5 1.5 3-3M25 21h7M17 29h5m3 0h7"/>',
-  'metadata-pdf': '<path d="M18 20h14M18 25h14M18 30h14"/><circle cx="22" cy="20" r="2" fill="var(--tool-icon-surface)"/><circle cx="28" cy="25" r="2" fill="var(--tool-icon-surface)"/><circle cx="24" cy="30" r="2" fill="var(--tool-icon-surface)"/>',
+  'metadata-pdf': '<path d="M18 20h14M18 25h14M18 30h14"/><circle cx="22" cy="20" r="2" fill="var(--tool-icon-color)"/><circle cx="28" cy="25" r="2" fill="var(--tool-icon-color)"/><circle cx="24" cy="30" r="2" fill="var(--tool-icon-color)"/>',
   'protect-pdf': '<rect x="18" y="23" width="12" height="10" rx="2"/><path d="M21 23v-3a3 3 0 0 1 6 0v3m-3 4v3"/><circle cx="24" cy="27" r="1" fill="currentColor" stroke="none"/>',
   'unlock-pdf': '<rect x="18" y="23" width="12" height="10" rx="2"/><path d="M27 23v-3a3 3 0 0 0-5-2m2 9v3"/><circle cx="24" cy="27" r="1" fill="currentColor" stroke="none"/>',
   'redact-pdf': '<path d="M18 20h12M18 25h12M18 30h9"/><rect x="17" y="23" width="15" height="5" rx="1" fill="currentColor" stroke="none"/>',
@@ -68,51 +68,46 @@ const mark = marks[slug] ?? '<path d="M19 21h10m-10 5h10m-10 5h7"/>';
   aria-hidden="true"
   focusable="false"
 >
-  <rect class="tool-logo__tile" x="1.5" y="1.5" width="45" height="45" rx="14" />
-  <path class="tool-logo__page" d="M12.5 8.5h14.8l8.2 8.2v22.8h-23Z" />
-  <path class="tool-logo__fold" d="M27.3 8.5v8.2h8.2" />
-  <path class="tool-logo__flow" d="M10.5 35.5c7 3.6 18.7 4.3 27-1.9" />
+  <path class="tool-logo__shadow" d="M15 3h18l11 11v22c0 7.2-5.8 13-13 13H10l-6-6V14C4 7.9 8.9 3 15 3Z" />
+  <path class="tool-logo__plate" d="M13 1h19l11 11v22c0 7.2-5.8 13-13 13H9l-6-6V13C3 6.4 6.4 1 13 1Z" />
+  <path class="tool-logo__corner" d="M32 1v8a3 3 0 0 0 3 3h8Z" />
+  <path class="tool-logo__shine" d="M7.5 35.5c8.2 5 20.9 6.2 31.6-1.8" />
+  <circle class="tool-logo__signal" cx="10" cy="39" r="2" />
   <g class="tool-logo__mark" set:html={mark}></g>
 </svg>
 
 <style>
   .tool-logo {
-    --tool-icon-color: #f97316;
-    --tool-icon-surface: #fff7ed;
+    --tool-icon-color: #f26430;
     display: block;
     flex: 0 0 auto;
     width: var(--tool-logo-size);
     height: var(--tool-logo-size);
     overflow: visible;
-    color: var(--tool-icon-color);
-    filter: drop-shadow(0 7px 12px color-mix(in srgb, var(--tool-icon-color) 16%, transparent));
+    color: #fff;
+    filter: drop-shadow(0 8px 12px color-mix(in srgb, var(--tool-icon-color) 27%, transparent));
   }
 
-  .tool-logo--organize { --tool-icon-color: #f97316; --tool-icon-surface: #fff7ed; }
-  .tool-logo--optimize { --tool-icon-color: #65a30d; --tool-icon-surface: #f7fee7; }
-  .tool-logo--to-pdf { --tool-icon-color: #ca8a04; --tool-icon-surface: #fefce8; }
-  .tool-logo--from-pdf { --tool-icon-color: #2563eb; --tool-icon-surface: #eff6ff; }
-  .tool-logo--compose { --tool-icon-color: #c026d3; --tool-icon-surface: #fdf4ff; }
-  .tool-logo--review { --tool-icon-color: #7c3aed; --tool-icon-surface: #f5f3ff; }
-  .tool-logo--secure { --tool-icon-color: #0f766e; --tool-icon-surface: #f0fdfa; }
+  .tool-logo--organize { --tool-icon-color: #f26430; }
+  .tool-logo--optimize { --tool-icon-color: #5d9f0b; }
+  .tool-logo--to-pdf { --tool-icon-color: #d89b00; }
+  .tool-logo--from-pdf { --tool-icon-color: #2f76df; }
+  .tool-logo--compose { --tool-icon-color: #b92bc7; }
+  .tool-logo--review { --tool-icon-color: #7650d8; }
+  .tool-logo--secure { --tool-icon-color: #0b887b; }
 
-  :global(:root[data-theme='dark']) .tool-logo--organize { --tool-icon-surface: #24160f; }
-  :global(:root[data-theme='dark']) .tool-logo--optimize { --tool-icon-surface: #15210c; }
-  :global(:root[data-theme='dark']) .tool-logo--to-pdf { --tool-icon-surface: #211c09; }
-  :global(:root[data-theme='dark']) .tool-logo--from-pdf { --tool-icon-surface: #101c36; }
-  :global(:root[data-theme='dark']) .tool-logo--compose { --tool-icon-surface: #28102b; }
-  :global(:root[data-theme='dark']) .tool-logo--review { --tool-icon-surface: #1d1535; }
-  :global(:root[data-theme='dark']) .tool-logo--secure { --tool-icon-surface: #0b2825; }
-
-  .tool-logo__tile { fill: color-mix(in srgb, var(--tool-icon-color) 10%, var(--tool-icon-surface)); stroke: color-mix(in srgb, var(--tool-icon-color) 38%, transparent); }
-  .tool-logo__page { fill: var(--tool-icon-surface); stroke: color-mix(in srgb, var(--tool-icon-color) 48%, var(--tool-icon-surface)); stroke-width: 1.35; }
-  .tool-logo__fold { fill: none; stroke: color-mix(in srgb, var(--tool-icon-color) 55%, var(--tool-icon-surface)); stroke-width: 1.35; stroke-linejoin: round; }
-  .tool-logo__flow { fill: none; stroke: var(--tool-icon-color); stroke-width: 1.4; stroke-linecap: round; opacity: 0.24; }
-  .tool-logo__mark { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .tool-logo__shadow { fill: color-mix(in srgb, var(--tool-icon-color) 72%, #08111f); opacity: 0.5; }
+  .tool-logo__plate { fill: var(--tool-icon-color); }
+  .tool-logo__corner { fill: #fff; opacity: 0.3; }
+  .tool-logo__shine { fill: none; stroke: #fff; stroke-width: 1.6; stroke-linecap: round; opacity: 0.16; }
+  .tool-logo__signal { fill: #fff; opacity: 0.72; }
+  .tool-logo__mark { fill: none; stroke: currentColor; stroke-width: 2.1; stroke-linecap: round; stroke-linejoin: round; }
 
   @media (forced-colors: active) {
     .tool-logo { color: CanvasText; filter: none; }
-    .tool-logo__tile, .tool-logo__page { fill: Canvas; stroke: CanvasText; }
-    .tool-logo__fold, .tool-logo__flow { stroke: CanvasText; }
+    .tool-logo__plate { fill: Canvas; stroke: CanvasText; }
+    .tool-logo__shadow { fill: CanvasText; }
+    .tool-logo__corner, .tool-logo__signal { fill: CanvasText; }
+    .tool-logo__shine { stroke: CanvasText; }
   }
 </style>

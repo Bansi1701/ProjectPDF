@@ -32,10 +32,6 @@ const promises = [
 const NUMBER_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
 const serverOnlyCount = NUMBER_WORDS[SERVER_ONLY_REASONS.length] ?? String(SERVER_ONLY_REASONS.length);
 
-/* The eight jobs people most often arrive wanting. On a return visit the
-   browser replaces these with the visitor's own most-used tools. */
-const SHORTCUTS = ['merge-pdf', 'split-pdf', 'compress-pdf', 'edit-pdf', 'sign-pdf', 'scan-pdf', 'protect-pdf', 'pdf-to-word'];
-const shortcuts = SHORTCUTS.map((slug) => TOOLS.find((tool) => tool.slug === slug)!).filter(Boolean);
 const liveTools = TOOLS.filter((tool) => tool.status === 'live');
 
 const groupDetails: Record<NavigationTone, { anchor: string; description: string }> = {
@@ -92,8 +88,8 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
         <div class="quickfind">
           <label class="quickfind__field">
             <span class="sr-only">Search tools</span>
-            <svg class="quickfind__icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
-              <circle cx="9" cy="9" r="6"></circle><path d="m13.5 13.5 4 4" stroke-linecap="round"></path>
+            <svg class="quickfind__icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="10.5" cy="10.5" r="5.7"></circle><path d="m15 15 4.3 4.3" stroke-linecap="round"></path><path class="quickfind__spark" d="M18.5 4v3m-1.5-1.5h3" stroke-linecap="round"></path>
             </svg>
             <input
               type="search"
@@ -121,15 +117,17 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
           </ul>
         </div>
 
-        <nav class="shortcuts" aria-label="Popular tools" data-popular-tools>
+        <nav class="shortcuts category-shortcuts" aria-label="Jump to a PDF tool category">
           {
-            shortcuts.map((tool) => (
-              <a class="shortcuts__item" href={`${baseUrl}${tool.slug}/`} data-shortcut-slug={tool.slug}>
-                {tool.name}
+            NAVIGATION_GROUPS.map((group) => (
+              <a class={`shortcuts__item shortcuts__item--${group.tone}`} href={`#${groupDetails[group.tone].anchor}`}>
+                <span class="shortcuts__mark" aria-hidden="true"><i></i></span>
+                <span>{group.label}</span>
+                <small>{group.tools.length}</small>
               </a>
             ))
           }
-          <a class="shortcuts__all" href="#tools">All {liveTools.length} tools →</a>
+          <a class="shortcuts__all" href="#tools">All {liveTools.length} tools <span aria-hidden="true">↓</span></a>
         </nav>
 
         <p class="hero__meta">Your file stays on this device · <a href="#proof">See the browser measure it</a></p>
@@ -208,7 +206,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
                   <button class="card__star" type="button" data-fav={tool.slug} aria-pressed="false" aria-label={`Keep ${tool.name} in your tools`} title="Keep in your tools">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.5 2.6 5.6 6.1.8-4.5 4.2 1.2 6L12 17.2 6.6 20.1l1.2-6-4.5-4.2 6.1-.8Z" /></svg>
                   </button>
-                  <ToolIcon slug={tool.slug} tone={group.tone} size="3.5rem" class="card__icon" />
+                  <ToolIcon slug={tool.slug} tone={group.tone} size="3.9rem" class="card__icon" />
                   <p class="card__category">{group.label}</p>
                   <h4 class="card__name">{tool.name}</h4>
                   <p class="card__blurb">{tool.blurb}</p>
@@ -515,34 +513,6 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 
   paintFavourites();
 
-  /* Return visits show actual behavior rather than a generic popularity list. */
-  const popular = document.querySelector<HTMLElement>('[data-popular-tools]');
-  try {
-    const visitKey = 'projectpdf-home-visits';
-    const priorVisits = Number(localStorage.getItem(visitKey) ?? '0');
-    localStorage.setItem(visitKey, String(priorVisits + 1));
-    const raw: unknown = JSON.parse(localStorage.getItem('projectpdf-tool-usage') ?? '{}');
-    const usage = raw && typeof raw === 'object' ? raw as Record<string, number> : {};
-    const used = Object.entries(usage).filter(([, count]) => Number(count) > 0).sort((a, b) => b[1] - a[1]).slice(0, 8);
-    if (priorVisits > 0 && popular && used.length > 0) {
-      const allLink = popular.querySelector<HTMLAnchorElement>('.shortcuts__all');
-      const defaults = [...popular.querySelectorAll<HTMLElement>('[data-shortcut-slug]')]
-        .map((link) => link.dataset.shortcutSlug)
-        .filter((slug): slug is string => Boolean(slug));
-      const ranked = [...new Set([...used.map(([slug]) => slug), ...defaults])].slice(0, 8);
-      const personal = ranked.flatMap((slug) => {
-        const card = document.querySelector<HTMLElement>(`[data-tool-card][data-slug="${CSS.escape(slug)}"]`);
-        if (!card) return [];
-        const link = document.createElement('a');
-        link.className = 'shortcuts__item';
-        link.href = card.querySelector<HTMLAnchorElement>('.card__link')?.href ?? '#';
-        link.textContent = card.dataset.name ?? slug;
-        return [link];
-      });
-      popular.replaceChildren(...personal, ...(allLink ? [allLink] : []));
-      popular.setAttribute('aria-label', 'Your most-used tools');
-    }
-  } catch {}
 </script>
 
 <style>
@@ -1099,38 +1069,82 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
      One search box, at the top, that answers in place. */
   .quickfind {
     position: relative;
-    max-width: 32rem;
+    width: 3.2rem;
+    max-width: 100%;
     margin-top: 1.75rem;
+    transition: width 260ms cubic-bezier(.2,.75,.2,1);
   }
+
+  .quickfind .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .quickfind:hover,
+  .quickfind:focus-within { width: min(32rem, 100%); }
 
   .quickfind__field {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding-left: 0.9rem;
+    gap: 0.7rem;
+    min-height: 3.2rem;
+    padding: 0.3rem;
     background: var(--paper-raised);
     border: 1px solid var(--line-strong);
-    border-radius: 12px;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+    border-radius: 14px;
+    box-shadow: 0 9px 28px -24px rgb(15 23 42 / 0.5);
+    cursor: text;
+    overflow: hidden;
+    transition: border-color 170ms ease, box-shadow 170ms ease, background 170ms ease;
   }
 
+  .quickfind:hover .quickfind__field,
   .quickfind__field:focus-within {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 16%, transparent);
+    background: color-mix(in srgb, var(--paper-raised) 96%, var(--accent));
+    box-shadow: 0 14px 34px -25px color-mix(in srgb, var(--accent) 70%, transparent), 0 0 0 3px color-mix(in oklab, var(--accent) 12%, transparent);
   }
 
-  .quickfind__icon { width: 1.05rem; height: 1.05rem; color: var(--muted); flex: none; }
+  .quickfind__icon {
+    flex: 0 0 auto;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0.58rem;
+    border-radius: 11px;
+    background: color-mix(in srgb, var(--accent) 10%, var(--paper-sunk));
+    color: var(--accent);
+    transition: transform 190ms ease, background 190ms ease;
+  }
+  .quickfind:hover .quickfind__icon,
+  .quickfind:focus-within .quickfind__icon { transform: rotate(-4deg) scale(1.04); background: color-mix(in srgb, var(--accent) 15%, var(--paper-sunk)); }
+  .quickfind__spark { opacity: 0; transition: opacity 180ms ease; }
+  .quickfind:hover .quickfind__spark,
+  .quickfind:focus-within .quickfind__spark { opacity: 1; }
 
   .quickfind__field input {
     flex: 1;
     min-width: 0;
-    min-height: 3rem;
-    padding: 0.75rem 1rem 0.75rem 0;
+    width: 0;
+    min-height: 2.5rem;
+    padding: 0;
     border: 0;
     background: none;
     color: var(--ink);
-    font: inherit;
+    font: 600 var(--step-0)/1 var(--font-sans);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 140ms ease;
   }
+
+  .quickfind:hover .quickfind__field input,
+  .quickfind:focus-within .quickfind__field input { width: auto; padding-right: 0.75rem; opacity: 1; pointer-events: auto; }
 
   .quickfind__field input:focus { outline: none; }
   .quickfind__field input::placeholder { color: var(--muted); }
@@ -1229,6 +1243,66 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   .shortcuts__item:hover,
   .shortcuts__all:hover { border-color: var(--accent); color: var(--accent); }
 
+  .category-shortcuts {
+    gap: 0.55rem;
+    margin-top: 1.15rem;
+  }
+
+  .category-shortcuts .shortcuts__item {
+    --shortcut-color: #f26430;
+    display: grid;
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.7rem;
+    padding: 0.38rem 0.5rem 0.38rem 0.42rem;
+    border-color: color-mix(in srgb, var(--shortcut-color) 24%, var(--line));
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--shortcut-color) 6%, var(--paper-raised));
+    box-shadow: 0 8px 18px -18px color-mix(in srgb, var(--shortcut-color) 70%, transparent);
+    color: var(--ink-2);
+    font-size: 0.72rem;
+    font-weight: 680;
+    transition: transform 150ms ease, color 150ms ease, border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+  }
+
+  .category-shortcuts .shortcuts__item:hover,
+  .category-shortcuts .shortcuts__item:focus-visible {
+    border-color: color-mix(in srgb, var(--shortcut-color) 62%, var(--line));
+    background: color-mix(in srgb, var(--shortcut-color) 11%, var(--paper-raised));
+    box-shadow: 0 12px 24px -18px color-mix(in srgb, var(--shortcut-color) 80%, transparent);
+    color: var(--ink);
+    transform: translateY(-2px);
+    outline: none;
+  }
+
+  .category-shortcuts .shortcuts__item--organize { --shortcut-color: #f26430; }
+  .category-shortcuts .shortcuts__item--optimize { --shortcut-color: #5d9f0b; }
+  .category-shortcuts .shortcuts__item--to-pdf { --shortcut-color: #d89b00; }
+  .category-shortcuts .shortcuts__item--from-pdf { --shortcut-color: #2f76df; }
+  .category-shortcuts .shortcuts__item--compose { --shortcut-color: #b92bc7; }
+  .category-shortcuts .shortcuts__item--review { --shortcut-color: #7650d8; }
+  .category-shortcuts .shortcuts__item--secure { --shortcut-color: #0b887b; }
+
+  .shortcuts__mark {
+    position: relative;
+    display: grid;
+    width: 1.65rem;
+    height: 1.65rem;
+    place-items: center;
+    border-radius: 9px 9px 9px 4px;
+    background: var(--shortcut-color);
+    box-shadow: 0 5px 11px -7px var(--shortcut-color);
+  }
+
+  .shortcuts__mark::before,
+  .shortcuts__mark::after,
+  .shortcuts__mark i { content: ''; display: block; background: #fff; }
+  .shortcuts__mark::before { width: 0.68rem; height: 0.12rem; border-radius: 999px; transform: translateY(-0.25rem); opacity: 0.9; }
+  .shortcuts__mark::after { position: absolute; width: 0.68rem; height: 0.12rem; border-radius: 999px; opacity: 0.56; }
+  .shortcuts__mark i { position: absolute; width: 0.42rem; height: 0.12rem; border-radius: 999px; transform: translate(-0.13rem, 0.25rem); opacity: 0.35; }
+  .category-shortcuts small { min-width: 1.38rem; padding: 0.24rem 0.32rem; border-radius: 8px; background: color-mix(in srgb, var(--shortcut-color) 11%, var(--paper-sunk)); color: var(--shortcut-color); font: 750 0.62rem/1 var(--font-mono); text-align: center; }
+
   .shortcuts__all {
     border-style: dashed;
     background: none;
@@ -1246,6 +1320,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
       scrollbar-width: none;
     }
     .shortcuts::-webkit-scrollbar { display: none; }
+    .category-shortcuts .shortcuts__item { min-height: 3rem; }
   }
 
   .hero__meta a { color: var(--ink-2); }
