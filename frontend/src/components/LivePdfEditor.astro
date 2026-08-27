@@ -185,33 +185,107 @@ const { profile = 'full' } = Astro.props;
         <p class="editor__loading" data-editor-loading>Choose a PDF to open the workspace.</p>
       </div>
 
-      <div class="editor__properties" hidden={profile === 'sign'}>
-        <label data-editor-text-control>
-          <span>Text</span>
-          <input data-editor-text value="Add your text" maxlength="160" />
-        </label>
-        <label>
-          <span>Colour</span>
-          <input data-editor-color type="color" value="#e11d48" />
-        </label>
-        <label data-editor-size-control>
-          <span>Size</span>
-          <select data-editor-size>
-            <option value="10">10 pt</option>
-            <option value="12">12 pt</option>
-            <option value="16" selected>16 pt</option>
-            <option value="22">22 pt</option>
-            <option value="30">30 pt</option>
-          </select>
-        </label>
-        <label data-editor-width-control hidden>
-          <span>Stroke</span>
-          <select data-editor-width>
-            <option value="1">Fine</option>
-            <option value="2" selected>Regular</option>
-            <option value="4">Bold</option>
-          </select>
-        </label>
+      <div class="editor__properties">
+        <div class="editor__inspector-copy">
+          <strong data-editor-inspector-title>No object selected</strong>
+          <p data-editor-inspector-subtitle>Choose an edit to adjust size, color, order, and placement.</p>
+        </div>
+
+        <div class="editor__inspector-grid">
+          <label data-editor-text-control>
+            <span>Text</span>
+            <input data-editor-text value="Add your text" maxlength="160" />
+          </label>
+          <label data-editor-color-control>
+            <span>Colour</span>
+            <input data-editor-color type="color" value="#e11d48" />
+          </label>
+          <label data-editor-fill-control>
+            <span>Fill</span>
+            <input data-editor-fill type="color" value="#ffffff" />
+          </label>
+          <label data-editor-opacity-control>
+            <span>Opacity</span>
+            <input data-editor-opacity type="number" value="1" min="0" max="1" step="0.05" />
+          </label>
+          <label data-editor-size-control>
+            <span>Size</span>
+            <select data-editor-size>
+              <option value="10">10 pt</option>
+              <option value="12">12 pt</option>
+              <option value="16" selected>16 pt</option>
+              <option value="22">22 pt</option>
+              <option value="30">30 pt</option>
+            </select>
+          </label>
+          <label data-editor-width-control hidden>
+            <span>Stroke</span>
+            <select data-editor-width>
+              <option value="1">Fine</option>
+              <option value="2" selected>Regular</option>
+              <option value="4">Bold</option>
+            </select>
+          </label>
+          <label data-editor-rotation-control>
+            <span>Rotation</span>
+            <input data-editor-rotation type="number" value="0" min="-180" max="180" step="1" />
+          </label>
+          <label data-editor-geometry-x>
+            <span>X %</span>
+            <input data-editor-x type="number" value="0" min="0" max="100" step="0.1" />
+          </label>
+          <label data-editor-geometry-y>
+            <span>Y %</span>
+            <input data-editor-y type="number" value="0" min="0" max="100" step="0.1" />
+          </label>
+          <label data-editor-geometry-w>
+            <span>W %</span>
+            <input data-editor-w type="number" value="0" min="0.1" max="100" step="0.1" />
+          </label>
+          <label data-editor-geometry-h>
+            <span>H %</span>
+            <input data-editor-h type="number" value="0" min="0.1" max="100" step="0.1" />
+          </label>
+          <label data-editor-signature-role hidden>
+            <span>Signature role</span>
+            <select data-editor-signature-role-select>
+              <option value="signature">Signature</option>
+              <option value="initials">Initials</option>
+              <option value="date">Date</option>
+              <option value="custom">Custom text</option>
+            </select>
+          </label>
+          <label data-editor-signature-lock hidden>
+            <span>Aspect lock</span>
+            <select data-editor-signature-lock-select>
+              <option value="true" selected>Locked</option>
+              <option value="false">Free</option>
+            </select>
+          </label>
+          <label data-editor-signature-size hidden>
+            <span>Signature size</span>
+            <select data-editor-signature-size-select>
+              <option value="small">Small</option>
+              <option value="medium" selected>Medium</option>
+              <option value="large">Large</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="editor__inspector-actions">
+          <button type="button" class="btn btn--quiet" data-editor-duplicate>Duplicate</button>
+          <button type="button" class="btn btn--quiet" data-editor-backward>Backward</button>
+          <button type="button" class="btn btn--quiet" data-editor-forward>Forward</button>
+          <button type="button" class="btn btn--quiet" data-editor-delete>Delete</button>
+          <button type="button" class="btn btn--quiet" data-editor-redo disabled>Redo</button>
+          <span class="editor__signature-actions" data-editor-signature-actions hidden>
+            <button type="button" class="btn btn--quiet" data-editor-edit-signature>Edit signature</button>
+            <button type="button" class="btn btn--quiet" data-editor-add-initials>Add initials</button>
+            <button type="button" class="btn btn--quiet" data-editor-add-date>Add date</button>
+          </span>
+        </div>
+
         <p data-editor-hint>Click an edit to select it. Drag selected text to reposition it.</p>
         <p class="editor__feedback" data-editor-feedback role="status" aria-live="polite"></p>
       </div>
@@ -227,6 +301,25 @@ const { profile = 'full' } = Astro.props;
 <script>
   import { documentOptions, loadPdfjs, type PdfjsApi } from '../lib/pdf/pdfjs';
   import type { EditMark } from '../lib/pdf/types';
+  import {
+    clamp01,
+    clampRect,
+    clampRotatedRect,
+    degreesToRadians,
+    GUIDE_STOPS,
+    handleCenters,
+    normalizeRect,
+    radiansToDegrees,
+    rectCenter,
+    rotatePoint,
+    resizeRect,
+    snapRect,
+    snapTranslatedRect,
+    type Manipulator,
+    type Point,
+    type Rect,
+    type ResizeHandle,
+  } from '../lib/pdf/editorGeometry';
 
   type PdfDocument = Awaited<ReturnType<PdfjsApi['getDocument']>['promise']>;
   type Tool = 'select' | 'pan' | 'text' | 'highlight' | 'ink' | 'rectangle' | 'whiteout' | 'line' | 'arrow' | 'callout' | 'stamp' | 'signature';
@@ -234,6 +327,46 @@ const { profile = 'full' } = Astro.props;
   type InkMark = Extract<EditMark, { kind: 'ink' }>;
   type MarkStyle = 'highlight' | 'underline' | 'strike' | 'strike-through' | 'rectangle' | 'circle' | 'line' | 'arrow' | 'callout' | 'polygon' | 'cloud' | 'replace' | 'ink';
   type StampKind = 'check' | 'cross' | 'dot' | 'circle-stamp' | 'crossout';
+  type SignatureRole = 'signature' | 'initials' | 'date' | 'custom';
+
+  type EditableMark = EditMark & {
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    text?: string;
+    size?: number;
+    color?: string;
+    fill?: string;
+    backgroundColor?: string;
+    opacity?: number;
+    strokeWidth?: number;
+    points?: Point[];
+    start?: Point;
+    end?: Point;
+    anchor?: Point;
+    image?: ArrayBuffer | Uint8Array;
+    bytes?: ArrayBuffer | Uint8Array;
+    mimeType?: 'image/png' | 'image/jpeg' | 'image/jpg';
+    rotation?: number;
+    aspectRatio?: number;
+    lockAspectRatio?: boolean;
+    signatureRole?: SignatureRole;
+    signatureSource?: 'typed' | 'drawn' | 'upload';
+  };
+
+  type SelectionKind = 'none' | 'move' | 'resize' | 'rotate' | 'endpoint' | 'anchor';
+
+  interface SelectionDrag {
+    id: string;
+    kind: SelectionKind;
+    handle?: Manipulator;
+    start: Point;
+    original: EditableMark;
+    originalRect: Rect;
+    originalPoints?: Point[];
+    originalRotation: number;
+  }
 
   interface ToolGuide {
     kind: 'none' | 'watermark' | 'page-number';
@@ -244,8 +377,9 @@ const { profile = 'full' } = Astro.props;
   class LivePdfEditorElement extends HTMLElement {
     private profile: 'full' | 'sign' = 'full';
     private doc: PdfDocument | null = null;
-    private marks: EditMark[] = [];
-    private history: EditMark[][] = [];
+    private marks: EditableMark[] = [];
+    private history: EditableMark[][] = [];
+    private future: EditableMark[][] = [];
     private tool: Tool = 'select';
     private activePage = 1;
     private selectedId = '';
@@ -255,13 +389,17 @@ const { profile = 'full' } = Astro.props;
     private guide: ToolGuide = { kind: 'none' };
     private dragStart: { x: number; y: number } | null = null;
     private draft: BoxMark | InkMark | null = null;
-    private moving: { id: string; x: number; y: number; originX: number; originY: number } | null = null;
+    private selectionDrag: SelectionDrag | null = null;
     private markStyles = new Map<string, MarkStyle>();
     private markupStyle: MarkStyle = 'highlight';
     private stampKind: StampKind = 'check';
     private replaceMode = false;
     private signatureStyle: 'signature' | 'initials' | 'drawn' | 'date' = 'signature';
     private drawnSignature: { bytes: Uint8Array; dataUrl: string; aspect: number } | null = null;
+    private editingSignatureId = '';
+    private inspectorDirty = false;
+    private selectionGuides: { x: number[]; y: number[] } = { x: [], y: [] };
+    private resizeObserver: ResizeObserver | null = null;
 
     private canvas = this.querySelector<HTMLCanvasElement>('[data-editor-canvas]')!;
     private overlay = this.querySelector<SVGSVGElement>('[data-editor-overlay]')!;
@@ -300,6 +438,10 @@ const { profile = 'full' } = Astro.props;
             return;
           }
           this.signatureStyle = kind === 'initials' ? 'initials' : 'signature';
+          if (this.editingSignatureId) {
+            this.updateEditingTypedSignature(value);
+            return;
+          }
           this.setTool('signature');
           this.setFeedback(`Click the page to place your ${this.signatureStyle}.`);
         });
@@ -308,7 +450,10 @@ const { profile = 'full' } = Astro.props;
       this.setupSignatureUpload();
       this.addEventListener('click', (event) => {
         const target = event.target as HTMLElement;
-        if (!target.closest('[data-editor-menu-trigger], [data-editor-signature-trigger], [data-editor-menu], #editor-signature-panel')) this.closeMenus();
+        if (!target.closest('[data-editor-menu-trigger], [data-editor-signature-trigger], [data-editor-edit-signature], [data-editor-menu], #editor-signature-panel')) {
+          this.closeMenus();
+          this.editingSignatureId = '';
+        }
       });
 
       this.querySelector<HTMLButtonElement>('[data-editor-prev]')?.addEventListener('click', () => void this.setPage(this.activePage - 1));
@@ -316,22 +461,83 @@ const { profile = 'full' } = Astro.props;
       this.querySelector<HTMLButtonElement>('[data-editor-zoom-out]')?.addEventListener('click', () => this.setZoom(this.zoom - 0.15));
       this.querySelector<HTMLButtonElement>('[data-editor-zoom-in]')?.addEventListener('click', () => this.setZoom(this.zoom + 0.15));
       this.querySelector<HTMLButtonElement>('[data-editor-undo]')?.addEventListener('click', () => this.undo());
-      this.querySelector<HTMLButtonElement>('[data-editor-delete]')?.addEventListener('click', () => this.deleteSelected());
+      this.querySelector<HTMLButtonElement>('[data-editor-redo]')?.addEventListener('click', () => this.redo());
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-delete]').forEach((button) => button.addEventListener('click', () => this.deleteSelected()));
+      this.querySelector<HTMLButtonElement>('[data-editor-duplicate]')?.addEventListener('click', () => this.duplicateSelected());
+      this.querySelector<HTMLButtonElement>('[data-editor-backward]')?.addEventListener('click', () => this.sendBackward());
+      this.querySelector<HTMLButtonElement>('[data-editor-forward]')?.addEventListener('click', () => this.bringForward());
+      this.querySelector<HTMLButtonElement>('[data-editor-edit-signature]')?.addEventListener('click', () => this.editSelectedSignature());
+      this.querySelector<HTMLButtonElement>('[data-editor-add-initials]')?.addEventListener('click', () => this.addSignatureCompanion('initials'));
+      this.querySelector<HTMLButtonElement>('[data-editor-add-date]')?.addEventListener('click', () => this.addSignatureCompanion('date'));
+
+      const inspectorInputs = [
+        '[data-editor-text]',
+        '[data-editor-color]',
+        '[data-editor-fill]',
+        '[data-editor-opacity]',
+        '[data-editor-size]',
+        '[data-editor-width]',
+        '[data-editor-rotation]',
+        '[data-editor-x]',
+        '[data-editor-y]',
+        '[data-editor-w]',
+        '[data-editor-h]',
+        '[data-editor-signature-role-select]',
+        '[data-editor-signature-lock-select]',
+        '[data-editor-signature-size-select]',
+      ];
+      inspectorInputs.forEach((selector) => {
+        this.querySelectorAll<HTMLInputElement | HTMLSelectElement>(selector).forEach((input) => {
+          input.addEventListener('focus', () => { this.inspectorDirty = false; });
+          if (input instanceof HTMLInputElement) input.addEventListener('input', () => this.commitInspectorUpdate());
+          input.addEventListener('change', () => {
+            this.commitInspectorUpdate();
+            this.inspectorDirty = false;
+            if (input.matches('[data-editor-color]')) void this.tintSelectedDrawnSignature(input.value);
+          });
+          input.addEventListener('blur', () => { this.inspectorDirty = false; });
+        });
+      });
 
       this.overlay.addEventListener('pointerdown', (event) => this.pointerDown(event));
       this.overlay.addEventListener('pointermove', (event) => this.pointerMove(event));
       this.overlay.addEventListener('pointerup', (event) => this.pointerUp(event));
       this.overlay.addEventListener('pointercancel', () => this.cancelPointer());
 
+      this.resizeObserver = new ResizeObserver(() => {
+        if (this.doc && !this.pageStage.hidden) this.applyZoom();
+      });
+      this.resizeObserver.observe(this.viewport);
+
       this.addEventListener('keydown', (event) => {
-        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+        if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'z') {
+          event.preventDefault();
+          this.redo();
+        } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
           event.preventDefault();
           this.undo();
+        } else if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
+          event.preventDefault();
+          this.redo();
         } else if ((event.key === 'Delete' || event.key === 'Backspace') && this.selectedId) {
           const target = event.target as HTMLElement;
           if (!target.matches('input, textarea, select')) {
             event.preventDefault();
             this.deleteSelected();
+          }
+        } else if (this.selectedId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) {
+          const target = event.target as HTMLElement;
+          if (!target.matches('input, textarea, select')) {
+            event.preventDefault();
+            const bounds = this.overlay.getBoundingClientRect();
+            const multiplier = event.shiftKey ? 10 : 1;
+            const stepX = multiplier / Math.max(1, bounds.width);
+            const stepY = multiplier / Math.max(1, bounds.height);
+            this.nudgeSelected(
+              event.key === 'ArrowLeft' ? -stepX : event.key === 'ArrowRight' ? stepX : 0,
+              event.key === 'ArrowUp' ? -stepY : event.key === 'ArrowDown' ? stepY : 0,
+              true,
+            );
           }
         }
       });
@@ -340,6 +546,12 @@ const { profile = 'full' } = Astro.props;
     }
 
     private fitSignaturePad: (() => void) | null = null;
+
+    disconnectedCallback() {
+      if (this.fitSignaturePad) window.removeEventListener('resize', this.fitSignaturePad);
+      this.resizeObserver?.disconnect();
+      this.resizeObserver = null;
+    }
 
     private setupSignaturePad(): void {
       const canvas = this.querySelector<HTMLCanvasElement>('[data-editor-signature-canvas]');
@@ -399,6 +611,7 @@ const { profile = 'full' } = Astro.props;
       canvas.addEventListener('pointerdown', (event) => {
         drawing = true;
         inked = true;
+        context.strokeStyle = this.querySelector<HTMLInputElement>('[data-editor-color]')?.value ?? '#0f172a';
         canvas.setPointerCapture(event.pointerId);
         const at = point(event);
         context.beginPath();
@@ -436,6 +649,39 @@ const { profile = 'full' } = Astro.props;
           aspect: cropped.height / Math.max(1, cropped.width),
         };
         this.signatureStyle = 'drawn';
+        if (this.editingSignatureId) {
+          const current = this.marks.find((mark) => mark.id === this.editingSignatureId);
+          if (current && (current.kind === 'signature' || current.kind === 'signature-text')) {
+            this.snapshot();
+            const pageAspect = this.canvas.width / Math.max(1, this.canvas.height);
+            const width = current.width;
+            const height = Math.min(1 - current.y, Math.max(0.035, width * this.drawnSignature.aspect * pageAspect));
+            const replacement: EditableMark = {
+              id: current.id,
+              kind: 'signature',
+              page: current.page,
+              x: current.x,
+              y: current.y,
+              width,
+              height,
+              bytes: new Uint8Array(this.drawnSignature.bytes),
+              mimeType: 'image/png',
+              color: this.querySelector<HTMLInputElement>('[data-editor-color]')?.value ?? current.color ?? '#0f172a',
+              opacity: current.opacity,
+              rotation: current.rotation,
+              signatureRole: 'signature',
+              signatureSource: 'drawn',
+              lockAspectRatio: true,
+              aspectRatio: width / Math.max(0.001, height),
+            };
+            this.marks = this.marks.map((mark) => mark.id === current.id ? replacement : mark);
+            this.editingSignatureId = '';
+            this.closeMenus();
+            this.changed();
+            this.setFeedback('Signature drawing updated.');
+            return;
+          }
+        }
         this.setTool('signature');
         this.setFeedback('Click the visible PDF page to place your drawn signature.');
       });
@@ -696,6 +942,127 @@ const { profile = 'full' } = Astro.props;
       return `data:image/png;base64,${btoa(binary)}`;
     }
 
+    private updateEditingTypedSignature(value: string): void {
+      const current = this.marks.find((mark) => mark.id === this.editingSignatureId);
+      if (!current || (current.kind !== 'signature' && current.kind !== 'signature-text')) return;
+      this.snapshot();
+      const text = this.signatureStyle === 'initials'
+        ? value.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 4).toUpperCase() || value.slice(0, 4).toUpperCase()
+        : value;
+      const replacement: EditableMark = {
+        id: current.id,
+        kind: 'signature-text',
+        page: current.page,
+        x: current.x,
+        y: current.y,
+        width: current.width,
+        height: current.height,
+        text,
+        size: current.size ?? (this.signatureStyle === 'initials' ? 18 : 22),
+        color: this.querySelector<HTMLInputElement>('[data-editor-color]')?.value ?? current.color ?? '#0f172a',
+        opacity: current.opacity,
+        rotation: current.rotation,
+        signatureRole: this.signatureStyle === 'initials' ? 'initials' : 'signature',
+        signatureSource: 'typed',
+        lockAspectRatio: true,
+        aspectRatio: current.aspectRatio ?? current.width / Math.max(0.001, current.height),
+      };
+      this.marks = this.marks.map((mark) => mark.id === current.id ? replacement : mark);
+      this.editingSignatureId = '';
+      this.closeMenus();
+      this.changed();
+      this.setFeedback('Signature text updated.');
+    }
+
+    private editSelectedSignature(): void {
+      const mark = this.selectedMark();
+      if (!mark || (mark.kind !== 'signature' && mark.kind !== 'signature-text')) return;
+      this.editingSignatureId = mark.id;
+      const input = this.querySelector<HTMLInputElement>('[data-editor-signature-text]');
+      if (input) input.value = mark.text ?? '';
+      const payload = mark.image ?? mark.bytes;
+      if (payload?.byteLength) {
+        const dataUrl = this.imageDataUrl(payload);
+        const canvas = this.querySelector<HTMLCanvasElement>('[data-editor-signature-canvas]');
+        const context = canvas?.getContext('2d');
+        if (canvas && context) {
+          const image = new Image();
+          image.onload = () => {
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            const scale = Math.min(canvas.width / image.width, canvas.height / image.height) * 0.88;
+            const width = image.width * scale;
+            const height = image.height * scale;
+            context.drawImage(image, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+          };
+          image.src = dataUrl;
+        }
+      }
+      this.toggleMenu('signature');
+      this.setFeedback('Update the text or drawing, then choose the matching signature action.');
+    }
+
+    private addSignatureCompanion(role: 'initials' | 'date'): void {
+      const mark = this.selectedMark();
+      if (!mark || (mark.kind !== 'signature' && mark.kind !== 'signature-text')) return;
+      const source = mark.text?.trim() || this.querySelector<HTMLInputElement>('[data-editor-signature-text]')?.value.trim() || 'Initials';
+      const text = role === 'date'
+        ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date())
+        : source.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 4).toUpperCase() || source.slice(0, 4).toUpperCase();
+      const width = role === 'date' ? 0.18 : 0.11;
+      const height = role === 'date' ? 0.045 : 0.055;
+      const rect = clampRect({ x: mark.x, y: mark.y + mark.height + 0.018, width, height }, 0.03);
+      this.snapshot();
+      const companion: EditableMark = {
+        id: crypto.randomUUID(),
+        kind: 'signature-text',
+        page: mark.page,
+        ...rect,
+        text,
+        size: role === 'date' ? 14 : 18,
+        color: mark.color ?? '#0f172a',
+        opacity: mark.opacity,
+        signatureRole: role,
+        signatureSource: 'typed',
+        lockAspectRatio: true,
+        aspectRatio: width / height,
+      };
+      const sourceIndex = this.marks.findIndex((item) => item.id === mark.id);
+      this.marks.splice(sourceIndex + 1, 0, companion);
+      this.selectedId = companion.id;
+      this.inspectorDirty = false;
+      this.changed();
+      this.setFeedback(`${role === 'date' ? 'Date' : 'Initials'} added next to the signature.`);
+    }
+
+    private async tintSelectedDrawnSignature(color: string): Promise<void> {
+      const mark = this.selectedMark();
+      if (!mark || mark.kind !== 'signature' || mark.mimeType === 'image/jpeg' || mark.mimeType === 'image/jpg') return;
+      const payload = mark.image ?? mark.bytes;
+      if (!payload?.byteLength || typeof createImageBitmap !== 'function') return;
+      try {
+        const bytes = payload instanceof Uint8Array ? payload : new Uint8Array(payload);
+        const blobBytes = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+        const bitmap = await createImageBitmap(new Blob([blobBytes], { type: 'image/png' }));
+        const canvas = document.createElement('canvas');
+        canvas.width = bitmap.width;
+        canvas.height = bitmap.height;
+        const context = canvas.getContext('2d');
+        if (!context) return;
+        context.drawImage(bitmap, 0, 0);
+        bitmap.close();
+        context.globalCompositeOperation = 'source-in';
+        context.fillStyle = color;
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        const recolored = this.dataUrlBytes(canvas.toDataURL('image/png'));
+        this.marks = this.marks.map((item) => item.id === mark.id
+          ? { ...item, bytes: recolored, image: undefined, mimeType: 'image/png', color }
+          : item);
+        this.changed();
+      } catch {
+        this.setFeedback('The signature colour could not be updated, but its placement is unchanged.');
+      }
+    }
+
     async open(file: File): Promise<void> {
       await this.release();
       this.hidden = false;
@@ -703,9 +1070,14 @@ const { profile = 'full' } = Astro.props;
       this.loading.textContent = 'Opening the document locally…';
       this.marks = [];
       this.history = [];
+      this.future = [];
       this.selectedId = '';
+      this.selectionDrag = null;
+      this.selectionGuides = { x: [], y: [] };
       this.markStyles.clear();
+      this.editingSignatureId = '';
       this.activePage = 1;
+      this.inspectorDirty = false;
       this.refreshState();
 
       try {
@@ -726,6 +1098,11 @@ const { profile = 'full' } = Astro.props;
     async release(): Promise<void> {
       this.renderToken += 1;
       this.drawnSignature = null;
+      this.editingSignatureId = '';
+      this.future = [];
+      this.selectionDrag = null;
+      this.selectionGuides = { x: [], y: [] };
+      this.inspectorDirty = false;
       const signaturePad = this.querySelector<HTMLCanvasElement>('[data-editor-signature-canvas]');
       signaturePad?.getContext('2d')?.clearRect(0, 0, signaturePad.width, signaturePad.height);
       const signatureText = this.querySelector<HTMLInputElement>('[data-editor-signature-text]');
@@ -861,7 +1238,9 @@ const { profile = 'full' } = Astro.props;
       if (!panel) return;
       const wasOpen = !panel.hidden;
       this.closeMenus();
-      if (!wasOpen) {
+      if (wasOpen) {
+        if (name === 'signature') this.editingSignatureId = '';
+      } else {
         panel.hidden = false;
         const trigger = name === 'signature'
           ? this.querySelector<HTMLButtonElement>('[data-editor-signature-trigger]')
@@ -958,16 +1337,26 @@ const { profile = 'full' } = Astro.props;
     }
 
     private applyZoom(): void {
-      const width = this.canvas.width * this.zoom;
-      const height = this.canvas.height * this.zoom;
+      const viewportStyle = getComputedStyle(this.viewport);
+      const horizontalPadding = Number.parseFloat(viewportStyle.paddingLeft) + Number.parseFloat(viewportStyle.paddingRight);
+      const availableWidth = Math.max(1, this.viewport.clientWidth - horizontalPadding);
+      const fitScale = matchMedia('(max-width: 760px)').matches
+        ? Math.min(1, availableWidth / Math.max(1, this.canvas.width))
+        : 1;
+      const width = this.canvas.width * fitScale * this.zoom;
+      const height = this.canvas.height * fitScale * this.zoom;
       this.pageStage.style.width = `${width}px`;
       this.pageStage.style.height = `${height}px`;
       this.querySelector<HTMLElement>('[data-editor-zoom]')!.textContent = `${Math.round(this.zoom * 100)}%`;
+      requestAnimationFrame(() => {
+        if (this.doc && !this.pageStage.hidden) this.renderMarks();
+      });
     }
 
     private setTool(tool: Tool): void {
       this.tool = tool;
       this.selectedId = '';
+      this.inspectorDirty = false;
       if (tool !== 'rectangle') {
         this.markStyles.delete('__draft__');
         this.replaceMode = false;
@@ -977,12 +1366,8 @@ const { profile = 'full' } = Astro.props;
         button.setAttribute('aria-pressed', String(button.dataset.editorTool === tool));
       });
       this.overlay.dataset.tool = tool;
-      const textControl = this.querySelector<HTMLElement>('[data-editor-text-control]');
-      const sizeControl = this.querySelector<HTMLElement>('[data-editor-size-control]');
-      const widthControl = this.querySelector<HTMLElement>('[data-editor-width-control]');
-      if (textControl) textControl.hidden = this.profile === 'sign' || !(['text', 'stamp'].includes(tool) || this.replaceMode);
-      if (sizeControl) sizeControl.hidden = this.profile === 'sign' || !(['text', 'stamp'].includes(tool) || this.replaceMode);
-      if (widthControl) widthControl.hidden = this.profile === 'sign' || !['ink', 'rectangle', 'line', 'arrow', 'callout'].includes(tool);
+      this.syncInspector();
+      this.refreshState();
       const hints: Record<Tool, string> = {
         select: 'Click an edit to select it. Drag text or a signature to reposition it.',
         pan: 'Drag the page to move around the workspace.',
@@ -1006,19 +1391,504 @@ const { profile = 'full' } = Astro.props;
       this.renderMarks();
     }
 
-    private point(event: PointerEvent): { x: number; y: number } {
+    private selectedMark(): EditableMark | undefined {
+      return this.marks.find((mark) => mark.id === this.selectedId);
+    }
+
+    private isBoxLike(mark: EditableMark): boolean {
+      return [
+        'text',
+        'highlight',
+        'rectangle',
+        'whiteout',
+        'underline',
+        'strike',
+        'strike-through',
+        'strikethrough',
+        'circle',
+        'replace-text',
+        'replace',
+        'stamp',
+        'signature',
+        'signature-text',
+      ].includes(mark.kind);
+    }
+
+    private estimateTextRect(mark: EditableMark): Rect {
+      const size = mark.size ?? 16;
+      const text = mark.text?.trim() || 'Text';
+      return {
+        x: mark.x ?? 0,
+        y: mark.y ?? 0,
+        width: mark.width ?? Math.min(0.52, Math.max(0.09, text.length * 0.019)),
+        height: mark.height ?? Math.min(0.14, Math.max(0.032, size / 1350)),
+      };
+    }
+
+    private markRect(mark: EditableMark): Rect {
+      if (mark.kind === 'line' || mark.kind === 'arrow') {
+        const start = mark.start ?? { x: mark.x ?? 0, y: mark.y ?? 0 };
+        const end = mark.end ?? { x: (mark.x ?? 0) + (mark.width ?? 0.02), y: (mark.y ?? 0) + (mark.height ?? 0.02) };
+        return normalizeRect(start, end, 0.02);
+      }
+      if (mark.kind === 'callout') {
+        return normalizeRect({ x: mark.x, y: mark.y }, { x: mark.x + mark.width, y: mark.y + mark.height }, 0.02);
+      }
+      if (mark.kind === 'polygon' || mark.kind === 'cloud' || mark.kind === 'ink') {
+        const points = mark.kind === 'ink' ? mark.points : mark.points;
+        if (!points.length) return { x: 0, y: 0, width: 0.02, height: 0.02 };
+        const xs = points.map((point) => point.x);
+        const ys = points.map((point) => point.y);
+        return normalizeRect(
+          { x: Math.min(...xs), y: Math.min(...ys) },
+          { x: Math.max(...xs), y: Math.max(...ys) },
+          0.02,
+        );
+      }
+      if (mark.kind === 'text') return this.estimateTextRect(mark);
+      return {
+        x: mark.x ?? 0,
+        y: mark.y ?? 0,
+        width: Math.max(0.02, mark.width ?? 0.02),
+        height: Math.max(0.02, mark.height ?? 0.02),
+      };
+    }
+
+    private rotateMark(mark: EditableMark): number {
+      return mark.rotation ?? 0;
+    }
+
+    private applyRectGeometry(mark: EditableMark, nextRect: Rect, lockOverride?: boolean): EditableMark {
+      const minimum = mark.kind === 'signature' || mark.kind === 'signature-text' ? 0.03 : 0.02;
+      const rect = clampRotatedRect(nextRect, mark.rotation ?? 0, minimum);
+      const previous = this.markRect(mark);
+      const previousWidth = Math.max(0.0001, previous.width);
+      const previousHeight = Math.max(0.0001, previous.height);
+
+      if (mark.kind === 'line' || mark.kind === 'arrow') {
+        const start = mark.start ?? { x: previous.x, y: previous.y };
+        const end = mark.end ?? { x: previous.x + previous.width, y: previous.y + previous.height };
+        const mapPoint = (point: Point): Point => ({
+          x: rect.x + ((point.x - previous.x) / previousWidth) * rect.width,
+          y: rect.y + ((point.y - previous.y) / previousHeight) * rect.height,
+        });
+        const nextStart = mapPoint(start);
+        const nextEnd = mapPoint(end);
+        return {
+          ...mark,
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          start: nextStart,
+          end: nextEnd,
+        } as EditableMark;
+      }
+
+      if (mark.kind === 'callout') {
+        const anchor = mark.anchor ?? { x: previous.x + previous.width / 2, y: previous.y + previous.height + 0.05 };
+        const mappedAnchor = {
+          x: rect.x + ((anchor.x - previous.x) / previousWidth) * rect.width,
+          y: rect.y + ((anchor.y - previous.y) / previousHeight) * rect.height,
+        };
+        return {
+          ...mark,
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          anchor: mappedAnchor,
+        };
+      }
+
+      if (mark.kind === 'polygon' || mark.kind === 'cloud' || mark.kind === 'ink') {
+        const points = mark.points.map((point) => ({
+          x: rect.x + ((point.x - previous.x) / previousWidth) * rect.width,
+          y: rect.y + ((point.y - previous.y) / previousHeight) * rect.height,
+        }));
+        return { ...mark, points };
+      }
+
+      if (mark.kind === 'signature' || mark.kind === 'signature-text') {
+        const ratio = mark.aspectRatio ?? (mark.height > 0 ? mark.width / mark.height : 1);
+        const lockAspect = lockOverride ?? (mark.lockAspectRatio !== false);
+        const adjusted = lockAspect && Number.isFinite(ratio) && ratio > 0
+          ? (() => {
+              const widthChange = Math.abs(rect.width - previous.width) / previousWidth;
+              const heightChange = Math.abs(rect.height - previous.height) / previousHeight;
+              const center = rectCenter(rect);
+              const width = heightChange > widthChange ? rect.height * ratio : rect.width;
+              const height = heightChange > widthChange ? rect.height : rect.width / ratio;
+              return clampRotatedRect({ x: center.x - width / 2, y: center.y - height / 2, width, height }, mark.rotation ?? 0, 0.03);
+            })()
+          : rect;
+        return { ...mark, x: adjusted.x, y: adjusted.y, width: adjusted.width, height: adjusted.height, aspectRatio: ratio, lockAspectRatio: lockAspect };
+      }
+
+      if (mark.kind === 'text') {
+        const heightScale = rect.height / previousHeight;
+        return {
+          ...mark,
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          size: Math.max(6, (mark.size ?? 16) * heightScale),
+        };
+      }
+
+      return {
+        ...mark,
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      };
+    }
+
+    private translateMark(mark: EditableMark, dx: number, dy: number): EditableMark {
+      if (!dx && !dy) return structuredClone(mark);
+      if (mark.kind === 'line' || mark.kind === 'arrow') {
+        const start = mark.start ?? { x: mark.x ?? 0, y: mark.y ?? 0 };
+        const end = mark.end ?? { x: (mark.x ?? 0) + (mark.width ?? 0.02), y: (mark.y ?? 0) + (mark.height ?? 0.02) };
+        return {
+          ...mark,
+          start: { x: start.x + dx, y: start.y + dy },
+          end: { x: end.x + dx, y: end.y + dy },
+          x: (mark.x ?? start.x) + dx,
+          y: (mark.y ?? start.y) + dy,
+        };
+      }
+      if (mark.kind === 'callout') {
+        return {
+          ...mark,
+          x: mark.x + dx,
+          y: mark.y + dy,
+          anchor: mark.anchor ? { x: mark.anchor.x + dx, y: mark.anchor.y + dy } : undefined,
+        };
+      }
+      if (mark.kind === 'polygon' || mark.kind === 'cloud' || mark.kind === 'ink') {
+        return {
+          ...mark,
+          points: mark.points.map((point) => ({ x: point.x + dx, y: point.y + dy })),
+        };
+      }
+      return {
+        ...mark,
+        x: (mark.x ?? 0) + dx,
+        y: (mark.y ?? 0) + dy,
+      };
+    }
+
+    private snapTargets(excludeId: string): { x: number[]; y: number[] } {
+      const x = [...GUIDE_STOPS, 0.05, 0.95];
+      const y = [...GUIDE_STOPS, 0.05, 0.95];
+      for (const mark of this.marks) {
+        if (mark.id === excludeId || mark.page !== this.activePage) continue;
+        const rect = this.markRect(mark);
+        x.push(rect.x, rect.x + rect.width / 2, rect.x + rect.width);
+        y.push(rect.y, rect.y + rect.height / 2, rect.y + rect.height);
+      }
+      return { x: [...new Set(x)], y: [...new Set(y)] };
+    }
+
+    private point(event: PointerEvent): Point {
       const bounds = this.overlay.getBoundingClientRect();
       return {
-        x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width)),
-        y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / bounds.height)),
+        x: Math.max(0, Math.min(1, (event.clientX - bounds.left) / Math.max(1, bounds.width))),
+        y: Math.max(0, Math.min(1, (event.clientY - bounds.top) / Math.max(1, bounds.height))),
       };
+    }
+
+    private selectedManipulator(target: EventTarget | null): { id: string; manipulator?: Manipulator; kind?: SelectionKind } | null {
+      const element = target instanceof Element ? target : null;
+      const hit = element?.closest<SVGGElement | SVGElement>('[data-mark-id]') ?? null;
+      if (!hit) return null;
+      const id = hit.dataset.markId ?? '';
+      const manipulator = hit.getAttribute('data-manipulator') as Manipulator | null;
+      const kind = hit.getAttribute('data-selection-kind') as SelectionKind | null;
+      return { id, manipulator: manipulator ?? undefined, kind: kind ?? undefined };
+    }
+
+    private selectionBoxMarkup(mark: EditableMark): { rect: Rect; rotation: number; center: Point } {
+      const rect = this.markRect(mark);
+      const center = rectCenter(rect);
+      return { rect, rotation: this.rotateMark(mark), center };
+    }
+
+    private syncInspector(): void {
+      const mark = this.selectedMark();
+      const title = this.querySelector<HTMLElement>('[data-editor-inspector-title]');
+      const subtitle = this.querySelector<HTMLElement>('[data-editor-inspector-subtitle]');
+      const hint = this.querySelector<HTMLElement>('[data-editor-hint]');
+      const colorControl = this.querySelector<HTMLElement>('[data-editor-color-control]');
+      const textControl = this.querySelector<HTMLElement>('[data-editor-text-control]');
+      const sizeControl = this.querySelector<HTMLElement>('[data-editor-size-control]');
+      const widthControl = this.querySelector<HTMLElement>('[data-editor-width-control]');
+      const rotationControl = this.querySelector<HTMLElement>('[data-editor-rotation-control]');
+      const fillControl = this.querySelector<HTMLElement>('[data-editor-fill-control]');
+      const opacityControl = this.querySelector<HTMLElement>('[data-editor-opacity-control]');
+      const signatureRole = this.querySelector<HTMLElement>('[data-editor-signature-role]');
+      const signatureLock = this.querySelector<HTMLElement>('[data-editor-signature-lock]');
+      const signatureSize = this.querySelector<HTMLElement>('[data-editor-signature-size]');
+      const signatureActions = this.querySelector<HTMLElement>('[data-editor-signature-actions]');
+      const geometryControls = this.querySelectorAll<HTMLElement>('[data-editor-geometry-x], [data-editor-geometry-y], [data-editor-geometry-w], [data-editor-geometry-h]');
+
+      const setValue = (selector: string, value: string): void => {
+        const input = this.querySelector<HTMLInputElement | HTMLSelectElement>(selector);
+        if (input && input.value !== value) input.value = value;
+      };
+
+      const enableAll = Boolean(mark);
+      for (const selector of [
+        '[data-editor-text]',
+        '[data-editor-color]',
+        '[data-editor-fill]',
+        '[data-editor-opacity]',
+        '[data-editor-size]',
+        '[data-editor-width]',
+        '[data-editor-rotation]',
+        '[data-editor-x]',
+        '[data-editor-y]',
+        '[data-editor-w]',
+        '[data-editor-h]',
+        '[data-editor-signature-role-select]',
+        '[data-editor-signature-lock-select]',
+        '[data-editor-signature-size-select]',
+      ]) {
+        const control = this.querySelector<HTMLInputElement | HTMLSelectElement>(selector);
+        if (control) control.disabled = !enableAll;
+      }
+
+      if (!mark) {
+        const activePlacement = !['select', 'pan'].includes(this.tool);
+        if (title) title.textContent = activePlacement ? `${this.tool.replace(/[-_]/g, ' ')} settings` : 'No object selected';
+        if (subtitle) subtitle.textContent = activePlacement
+          ? 'Choose the appearance, then place the object on the page.'
+          : 'Choose an edit to adjust size, color, order, and placement.';
+        if (hint) hint.textContent = this.profile === 'sign'
+          ? 'Signatures can be typed or drawn, then placed on the page and dragged into position.'
+          : 'Click an edit to select it. Drag handles to move, resize, or rotate it.';
+        const needsText = this.profile === 'full' && (this.tool === 'text' || this.replaceMode);
+        const needsSize = needsText;
+        const needsStroke = this.profile === 'full' && ['ink', 'rectangle', 'line', 'arrow', 'callout'].includes(this.tool);
+        if (colorControl) colorControl.hidden = !activePlacement;
+        if (textControl) textControl.hidden = !needsText;
+        if (sizeControl) sizeControl.hidden = !needsSize;
+        if (widthControl) widthControl.hidden = !needsStroke;
+        if (rotationControl) rotationControl.hidden = true;
+        if (fillControl) fillControl.hidden = true;
+        if (opacityControl) opacityControl.hidden = true;
+        if (signatureRole) signatureRole.hidden = true;
+        if (signatureLock) signatureLock.hidden = true;
+        if (signatureSize) signatureSize.hidden = true;
+        if (signatureActions) signatureActions.hidden = true;
+        geometryControls.forEach((control) => { control.hidden = true; });
+        const enable = (selector: string, enabled: boolean): void => {
+          const control = this.querySelector<HTMLInputElement | HTMLSelectElement>(selector);
+          if (control) control.disabled = !enabled;
+        };
+        enable('[data-editor-color]', activePlacement);
+        enable('[data-editor-text]', needsText);
+        enable('[data-editor-size]', needsSize);
+        enable('[data-editor-width]', needsStroke);
+        return;
+      }
+
+      const rect = this.markRect(mark);
+      if (title) title.textContent = `${mark.kind.replace(/[-_]/g, ' ')} selected`;
+      if (subtitle) subtitle.textContent = 'Use the handles or the inspector to fine tune this object.';
+      if (hint) hint.textContent = 'Drag the object, then use the handles to resize or rotate it.';
+
+      setValue('[data-editor-text]', mark.text ?? '');
+      setValue('[data-editor-color]', mark.color ?? '#e11d48');
+      setValue('[data-editor-fill]', mark.fill ?? mark.backgroundColor ?? '#ffffff');
+      setValue('[data-editor-opacity]', String(mark.opacity ?? 1));
+      setValue('[data-editor-size]', String(mark.size ?? 16));
+      setValue('[data-editor-width]', String(mark.strokeWidth ?? 2));
+      setValue('[data-editor-rotation]', String(mark.rotation ?? 0));
+      setValue('[data-editor-x]', (rect.x * 100).toFixed(1));
+      setValue('[data-editor-y]', (rect.y * 100).toFixed(1));
+      setValue('[data-editor-w]', (rect.width * 100).toFixed(1));
+      setValue('[data-editor-h]', (rect.height * 100).toFixed(1));
+      setValue('[data-editor-signature-role-select]', mark.signatureRole ?? (mark.kind === 'signature-text' ? 'signature' : 'custom'));
+      setValue('[data-editor-signature-lock-select]', String(mark.lockAspectRatio !== false));
+      if (mark.kind === 'signature' || mark.kind === 'signature-text') {
+        const presets = mark.signatureRole === 'initials'
+          ? { small: 0.11, medium: 0.14, large: 0.18 }
+          : { small: 0.15, medium: 0.24, large: 0.32 };
+        const closest = (Object.entries(presets) as Array<[keyof typeof presets, number]>).sort((a, b) => Math.abs(mark.width - a[1]) - Math.abs(mark.width - b[1]))[0]?.[0] ?? 'custom';
+        const presetWidth = presets[closest as keyof typeof presets];
+        setValue('[data-editor-signature-size-select]', Math.abs(mark.width - presetWidth) < 0.012 ? closest : 'custom');
+      } else {
+        setValue('[data-editor-signature-size-select]', 'custom');
+      }
+
+      if (colorControl) colorControl.hidden = false;
+      geometryControls.forEach((control) => { control.hidden = false; });
+      if (textControl) textControl.hidden = !(['text', 'signature-text', 'replace-text'].includes(mark.kind));
+      if (sizeControl) sizeControl.hidden = !(['text', 'signature-text', 'replace-text'].includes(mark.kind));
+      if (widthControl) widthControl.hidden = !['ink', 'rectangle', 'line', 'arrow', 'callout', 'highlight', 'whiteout', 'underline', 'strike', 'strike-through', 'strikethrough', 'circle', 'polygon', 'cloud', 'stamp'].includes(mark.kind);
+      if (rotationControl) rotationControl.hidden = false;
+      if (fillControl) fillControl.hidden = !(['rectangle', 'whiteout', 'highlight', 'callout', 'polygon', 'cloud', 'replace-text', 'replace'].includes(mark.kind));
+      if (opacityControl) opacityControl.hidden = false;
+      if (signatureRole) signatureRole.hidden = mark.kind !== 'signature-text';
+      if (signatureLock) signatureLock.hidden = !['signature', 'signature-text'].includes(mark.kind);
+      if (signatureSize) signatureSize.hidden = !['signature', 'signature-text'].includes(mark.kind);
+      if (signatureActions) signatureActions.hidden = !['signature', 'signature-text'].includes(mark.kind);
+    }
+
+    private commitInspectorUpdate(): void {
+      const mark = this.selectedMark();
+      if (!mark) return;
+      if (!this.inspectorDirty) {
+        this.snapshot();
+        this.inspectorDirty = true;
+      }
+
+      const current = this.markRect(mark);
+      const nextRect = clampRect({
+        x: Number(this.querySelector<HTMLInputElement>('[data-editor-x]')?.value ?? current.x * 100) / 100,
+        y: Number(this.querySelector<HTMLInputElement>('[data-editor-y]')?.value ?? current.y * 100) / 100,
+        width: Number(this.querySelector<HTMLInputElement>('[data-editor-w]')?.value ?? current.width * 100) / 100,
+        height: Number(this.querySelector<HTMLInputElement>('[data-editor-h]')?.value ?? current.height * 100) / 100,
+      }, mark.kind === 'signature' || mark.kind === 'signature-text' ? 0.03 : 0.02);
+
+      const color = this.querySelector<HTMLInputElement>('[data-editor-color]')?.value ?? mark.color ?? '#e11d48';
+      const fill = this.querySelector<HTMLInputElement>('[data-editor-fill]')?.value ?? mark.fill ?? '#ffffff';
+      const opacity = clamp01(Number(this.querySelector<HTMLInputElement>('[data-editor-opacity]')?.value ?? `${mark.opacity ?? 1}`));
+      const size = Math.max(1, Number(this.querySelector<HTMLInputElement>('[data-editor-size]')?.value ?? `${mark.size ?? 16}`));
+      const strokeWidth = Math.max(0.25, Number(this.querySelector<HTMLInputElement>('[data-editor-width]')?.value ?? `${mark.strokeWidth ?? 2}`));
+      const rawRotation = Number(this.querySelector<HTMLInputElement>('[data-editor-rotation]')?.value ?? `${mark.rotation ?? 0}`);
+      const rotation = ((rawRotation % 360) + 360) % 360;
+      const signatureRole = (this.querySelector<HTMLSelectElement>('[data-editor-signature-role-select]')?.value ?? mark.signatureRole ?? 'signature') as SignatureRole;
+      const lockAspectRatio = this.querySelector<HTMLSelectElement>('[data-editor-signature-lock-select]')?.value !== 'false';
+      const signatureSize = this.querySelector<HTMLSelectElement>('[data-editor-signature-size-select]')?.value ?? 'custom';
+      const text = this.querySelector<HTMLInputElement>('[data-editor-text]')?.value ?? mark.text ?? '';
+      const nextMark = this.applyRectGeometry({
+        ...mark,
+        text,
+        color,
+        fill,
+        backgroundColor: fill,
+        opacity,
+        size,
+        strokeWidth,
+        rotation,
+        signatureRole,
+        lockAspectRatio,
+        aspectRatio: mark.aspectRatio ?? (mark.width > 0 && mark.height > 0 ? mark.width / mark.height : undefined),
+      }, nextRect);
+
+      if (nextMark.kind === 'signature' || nextMark.kind === 'signature-text') {
+        const ratio = nextMark.aspectRatio ?? (nextMark.width > 0 && nextMark.height > 0 ? nextMark.width / nextMark.height : 1);
+        const widthBySize = signatureSize === 'small'
+          ? (nextMark.signatureRole === 'initials' ? 0.11 : 0.15)
+          : signatureSize === 'large'
+            ? (nextMark.signatureRole === 'initials' ? 0.18 : 0.32)
+            : signatureSize === 'medium'
+              ? (nextMark.signatureRole === 'initials' ? 0.14 : 0.24)
+              : nextMark.width;
+        if (signatureSize !== 'custom') {
+          nextMark.width = widthBySize;
+          nextMark.height = Math.max(0.035, widthBySize / Math.max(0.1, ratio));
+          nextMark.aspectRatio = ratio;
+        }
+        const bounded = clampRotatedRect({ x: nextMark.x, y: nextMark.y, width: nextMark.width, height: nextMark.height }, nextMark.rotation ?? 0, 0.03);
+        nextMark.x = bounded.x;
+        nextMark.y = bounded.y;
+        nextMark.width = bounded.width;
+        nextMark.height = bounded.height;
+        nextMark.lockAspectRatio = lockAspectRatio;
+        nextMark.signatureRole = signatureRole;
+        if (signatureRole === 'date') {
+          nextMark.text = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date());
+          nextMark.size = Math.max(14, nextMark.size ?? 18);
+        } else if (signatureRole === 'initials' && nextMark.text) {
+          nextMark.text = nextMark.text
+            .split(/\s+/)
+            .map((part) => part[0] ?? '')
+            .join('')
+            .slice(0, 4)
+            .toUpperCase() || nextMark.text.slice(0, 4).toUpperCase();
+        }
+      }
+
+      this.marks = this.marks.map((item) => (item.id === mark.id ? nextMark : item));
+      this.changed();
+    }
+
+    private selectMark(id: string): void {
+      if (this.editingSignatureId && this.editingSignatureId !== id) this.editingSignatureId = '';
+      this.selectedId = id;
+      this.inspectorDirty = false;
+      this.syncInspector();
+      this.refreshState();
+      this.renderMarks();
+    }
+
+    private nudgeSelected(dx: number, dy: number, snapDisabled = false): void {
+      const mark = this.selectedMark();
+      if (!mark) return;
+      this.snapshot();
+      const next = this.translateMark(mark, dx, dy);
+      if (!snapDisabled) {
+        const targets = this.snapTargets(mark.id);
+        const snapped = snapTranslatedRect(this.markRect(next), targets.x, targets.y, 0.012, false);
+        const adjusted = this.applyRectGeometry(next, snapped.rect);
+        this.marks = this.marks.map((item) => (item.id === next.id ? adjusted : item));
+      } else {
+        this.marks = this.marks.map((item) => (item.id === next.id ? next : item));
+      }
+      this.changed();
+    }
+
+    private duplicateSelected(): void {
+      const mark = this.selectedMark();
+      if (!mark) return;
+      this.snapshot();
+      const copy = this.translateMark(structuredClone(mark), 0.02, 0.02);
+      copy.id = crypto.randomUUID();
+      const sourceIndex = this.marks.findIndex((item) => item.id === mark.id);
+      this.marks.splice(sourceIndex + 1, 0, copy);
+      this.selectedId = copy.id;
+      this.changed();
+    }
+
+    private reorderSelected(delta: number): void {
+      const index = this.marks.findIndex((mark) => mark.id === this.selectedId);
+      if (index < 0) return;
+      const nextIndex = Math.max(0, Math.min(this.marks.length - 1, index + delta));
+      if (nextIndex === index) return;
+      this.snapshot();
+      const [item] = this.marks.splice(index, 1);
+      this.marks.splice(nextIndex, 0, item);
+      this.changed();
+    }
+
+    private sendBackward(): void {
+      this.reorderSelected(-1);
+    }
+
+    private bringForward(): void {
+      this.reorderSelected(1);
+    }
+
+    private redo(): void {
+      const next = this.future.pop();
+      if (!next) return;
+      this.history.push(structuredClone(this.marks));
+      this.marks = next;
+      this.selectedId = '';
+      this.inspectorDirty = false;
+      this.changed();
     }
 
     private pointerDown(event: PointerEvent): void {
       if (!this.doc || this.pageStage.hidden) return;
-      const target = event.target as SVGElement;
-      const id = target.closest<SVGElement>('[data-mark-id]')?.dataset.markId ?? '';
       const at = this.point(event);
+      const target = event.target as Element | null;
+      const manipulatorHit = this.selectedManipulator(target);
 
       if (this.tool === 'pan') {
         this.viewport.dataset.panning = 'true';
@@ -1028,12 +1898,47 @@ const { profile = 'full' } = Astro.props;
       }
 
       if (this.tool === 'select') {
-        this.selectedId = id;
-        const mark = this.marks.find((item) => item.id === id);
-        if (mark?.kind === 'text' || mark?.kind === 'signature' || mark?.kind === 'signature-text') {
-          this.moving = { id, x: at.x, y: at.y, originX: mark.x, originY: mark.y };
+        if (manipulatorHit?.id) {
+          const mark = this.marks.find((item) => item.id === manipulatorHit.id);
+          if (!mark) return;
+          this.selectedId = mark.id;
+          this.snapshot();
+          this.inspectorDirty = false;
+          this.selectionGuides = { x: [], y: [] };
+          this.selectionDrag = {
+            id: mark.id,
+            kind: manipulatorHit.kind ?? (manipulatorHit.manipulator === 'rotate' ? 'rotate' : manipulatorHit.manipulator === 'line-start' || manipulatorHit.manipulator === 'line-end' ? 'endpoint' : manipulatorHit.manipulator === 'callout-anchor' ? 'anchor' : manipulatorHit.manipulator ? 'resize' : 'move'),
+            handle: manipulatorHit.manipulator,
+            start: at,
+            original: structuredClone(mark),
+            originalRect: this.markRect(mark),
+            originalPoints: 'points' in mark ? structuredClone(mark.points) : undefined,
+            originalRotation: mark.rotation ?? 0,
+          };
+          this.overlay.setPointerCapture(event.pointerId);
+          this.syncInspector();
+          this.renderMarks();
+          return;
+        }
+
+        const markHit = manipulatorHit?.id ? this.marks.find((item) => item.id === manipulatorHit.id) : undefined;
+        this.selectedId = manipulatorHit?.id ?? '';
+        if (markHit) {
+          this.snapshot();
+          this.inspectorDirty = false;
+          this.selectionGuides = { x: [], y: [] };
+          this.selectionDrag = {
+            id: markHit.id,
+            kind: 'move',
+            start: at,
+            original: structuredClone(markHit),
+            originalRect: this.markRect(markHit),
+            originalPoints: 'points' in markHit ? structuredClone(markHit.points) : undefined,
+            originalRotation: markHit.rotation ?? 0,
+          };
           this.overlay.setPointerCapture(event.pointerId);
         }
+        this.syncInspector();
         this.refreshState();
         this.renderMarks();
         return;
@@ -1052,6 +1957,7 @@ const { profile = 'full' } = Astro.props;
         this.markStyles.set(idValue, 'ink');
         this.setTool('select');
         this.selectedId = idValue;
+        this.inspectorDirty = false;
         this.changed();
         return;
       }
@@ -1064,7 +1970,7 @@ const { profile = 'full' } = Astro.props;
             this.setTool('select');
             return;
           }
-          const width = 0.28;
+          const width = 0.24;
           const pageAspect = this.canvas.width / Math.max(1, this.canvas.height);
           const height = Math.min(0.18, Math.max(0.04, width * this.drawnSignature.aspect * pageAspect));
           this.marks.push({
@@ -1078,9 +1984,14 @@ const { profile = 'full' } = Astro.props;
             bytes: new Uint8Array(this.drawnSignature.bytes),
             mimeType: 'image/png',
             color,
+            signatureRole: 'signature',
+            signatureSource: 'drawn',
+            lockAspectRatio: true,
+            aspectRatio: width / Math.max(0.001, height),
           });
           this.setTool('select');
           this.selectedId = idValue;
+          this.inspectorDirty = false;
           this.changed();
           return;
         }
@@ -1112,9 +2023,14 @@ const { profile = 'full' } = Astro.props;
           text,
           size: this.signatureStyle === 'signature' ? 22 : 18,
           color,
+          signatureRole: this.signatureStyle === 'initials' ? 'initials' : 'signature',
+          signatureSource: 'typed',
+          lockAspectRatio: true,
+          aspectRatio: width / (this.signatureStyle === 'initials' ? 0.055 : 0.075),
         });
         this.setTool('select');
         this.selectedId = idValue;
+        this.inspectorDirty = false;
         this.changed();
         return;
       }
@@ -1135,10 +2051,12 @@ const { profile = 'full' } = Astro.props;
           text,
           size: Number(this.querySelector<HTMLSelectElement>('[data-editor-size]')!.value),
           color,
+          width: Math.min(0.52, Math.max(0.09, text.length * 0.019)),
+          height: 0.04,
         });
-        if (this.tool === 'stamp') this.markStyles.set(idValue, 'ink');
         this.setTool('select');
         this.selectedId = idValue;
+        this.inspectorDirty = false;
         this.changed();
         return;
       }
@@ -1181,15 +2099,64 @@ const { profile = 'full' } = Astro.props;
         return;
       }
       const at = this.point(event);
-      if (this.moving) {
-        const mark = this.marks.find((item) => item.id === this.moving?.id);
-        if (mark?.kind === 'text' || mark?.kind === 'signature' || mark?.kind === 'signature-text') {
-          const width = mark.kind === 'text' ? 0.02 : mark.width;
-          const height = mark.kind === 'text' ? 0.02 : mark.height;
-          mark.x = Math.max(0, Math.min(1 - width, this.moving.originX + at.x - this.moving.x));
-          mark.y = Math.max(0, Math.min(1 - height, this.moving.originY + at.y - this.moving.y));
-          this.renderMarks();
+      if (this.selectionDrag) {
+        const drag = this.selectionDrag;
+        const original = drag.original;
+        let nextMark = structuredClone(original);
+        let guides = { x: [] as number[], y: [] as number[] };
+        const snapDisabled = event.altKey;
+        const logicalAt = drag.originalRotation
+          ? rotatePoint(at, rectCenter(drag.originalRect), -degreesToRadians(drag.originalRotation))
+          : at;
+
+        if (drag.kind === 'rotate') {
+          const center = rectCenter(drag.originalRect);
+          const originAngle = Math.atan2(drag.start.y - center.y, drag.start.x - center.x);
+          const nextAngle = Math.atan2(at.y - center.y, at.x - center.x);
+          const rotation = drag.originalRotation + radiansToDegrees(nextAngle - originAngle);
+          const normalizedRotation = ((rotation % 360) + 360) % 360;
+          const rotated = { ...original, rotation: normalizedRotation } as EditableMark;
+          const bounded = clampRotatedRect(drag.originalRect, normalizedRotation, original.kind === 'signature' || original.kind === 'signature-text' ? 0.03 : 0.02);
+          nextMark = this.applyRectGeometry(rotated, bounded);
+          nextMark.rotation = normalizedRotation;
+        } else if (drag.kind === 'endpoint' && (original.kind === 'line' || original.kind === 'arrow')) {
+          const start = original.start ?? { x: original.x ?? 0, y: original.y ?? 0 };
+          const end = original.end ?? { x: (original.x ?? 0) + (original.width ?? 0.02), y: (original.y ?? 0) + (original.height ?? 0.02) };
+          if (drag.handle === 'line-start') {
+            nextMark.start = { x: clamp01(logicalAt.x), y: clamp01(logicalAt.y) };
+            nextMark.end = end;
+          } else {
+            nextMark.start = start;
+            nextMark.end = { x: clamp01(logicalAt.x), y: clamp01(logicalAt.y) };
+          }
+          nextMark.x = Math.min(nextMark.start.x, nextMark.end.x);
+          nextMark.y = Math.min(nextMark.start.y, nextMark.end.y);
+          nextMark.width = Math.max(0.02, Math.abs(nextMark.end.x - nextMark.start.x));
+          nextMark.height = Math.max(0.02, Math.abs(nextMark.end.y - nextMark.start.y));
+        } else if (drag.kind === 'anchor' && original.kind === 'callout') {
+          nextMark.anchor = { x: clamp01(logicalAt.x), y: clamp01(logicalAt.y) };
+        } else if (drag.kind === 'resize' && drag.handle) {
+          const nextRect = resizeRect(drag.originalRect, drag.handle as ResizeHandle, logicalAt, original.kind === 'signature' || original.kind === 'signature-text' ? 0.03 : 0.02);
+          const targets = this.snapTargets(original.id);
+          const snapped = snapDisabled ? { rect: nextRect, guides: { x: [], y: [] } } : snapRect(nextRect, targets.x, targets.y, 0.014, false);
+          const signatureLock = original.kind === 'signature' || original.kind === 'signature-text'
+            ? (event.shiftKey ? original.lockAspectRatio === false : original.lockAspectRatio !== false)
+            : undefined;
+          nextMark = this.applyRectGeometry(original, snapped.rect, signatureLock);
+          guides = snapped.guides;
+        } else {
+          const dx = at.x - drag.start.x;
+          const dy = at.y - drag.start.y;
+          const translated = this.translateMark(original, dx, dy);
+          const targets = this.snapTargets(original.id);
+          const snapped = snapDisabled ? { rect: this.markRect(translated), guides: { x: [], y: [] } } : snapTranslatedRect(this.markRect(translated), targets.x, targets.y, 0.014, false);
+          nextMark = this.applyRectGeometry(translated, snapped.rect);
+          guides = snapped.guides;
         }
+
+        this.selectionGuides = guides;
+        this.marks = this.marks.map((item) => (item.id === drag.id ? nextMark : item));
+        this.renderMarks();
         return;
       }
       if (!this.draft || !this.dragStart) return;
@@ -1217,12 +2184,12 @@ const { profile = 'full' } = Astro.props;
         if (this.overlay.hasPointerCapture(event.pointerId)) this.overlay.releasePointerCapture(event.pointerId);
         return;
       }
-      if (this.moving) {
-        this.snapshot(this.marks.map((mark) => mark.id === this.moving?.id && (mark.kind === 'text' || mark.kind === 'signature' || mark.kind === 'signature-text')
-          ? { ...mark, x: this.moving.originX, y: this.moving.originY }
-          : structuredClone(mark)));
-        this.moving = null;
+      if (this.selectionDrag) {
+        this.selectionDrag = null;
+        this.selectionGuides = { x: [], y: [] };
+        this.inspectorDirty = false;
         this.changed();
+        if (this.overlay.hasPointerCapture(event.pointerId)) this.overlay.releasePointerCapture(event.pointerId);
         return;
       }
       if (!this.draft) return;
@@ -1279,35 +2246,47 @@ const { profile = 'full' } = Astro.props;
         const selected = this.draft.id;
         this.setTool('select');
         this.selectedId = selected;
+        this.inspectorDirty = false;
         this.changed();
       } else {
         this.history.pop();
       }
       this.draft = null;
       this.dragStart = null;
+      this.selectionGuides = { x: [], y: [] };
       this.renderMarks();
       if (this.overlay.hasPointerCapture(event.pointerId)) this.overlay.releasePointerCapture(event.pointerId);
     }
 
     private cancelPointer(): void {
+      if (this.selectionDrag) {
+        const original = this.selectionDrag.original;
+        this.marks = this.marks.map((mark) => mark.id === original.id ? original : mark);
+        this.history.pop();
+      } else if (this.draft) {
+        this.history.pop();
+      }
       this.draft = null;
       this.dragStart = null;
-      this.moving = null;
+      this.selectionDrag = null;
+      this.selectionGuides = { x: [], y: [] };
       this.viewport.dataset.panning = 'false';
-      this.renderMarks();
+      this.changed();
     }
 
     private snapshot(value: EditMark[] = this.marks): void {
       this.history.push(structuredClone(value));
       if (this.history.length > 50) this.history.shift();
-      this.refreshState();
+      this.future = [];
     }
 
     private undo(): void {
       const previous = this.history.pop();
       if (!previous) return;
-      this.marks = previous;
+      this.future.push(structuredClone(this.marks));
+      this.marks = previous as EditableMark[];
       this.selectedId = '';
+      this.inspectorDirty = false;
       this.changed();
     }
 
@@ -1315,12 +2294,15 @@ const { profile = 'full' } = Astro.props;
       if (!this.selectedId) return;
       this.snapshot();
       this.marks = this.marks.filter((mark) => mark.id !== this.selectedId);
+      this.editingSignatureId = '';
       this.selectedId = '';
+      this.inspectorDirty = false;
       this.changed();
     }
 
     private changed(): void {
       this.refreshState();
+      this.syncInspector();
       this.renderMarks();
       this.dispatchEvent(new CustomEvent('editorchange', { bubbles: true, detail: { count: this.marks.length } }));
     }
@@ -1331,13 +2313,109 @@ const { profile = 'full' } = Astro.props;
         ? `${count} quick edit${count === 1 ? '' : 's'} will be included in the output`
         : 'No quick edits yet';
       this.querySelector<HTMLButtonElement>('[data-editor-undo]')!.disabled = this.history.length === 0;
-      this.querySelector<HTMLButtonElement>('[data-editor-delete]')!.disabled = !this.selectedId;
+      this.querySelector<HTMLButtonElement>('[data-editor-redo]')!.disabled = this.future.length === 0;
+      this.querySelector<HTMLButtonElement>('[data-editor-duplicate]')!.disabled = !this.selectedId;
+      this.querySelector<HTMLButtonElement>('[data-editor-backward]')!.disabled = !this.selectedId;
+      this.querySelector<HTMLButtonElement>('[data-editor-forward]')!.disabled = !this.selectedId;
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-delete]').forEach((button) => { button.disabled = !this.selectedId; });
     }
 
     private svg(name: string, attributes: Record<string, string>): SVGElement {
       const node = document.createElementNS('http://www.w3.org/2000/svg', name);
       for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
       return node;
+    }
+
+    private appendSelectionOverlay(nodes: SVGElement[]): void {
+      const mark = this.selectedMark();
+      if (!mark || mark.page !== this.activePage) return;
+      const { rect, center, rotation } = this.selectionBoxMarkup(mark);
+      const box = this.isBoxLike(mark) || mark.kind === 'polygon' || mark.kind === 'cloud' || mark.kind === 'ink' || mark.kind === 'callout';
+      const selection = this.svg('rect', {
+        x: String(rect.x * 1000),
+        y: String(rect.y * 1000),
+        width: String(rect.width * 1000),
+        height: String(rect.height * 1000),
+        rx: '14',
+        fill: 'none',
+        class: 'editor-selection',
+      });
+      selection.dataset.markId = mark.id;
+      if (rotation) selection.setAttribute('transform', `rotate(${rotation} ${center.x * 1000} ${center.y * 1000})`);
+      nodes.push(selection);
+
+      const touch = Math.max(18, 44 * 1000 / Math.max(1, this.overlay.getBoundingClientRect().width));
+      const handleSize = Math.max(8, touch * 0.22);
+      const addHandle = (manipulator: Manipulator, point: Point, kind: SelectionKind = 'resize', label: string = manipulator): void => {
+        const visiblePoint = rotation ? rotatePoint(point, center, degreesToRadians(rotation)) : point;
+        const outer = this.svg('circle', {
+          cx: String(visiblePoint.x * 1000),
+          cy: String(visiblePoint.y * 1000),
+          r: String(touch / 2),
+          class: 'editor-selection__hit',
+        });
+        outer.dataset.markId = mark.id;
+        outer.dataset.manipulator = manipulator;
+        outer.dataset.selectionKind = kind;
+        outer.dataset.selectionLabel = label;
+        nodes.push(outer);
+
+        const inner = this.svg('circle', {
+          cx: String(visiblePoint.x * 1000),
+          cy: String(visiblePoint.y * 1000),
+          r: String(handleSize / 2),
+          class: 'editor-selection__handle',
+        });
+        inner.dataset.markId = mark.id;
+        inner.dataset.manipulator = manipulator;
+        inner.dataset.selectionKind = kind;
+        nodes.push(inner);
+      };
+
+      if (box) {
+        const handles = handleCenters(rect);
+        addHandle('nw', handles.nw, 'resize');
+        addHandle('n', handles.n, 'resize');
+        addHandle('ne', handles.ne, 'resize');
+        addHandle('e', handles.e, 'resize');
+        addHandle('se', handles.se, 'resize');
+        addHandle('s', handles.s, 'resize');
+        addHandle('sw', handles.sw, 'resize');
+        addHandle('w', handles.w, 'resize');
+        addHandle('rotate', { x: center.x, y: Math.max(0, rect.y - 0.06) }, 'rotate');
+      }
+
+      if (mark.kind === 'line' || mark.kind === 'arrow') {
+        const start = mark.start ?? { x: mark.x ?? 0, y: mark.y ?? 0 };
+        const end = mark.end ?? { x: (mark.x ?? 0) + (mark.width ?? 0.02), y: (mark.y ?? 0) + (mark.height ?? 0.02) };
+        addHandle('line-start', start, 'endpoint', 'start');
+        addHandle('line-end', end, 'endpoint', 'end');
+      }
+
+      if (mark.kind === 'callout') {
+        addHandle('callout-anchor', mark.anchor ?? { x: rect.x + rect.width / 2, y: rect.y + rect.height + 0.05 }, 'anchor', 'anchor');
+      }
+
+      if (this.selectionGuides.x.length || this.selectionGuides.y.length) {
+        for (const guideX of this.selectionGuides.x) {
+          nodes.push(this.svg('line', {
+            x1: String(guideX * 1000),
+            y1: '0',
+            x2: String(guideX * 1000),
+            y2: '1000',
+            class: 'editor-guide-line',
+          }));
+        }
+        for (const guideY of this.selectionGuides.y) {
+          nodes.push(this.svg('line', {
+            x1: '0',
+            y1: String(guideY * 1000),
+            x2: '1000',
+            y2: String(guideY * 1000),
+            class: 'editor-guide-line',
+          }));
+        }
+      }
     }
 
     private renderMarks(): void {
@@ -1369,20 +2447,21 @@ const { profile = 'full' } = Astro.props;
             x: String(mark.x * 1000),
             y: String(mark.y * 1000),
             fill: mark.color,
+            opacity: String(mark.opacity ?? 1),
             'font-size': String((mark.size / pageHeight) * 1000),
             class: selected ? 'editor-mark is-selected' : 'editor-mark',
           });
           node.textContent = mark.text;
         } else if (mark.kind === 'stamp') {
           const glyphs: Record<string, string> = { check: '✓', cross: '×', dot: '•', circle: '○', crossout: '╳' };
-          node = this.svg('text', { x: String((mark.x + mark.width / 2) * 1000), y: String((mark.y + mark.height * 0.82) * 1000), 'text-anchor': 'middle', fill: mark.color, 'font-size': String(mark.height * 1000), 'font-weight': '700', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          node = this.svg('text', { x: String((mark.x + mark.width / 2) * 1000), y: String((mark.y + mark.height * 0.82) * 1000), 'text-anchor': 'middle', fill: mark.color, opacity: String(mark.opacity ?? 1), 'font-size': String(mark.height * 1000), 'font-weight': '700', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
           node.textContent = glyphs[mark.stamp.toLowerCase()] ?? mark.stamp;
         } else if (mark.kind === 'line' || mark.kind === 'arrow') {
           const start = mark.start ?? { x: mark.x ?? 0, y: mark.y ?? 0 };
           const end = mark.end ?? { x: (mark.x ?? 0) + (mark.width ?? 0), y: (mark.y ?? 0) + (mark.height ?? 0) };
-          node = this.svg('polyline', { points: `${start.x * 1000},${start.y * 1000} ${end.x * 1000},${end.y * 1000}`, fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-linecap': 'round', 'marker-end': mark.kind === 'arrow' ? 'url(#editor-arrowhead)' : '', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          node = this.svg('polyline', { points: `${start.x * 1000},${start.y * 1000} ${end.x * 1000},${end.y * 1000}`, fill: 'none', stroke: mark.color, opacity: String(mark.opacity ?? 1), 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-linecap': 'round', 'marker-end': mark.kind === 'arrow' ? 'url(#editor-arrowhead)' : '', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
         } else if (mark.kind === 'callout') {
-          const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark', opacity: String(mark.opacity ?? 1) });
           group.append(this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String(mark.width * 1000), height: String(mark.height * 1000), rx: '12', fill: mark.fill ?? '#ffffff', opacity: String(mark.opacity ?? 0.92), stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)) }));
           const anchor = mark.anchor ?? { x: mark.x + mark.width / 2, y: mark.y + mark.height + 0.05 };
           group.append(this.svg('line', { x1: String((mark.x + mark.width / 2) * 1000), y1: String((mark.y + mark.height) * 1000), x2: String(anchor.x * 1000), y2: String(anchor.y * 1000), stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)) }));
@@ -1396,12 +2475,12 @@ const { profile = 'full' } = Astro.props;
             const y = Math.min(...ys) * 1000;
             const width = (Math.max(...xs) - Math.min(...xs)) * 1000;
             const height = (Math.max(...ys) - Math.min(...ys)) * 1000;
-            node = this.svg('rect', { x: String(x), y: String(y), width: String(width), height: String(height), rx: '52', fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-dasharray': '10 5', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+            node = this.svg('rect', { x: String(x), y: String(y), width: String(width), height: String(height), rx: '52', fill: mark.fill ?? 'none', opacity: String(mark.opacity ?? 1), stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-dasharray': '10 5', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
           } else {
-            node = this.svg('polygon', { points: mark.points.map((point) => `${point.x * 1000},${point.y * 1000}`).join(' '), fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-linejoin': 'round', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+            node = this.svg('polygon', { points: mark.points.map((point) => `${point.x * 1000},${point.y * 1000}`).join(' '), fill: mark.fill ?? 'none', opacity: String(mark.opacity ?? 1), stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-linejoin': 'round', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
           }
         } else if (mark.kind === 'signature' || mark.kind === 'signature-text') {
-          const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark', opacity: String(mark.opacity ?? 1) });
           if (selected) group.append(this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String(mark.width * 1000), height: String(mark.height * 1000), rx: '8', fill: 'none', stroke: mark.color ?? '#0f172a', 'stroke-width': '2', 'stroke-dasharray': '8 5' }));
           const imagePayload = mark.image ?? mark.bytes;
           if (imagePayload && imagePayload.byteLength > 0) {
@@ -1418,7 +2497,10 @@ const { profile = 'full' } = Astro.props;
               x: String((mark.x + 0.006) * 1000),
               y: String((mark.y + mark.height * 0.72) * 1000),
               fill: mark.color ?? '#0f172a',
-              'font-size': String(Math.max(18, Math.min(42, (mark.size ?? 22) * 1.35))),
+              'font-size': String(Math.max(10, Math.min(
+                Math.max(18, Math.min(42, (mark.size ?? 22) * 1.35)),
+                (mark.width * 920) / Math.max(1, (mark.text?.trim() || 'Signature').length * 0.58),
+              ))),
               'font-family': 'Georgia, serif',
               'font-style': 'italic',
             });
@@ -1427,7 +2509,7 @@ const { profile = 'full' } = Astro.props;
           }
           node = group;
         } else if (mark.kind === 'replace-text' || mark.kind === 'replace') {
-          const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark', opacity: String(mark.opacity ?? 1) });
           group.append(this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String(mark.width * 1000), height: String(mark.height * 1000), fill: mark.backgroundColor ?? '#ffffff', stroke: '#cbd5e1', 'stroke-width': '1' }));
           const label = this.svg('text', { x: String((mark.x + 0.008) * 1000), y: String((mark.y + Math.min(mark.height * 0.7, 0.04)) * 1000), fill: mark.color, 'font-size': String(Math.max(12, Math.min(28, mark.size * 1.2))) });
           label.textContent = mark.text;
@@ -1439,6 +2521,7 @@ const { profile = 'full' } = Astro.props;
             points: mark.points.map((point) => `${point.x * 1000},${point.y * 1000}`).join(' '),
             fill: 'none',
             stroke: mark.color,
+            opacity: String(mark.opacity ?? 1),
             'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)),
             'stroke-linecap': 'round',
             'stroke-linejoin': 'round',
@@ -1461,14 +2544,20 @@ const { profile = 'full' } = Astro.props;
               : style === 'strike' || style === 'strike-through'
                 ? this.svg('line', { x1: String(mark.x * 1000), y1: String((mark.y + mark.height * 0.5) * 1000), x2: String((mark.x + mark.width) * 1000), y2: String((mark.y + mark.height * 0.5) * 1000), stroke: mark.color, 'stroke-width': String(Math.max(2, mark.strokeWidth * 2.4)), 'stroke-linecap': 'round', class: selected ? 'editor-mark is-selected' : 'editor-mark' })
                 : mark.kind === 'highlight'
-                  ? this.svg('rect', { ...common, fill: mark.color, opacity: '0.32' })
+                  ? this.svg('rect', { ...common, fill: mark.color, opacity: String(mark.opacity ?? 0.32) })
                   : mark.kind === 'whiteout'
                     ? this.svg('rect', { ...common, fill: '#ffffff', stroke: '#cbd5e1', 'stroke-width': '1' })
-                    : this.svg('rect', { ...common, fill: 'none', stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)) });
+                    : this.svg('rect', { ...common, fill: mark.fill ?? 'none', opacity: String(mark.opacity ?? 1), stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)) });
+        }
+        const rotation = mark.rotation ?? 0;
+        if (rotation) {
+          const center = rectCenter(this.markRect(mark));
+          node.setAttribute('transform', `rotate(${rotation} ${center.x * 1000} ${center.y * 1000})`);
         }
         node.dataset.markId = mark.id;
         nodes.push(node);
       }
+      this.appendSelectionOverlay(nodes);
       this.overlay.replaceChildren(...nodes);
     }
   }
@@ -1624,13 +2713,35 @@ const { profile = 'full' } = Astro.props;
   .editor__loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: 2rem; text-align: center; color: var(--muted); font-size: var(--step--1); }
   .editor__loading[hidden] { display: none; }
 
-  .editor__properties { display: flex; align-items: end; gap: 0.65rem; flex-wrap: wrap; padding: 0.75rem 0.85rem; border-top: 1px solid var(--line); background: var(--paper-raised); }
+  .editor__properties {
+    display: grid;
+    gap: 0.8rem;
+    padding: 0.9rem 1rem 1rem;
+    border-top: 1px solid var(--line);
+    background: linear-gradient(180deg, color-mix(in oklab, var(--paper-raised) 92%, white), var(--paper-raised));
+  }
+  .editor__inspector-copy { display: grid; gap: 0.18rem; }
+  .editor__inspector-copy strong { color: var(--ink); font: 700 var(--step-0) var(--font-brand); letter-spacing: -0.02em; }
+  .editor__inspector-copy p { margin: 0; color: var(--muted); font-size: var(--step--2); line-height: 1.45; }
+  .editor__inspector-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 0.65rem; }
+  .editor__inspector-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .editor__signature-actions { display: contents; }
+  .editor__signature-actions[hidden] { display: none; }
   .editor__properties label { display: grid; gap: 0.25rem; color: var(--muted); font-size: 0.68rem; }
   .editor__properties label[hidden] { display: none; }
-  .editor__properties input:not([type='color']), .editor__properties select { min-height: 2.25rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); padding: 0.4rem 0.55rem; font: inherit; }
-  .editor__properties input[type='color'] { width: 2.4rem; height: 2.25rem; padding: 0.18rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); }
-  .editor__properties p { flex: 1 1 14rem; margin: 0 0 0.25rem; color: var(--muted); font-size: var(--step--2); }
-  .editor__properties .editor__feedback { flex-basis: 100%; min-height: 1.1rem; margin: 0; color: var(--accent); font-size: 0.68rem; }
+  .editor__properties input:not([type='color']), .editor__properties select { min-height: 2.3rem; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper-raised); color: var(--ink); padding: 0.45rem 0.6rem; font: inherit; }
+  .editor__properties input[type='color'] { width: 2.45rem; height: 2.3rem; padding: 0.18rem; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper-raised); }
+  .editor__properties p { margin: 0; color: var(--muted); font-size: var(--step--2); }
+  .editor__properties .editor__feedback { min-height: 1.1rem; color: var(--accent); font-size: 0.68rem; }
+  :global(.editor-selection) { fill: none; stroke: color-mix(in oklab, var(--accent) 80%, white); stroke-width: 2.4; stroke-dasharray: 10 7; vector-effect: non-scaling-stroke; pointer-events: none; }
+  :global(.editor-selection__hit) { fill: transparent; stroke: none; pointer-events: all; cursor: grab; }
+  :global(.editor-selection__handle) { fill: var(--paper-raised); stroke: color-mix(in oklab, var(--accent) 90%, black); stroke-width: 1.75; vector-effect: non-scaling-stroke; pointer-events: none; }
+  :global(.editor-selection__hit[data-manipulator='rotate']) { cursor: grab; }
+  :global(.editor-selection__hit[data-manipulator='line-start']),
+  :global(.editor-selection__hit[data-manipulator='line-end']),
+  :global(.editor-selection__hit[data-manipulator='callout-anchor']) { cursor: crosshair; }
+  :global(.editor-guide-line) { stroke: color-mix(in oklab, var(--accent) 55%, white); stroke-width: 1.25; stroke-dasharray: 6 6; pointer-events: none; }
+  :global(.editor-mark.is-selected) { filter: drop-shadow(0 0 0.7rem color-mix(in oklab, var(--accent) 24%, transparent)); }
 
   .editor__footer { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 0.75rem 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
   .editor__footer [data-editor-count]:not(:only-child) { color: var(--ink-2); font-weight: 500; }
@@ -1663,5 +2774,9 @@ const { profile = 'full' } = Astro.props;
     :global(.editor-thumb canvas) { min-height: 3.5rem; }
     .editor__viewport { min-height: 24rem; }
     .editor__footer span:last-child { display: none; }
+    .editor__properties { padding: 0.8rem; }
+    .editor__inspector-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .editor__inspector-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .editor__signature-actions { display: contents; }
   }
 </style>
