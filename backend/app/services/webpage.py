@@ -13,6 +13,7 @@ transmit.
 
 import asyncio
 from dataclasses import dataclass
+from importlib.util import find_spec
 
 from app.services.urlsafety import UnsafeUrl, validate
 
@@ -38,16 +39,12 @@ async def render(url: str, landscape: bool = False) -> RenderResult:
     """Fetch and render `url`. Raises UnsafeUrl or RenderError."""
     safe = validate(url)
 
-    try:
-        from playwright.async_api import async_playwright
-    except ImportError as exc:  # pragma: no cover - depends on the image
-        raise RenderError(
-            "The renderer is not installed in this environment."
-        ) from exc
+    if find_spec("playwright.async_api") is None:  # pragma: no cover - depends on the image
+        raise RenderError("The renderer is not installed in this environment.")
 
     try:
         return await asyncio.wait_for(_render(safe, landscape), timeout=HARD_TIMEOUT_S)
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         raise RenderError("That page took too long to render.") from exc
 
 
