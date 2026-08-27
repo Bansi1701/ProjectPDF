@@ -1,0 +1,53 @@
+---
+import LegalShell from '../components/LegalShell.astro';
+import { auditedNetworkRequests } from '../lib/networkAudit';
+
+const requests = auditedNetworkRequests();
+const sourceBase = 'https://github.com/Bansi1701/ProjectPDF/blob/main/frontend/src/';
+---
+<LegalShell
+  title="Privacy that can fail its own build"
+  eyebrow="Privacy"
+  updated="August 27, 2026"
+  description="ProjectPDF's privacy promise is narrow and testable: live document tools process files on your device. This page is generated with an audit that refuses undocumented fetch or XMLHttpRequest calls."
+>
+  <div class="callout"><strong>The useful version</strong><p>ProjectPDF does not receive, store, analyze, or sell the contents of PDFs used with its currently live tools. There are no analytics scripts, advertising trackers, user accounts, or document cookies in this release.</p></div>
+
+  <h2>What the site processes</h2>
+  <p>When you choose a document, browser code reads it into memory and creates the result on the same device. A finished tool receipt shows how many document bytes were sent. Navigating away normally releases in-memory data.</p>
+
+  <h2>Local browser storage</h2>
+  <ul>
+    <li><strong>Theme and interface preferences:</strong> localStorage remembers light or dark mode, preview size, and favorite tools.</li>
+    <li><strong>Connected workflow handoffs:</strong> IndexedDB can temporarily hold a PDF only after you choose to continue into another tool. The next tool deletes it when claimed; abandoned entries expire after one hour.</li>
+    <li><strong>Cookies:</strong> ProjectPDF does not set its own cookies in this release.</li>
+  </ul>
+
+  <h2>Complete script-initiated request audit</h2>
+  <p>This table is produced during the static build by scanning source files for <code>fetch</code> and <code>XMLHttpRequest</code> call sites. A new unlisted call fails the build. Page navigation and same-origin HTML, CSS, JavaScript, image, worker, and font asset loads are normal browser resource requests and are outside this call-site table.</p>
+  <table>
+    <thead><tr><th>Destination</th><th>When and what</th><th>Availability</th><th>Source</th></tr></thead>
+    <tbody>
+      {requests.map((request) => (
+        <tr>
+          <td>{request.destination}</td>
+          <td><strong>{request.trigger}</strong><br />{request.data}</td>
+          <td>{request.availability}</td>
+          <td><a href={`${sourceBase}${request.source}#L${request.line}`}>{request.source}:{request.line}</a></td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+
+  <h2>Hosting information</h2>
+  <p>The public site is served by GitHub Pages. Like any web host, GitHub can receive ordinary connection information such as IP address, requested path, browser headers, and time of access when it delivers site files. ProjectPDF does not receive PDF contents through that hosting request. GitHub's own privacy terms govern its infrastructure logs.</p>
+
+  <h2>External links</h2>
+  <p>Comparison pages link to official competitor sites as sources. ProjectPDF does not contact those sites when the page loads; your browser contacts them only if you follow the link.</p>
+
+  <h2>Children, sensitive documents, and requests</h2>
+  <p>The service is not directed to children and is not a regulated records repository. Because ProjectPDF has no account or document database, it normally has no ProjectPDF-held document or profile to access, correct, export, or delete. Repository questions and privacy reports can be opened through the public <a href="https://github.com/Bansi1701/ProjectPDF/issues">GitHub issue tracker</a>; do not attach a sensitive document to a public issue.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>New network capabilities must be added to the audited manifest before the site can build. Policy changes are versioned in the same public Git history as the product code.</p>
+</LegalShell>
