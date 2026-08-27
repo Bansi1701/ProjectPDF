@@ -164,7 +164,7 @@ async function run(request: WorkerRequest): Promise<OpResult> {
     case 'repair':
       return repair(request.files);
     case 'ocr':
-      return ocrPdf(request.files, request.searchable ?? true);
+      return ocrPdf(request.files, request.searchable ?? true, request.ocrPages ?? '');
     case 'redact':
       return redact(request.files, request.boxes ?? []);
     case 'word-to-pdf':

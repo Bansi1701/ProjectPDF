@@ -161,6 +161,61 @@ export async function protect(
   };
 }
 
+
+/**
+ * Which permissions the source document withheld.
+ *
+ * Read from the raw bytes, not the loaded document: pdf-lib drops the /Encrypt
+ * entry from the trailer once it has decrypted, so by the time there is a
+ * PDFDocument to ask, the permission bits are gone. Measured — trailerInfo
+ * comes back holding only Root.
+ *
+ * Scanning the file for it is sound because an encryption dictionary is the one
+ * dictionary that can never be in an object stream (ISO 32000-1 §7.5.8.2) and
+ * is never itself encrypted — it has to be readable to know how to decrypt
+ * everything else.
+ *
+ * /P is a bitfield where a *set* bit means allowed, so a withheld permission is
+ * a clear bit (Table 22). It is a signed 32-bit integer and is almost always
+ * negative, because the reserved high bits are all set; reading it unsigned
+ * reports nonsense.
+ */
+function liftedPermissions(bytes: ArrayBuffer): string[] {
+  const view = new Uint8Array(bytes);
+  // latin1 keeps one byte to one character, so offsets stay meaningful.
+  let text = '';
+  const CHUNK = 0x8000;
+  for (let at = 0; at < view.length; at += CHUNK) {
+    text += String.fromCharCode(...view.subarray(at, at + CHUNK));
+  }
+
+  const handler = text.search(/\/Filter\s*\/Standard/);
+  if (handler === -1) return [];
+
+  // The whole dictionary sits well within this of the handler name.
+  const window = text.slice(Math.max(0, handler - 2048), handler + 2048);
+  const match = /\/P\s+(-?\d+)/.exec(window);
+  if (!match) return [];
+
+  const bits = Number(match[1]) | 0;
+  const denied = (bit: number) => (bits & bit) === 0;
+
+  return (
+    [
+      [denied(0b100), 'printing'],
+      [denied(0b1000), 'editing'],
+      [denied(0b1_0000), 'copying text'],
+      [denied(0b10_0000), 'commenting'],
+      [denied(0b1_0000_0000), 'filling in forms'],
+      [denied(0b100_0000_0000), 'reordering pages'],
+      // Only meaningful while printing is otherwise allowed.
+      [!denied(0b100) && denied(0b1000_0000_0000), 'printing at full resolution'],
+    ] as const
+  )
+    .filter(([off]) => off)
+    .map(([, label]) => label);
+}
+
 export async function unlock(files: InputFile[], password: string): Promise<OpResult> {
   const file = files[0];
   if (!file) return { ok: false, error: 'Choose a PDF to unlock.' };
@@ -213,6 +268,16 @@ export async function unlock(files: InputFile[], password: string): Promise<OpRe
       ? 'Saved without encryption. Anyone with this copy can open it, so treat it like any other unprotected file.'
       : 'This document was not encrypted — it only carried permission flags, which any reader could already ignore. Those flags are now gone.',
   ];
+
+  // Name the restrictions that were actually lifted. "Unlocked" on its own does
+  // not tell somebody whether the thing they could not do — usually printing or
+  // copying — is now possible.
+  const lifted = liftedPermissions(file.bytes);
+  if (lifted.length > 0) {
+    notes.push(`Restrictions removed: ${lifted.join(', ')}. Those are now allowed in this copy.`);
+  } else if (neededPassword) {
+    notes.push('The document restricted nothing beyond needing the password to open it.');
+  }
 
   // Rebuilding carries the pages, not the catalog. Name what is lost rather
   // than letting someone discover it later.

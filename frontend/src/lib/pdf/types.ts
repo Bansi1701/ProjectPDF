@@ -459,6 +459,8 @@ export interface WorkerRequest {
   boxes?: RedactionBox[];
   /** OCR only: also produce a searchable PDF, not just text. */
   searchable?: boolean;
+  /** OCR only: which pages to read. Empty means all of them. */
+  ocrPages?: string;
   /** Sign only: PNG of the drawn or typed mark, plus where it goes. */
   signature?: ArrayBuffer;
   corner?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';

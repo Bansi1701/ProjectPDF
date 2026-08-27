@@ -482,7 +482,16 @@ const dropTitle = takesExcel
 
     {
       mode === 'ocr' && (
-        <label class="check">
+        <Fragment>
+          <label class="field">
+            <span>Which pages</span>
+            <input data-ocr-pages placeholder="all, or 1-5, 40" />
+            <small>
+              Recognition is the slowest thing here — around a second a page on a laptop, longer
+              on a phone. If you only need page 40 of a 300-page scan, say so and skip the wait.
+            </small>
+          </label>
+          <label class="check">
           <input type="checkbox" data-searchable checked />
           <span>
             Also make a searchable PDF
@@ -492,7 +501,8 @@ const dropTitle = takesExcel
               this — from this site, not a CDN.
             </small>
           </span>
-        </label>
+          </label>
+        </Fragment>
       )
     }
 
@@ -2475,6 +2485,8 @@ const dropTitle = takesExcel
         };
       } else if (mode === 'grayscale') {
         request.grayscaleOptions = { jpegQuality: Number(picked('gs-q') ?? 0.82) };
+      } else if (mode === 'ocr') {
+        request.ocrPages = val('[data-ocr-pages]');
       } else if (mode === 'rotate') {
         request.rotatePages = val('[data-rot-pages]');
       } else if (mode === 'page-numbers') {

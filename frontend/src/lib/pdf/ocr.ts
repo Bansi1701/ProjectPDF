@@ -24,6 +24,7 @@ import { PDFDocument, StandardFonts } from '@cantoo/pdf-lib';
 import { documentOptions, loadPdfjs } from './pdfjs';
 import type { InputFile, OpResult, OutputFile } from './types';
 import { reportProgress } from './progress';
+import { parsePageSet } from './pageset';
 
 const baseName = (name: string): string => name.replace(/\.pdf$/i, '');
 
@@ -40,7 +41,11 @@ interface Word {
   bbox: { x0: number; y0: number; x1: number; y1: number };
 }
 
-export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<OpResult> {
+export async function ocrPdf(
+  files: InputFile[],
+  searchable: boolean,
+  pageSpec = ''
+): Promise<OpResult> {
   const file = files[0];
   if (!file) return { ok: false, error: 'Choose a PDF to read.' };
 
@@ -80,9 +85,19 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
   let confidenceSum = 0;
   let confidenceCount = 0;
 
+  // Recognition is the slowest thing this site does — roughly a second a page
+  // on a laptop, several on a phone. Somebody who needs page 40 of a 300-page
+  // scan should not have to wait for the other 299.
+  const chosen = parsePageSet(pageSpec, source.numPages).pages;
+  if (chosen.length === 0) {
+    await worker.terminate();
+    await source.destroy();
+    return { ok: false, error: `That page selection matches nothing. This document has ${source.numPages} pages.` };
+  }
+
   try {
-    for (let n = 1; n <= source.numPages; n += 1) {
-      reportProgress(n - 1, source.numPages, `Reading page ${n} of ${source.numPages}`);
+    for (const [index, n] of chosen.entries()) {
+      reportProgress(index, chosen.length, `Reading page ${n}${chosen.length > 1 ? ` (${index + 1} of ${chosen.length})` : ''}`);
       const page = await source.getPage(n);
       const unit = page.getViewport({ scale: 1 });
 
@@ -154,7 +169,7 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
 
   // Every page is read; what remains is assembly, which is fast but not free
   // on a long document. Reporting it stops the bar sticking at (n-1)/n.
-  reportProgress(source.numPages, source.numPages, 'Assembling the result…');
+  reportProgress(chosen.length, chosen.length, 'Assembling the result…');
 
   await worker.terminate();
   await source.destroy();
@@ -191,6 +206,19 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
     );
   }
 
+  if (chosen.length < source.numPages) {
+    notes.push(
+      `${chosen.length} of ${source.numPages} pages were read. The searchable PDF contains only those pages — the rest are not in it.`
+    );
+  }
+
+  // Low confidence usually means the scan, not the engine. Say what helps.
+  if (confidence > 0 && confidence < 80) {
+    notes.push(
+      'Confidence is low. A straighter, higher-contrast scan at 300 DPI does far more for accuracy than anything this tool can do afterwards — the Scan tool can clean up a photograph of a page.'
+    );
+  }
+
   notes.push('English only for now. The engine and its language data were served from this site, not a CDN.');
 
   return {
@@ -198,7 +226,7 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
     files: outputs,
     bytesIn,
     bytesOut: outputs.reduce((sum, item) => sum + item.bytes.length, 0),
-    pages: source.numPages,
+    pages: chosen.length,
     durationMs: performance.now() - started,
     summary: `Read ${words.toLocaleString()} words`,
     notes,
