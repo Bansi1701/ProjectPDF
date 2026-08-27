@@ -1114,7 +1114,7 @@ const { profile = 'full' } = Astro.props;
       this.canvas.height = 0;
       this.overlay.replaceChildren();
       this.pageStage.hidden = true;
-      if (this.doc) await this.doc.destroy().catch(() => undefined);
+      if (this.doc) await this.doc.loadingTask.destroy().catch(() => undefined);
       this.doc = null;
       this.hidden = true;
     }

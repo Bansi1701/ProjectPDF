@@ -94,11 +94,11 @@ export async function redact(files: InputFile[], boxes: RedactionBox[]): Promise
       page.cleanup();
     }
   } catch (error) {
-    await source.destroy();
+    await source.loadingTask.destroy();
     return { ok: false, error: `Could not redact: ${(error as Error).message}` };
   }
 
-  await source.destroy();
+  await source.loadingTask.destroy();
 
   const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false });
 
@@ -115,7 +115,7 @@ export async function redact(files: InputFile[], boxes: RedactionBox[]): Promise
       leaked += content.items.map((item) => String((item as { str?: string }).str ?? '')).join('');
       page.cleanup();
     }
-    await check.destroy();
+    await check.loadingTask.destroy();
   } catch {
     return { ok: false, error: 'The redacted file could not be verified, so it was not returned. Your original is untouched.' };
   }

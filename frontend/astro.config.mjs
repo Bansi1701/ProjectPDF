@@ -6,8 +6,9 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 import { defineConfig } from 'astro/config';
-import sitemap from '@astrojs/sitemap';
+import sitemap, { ChangeFreqEnum } from '@astrojs/sitemap';
 
+/** @param {string} path */
 const here = (path) => fileURLToPath(new URL(path, import.meta.url));
 
 /**
@@ -22,6 +23,7 @@ const here = (path) => fileURLToPath(new URL(path, import.meta.url));
  * They are copied out of node_modules rather than committed: 3.9 MB of vendored
  * binaries would drift the moment anyone bumps pdfjs-dist.
  */
+/** @returns {import('astro').AstroIntegration} */
 function pdfjsAssets() {
   const source = here('./node_modules/pdfjs-dist/');
   const target = here('./public/pdfjs/');
@@ -50,6 +52,7 @@ function pdfjsAssets() {
 const repository = here('../');
 
 /** A real source date, not the build time that changes on every deploy. */
+/** @param {string} file */
 function changedAt(file) {
   if (!existsSync(join(repository, file))) return null;
   try {
@@ -62,6 +65,7 @@ function changedAt(file) {
   }
 }
 
+/** @param {string} absoluteUrl */
 function pageLastModified(absoluteUrl) {
   const route = new URL(absoluteUrl).pathname
     .replace(/^\/ProjectPDF\/?/, '')
@@ -91,7 +95,9 @@ export default defineConfig({
         return {
           ...item,
           ...(lastmod ? { lastmod } : {}),
-          changefreq: item.url.endsWith('/ProjectPDF/') ? 'weekly' : 'monthly',
+          changefreq: item.url.endsWith('/ProjectPDF/')
+            ? ChangeFreqEnum.WEEKLY
+            : ChangeFreqEnum.MONTHLY,
           priority: item.url.endsWith('/ProjectPDF/') ? 1 : 0.8,
         };
       },

@@ -148,7 +148,7 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
     }
   } catch (error) {
     await worker.terminate();
-    await source.destroy();
+    await source.loadingTask.destroy();
     return { ok: false, error: `OCR failed: ${(error as Error).message}` };
   }
 
@@ -157,7 +157,7 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
   reportProgress(source.numPages, source.numPages, 'Assembling the result…');
 
   await worker.terminate();
-  await source.destroy();
+  await source.loadingTask.destroy();
 
   const joined = text.join('\n\n').trim();
   if (!joined) {

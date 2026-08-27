@@ -225,7 +225,6 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
         standardFontDataUrl: asset('standard_fonts'),
         wasmUrl: asset('wasm'),
         iccUrl: asset('iccs'),
-        isEvalSupported: false,
       }).promise;
 
       for (let n = 1; n <= doc.numPages; n += 1) {
@@ -251,7 +250,7 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
         page.cleanup();
       }
 
-      await doc.destroy();
+      await doc.loadingTask.destroy();
       status.textContent = '';
       refresh();
     }
