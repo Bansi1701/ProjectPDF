@@ -37,9 +37,22 @@ jobs:
       - run: npm audit --audit-level=high
       - run: npm run build
 
-      - uses: actions/upload-pages-artifact@v3
+      # Package the Pages payload using GitHub's documented artifact layout.
+      # The released upload-pages-artifact action still delegates to a
+      # Node 20 upload action, so use the current Node 24 uploader directly.
+      - name: Package Pages artifact
+        run: >-
+          tar --dereference --hard-dereference --directory dist
+          -cvf "$RUNNER_TEMP/artifact.tar"
+          --exclude=.git --exclude=.github .
+
+      - name: Upload Pages artifact
+        uses: actions/upload-artifact@v7
         with:
-          path: frontend/dist
+          name: github-pages
+          path: ${{ runner.temp }}/artifact.tar
+          retention-days: 1
+          if-no-files-found: error
 
   deploy:
     needs: build
@@ -49,4 +62,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
