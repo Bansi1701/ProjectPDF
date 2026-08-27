@@ -2,7 +2,9 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import Lens from '../components/Lens.astro';
-import { CATEGORIES, SERVER_ONLY_REASONS, SITE, TOOLS, toolsByCategory } from '../config/site';
+import ToolIcon from '../components/ToolIcon.astro';
+import { SERVER_ONLY_REASONS, SITE, TOOLS } from '../config/site';
+import { NAVIGATION_GROUPS, type NavigationTone } from '../config/navigation';
 
 const steps = [
   { n: '1', title: 'You pick a file', body: 'The browser hands the tool a copy in memory. No request is made.' },
@@ -35,6 +37,16 @@ const serverOnlyCount = NUMBER_WORDS[SERVER_ONLY_REASONS.length] ?? String(SERVE
 const SHORTCUTS = ['merge-pdf', 'split-pdf', 'compress-pdf', 'edit-pdf', 'sign-pdf', 'scan-pdf', 'protect-pdf', 'pdf-to-word'];
 const shortcuts = SHORTCUTS.map((slug) => TOOLS.find((tool) => tool.slug === slug)!).filter(Boolean);
 const liveTools = TOOLS.filter((tool) => tool.status === 'live');
+
+const groupDetails: Record<NavigationTone, { anchor: string; description: string }> = {
+  organize: { anchor: 'organize', description: 'Build the document in the page order you need.' },
+  optimize: { anchor: 'optimize', description: 'Reduce, repair, crop, and prepare the file.' },
+  'to-pdf': { anchor: 'convert', description: 'Turn everyday files into dependable PDFs.' },
+  'from-pdf': { anchor: 'convert-from-pdf', description: 'Take text, tables, and images back out.' },
+  compose: { anchor: 'edit', description: 'Add, arrange, and make content permanent.' },
+  review: { anchor: 'review', description: 'Read, compare, recognize, and inspect documents.' },
+  secure: { anchor: 'secure', description: 'Control access, remove secrets, sign, and archive.' },
+};
 
 const baseUrl = import.meta.env.BASE_URL.endsWith('/') ? import.meta.env.BASE_URL : `${import.meta.env.BASE_URL}/`;
 const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
@@ -163,31 +175,44 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
         </p>
       </header>
 
+      <nav class="tool-tree" aria-label="PDF tool categories">
+        {NAVIGATION_GROUPS.map((group) => (
+          <a class={`tool-tree__branch tool-tree__branch--${group.tone}`} href={`#${groupDetails[group.tone].anchor}`}>
+            <span aria-hidden="true"></span>
+            <strong>{group.label}</strong>
+            <small>{group.tools.length}</small>
+          </a>
+        ))}
+      </nav>
+
       <div class="cluster cluster--yours" id="yours" data-yours hidden>
         <h3 class="cluster__name">Your tools</h3>
         <nav class="shortcuts" data-yours-row aria-label="Your saved tools"></nav>
       </div>
 
       {
-        CATEGORIES.map((category) => (
-          <div class="cluster" id={category.toLowerCase()}>
-            <h3 class="cluster__name">{category}</h3>
+        NAVIGATION_GROUPS.map((group) => (
+          <div class={`cluster cluster--${group.tone}`} id={groupDetails[group.tone].anchor}>
+            <header class="cluster__head">
+              <div>
+                <span class="cluster__signal" aria-hidden="true"></span>
+                <h3 class="cluster__name">{group.label}</h3>
+                <small>{group.tools.length} tools</small>
+              </div>
+              <p>{groupDetails[group.tone].description}</p>
+            </header>
             <ul class="grid">
-              {toolsByCategory(category).map((tool) => (
-                <li class="sheet card" data-tool-card data-slug={tool.slug} data-name={tool.name} data-search={`${tool.searchName} ${tool.name} ${tool.blurb} ${category}`.toLowerCase()}>
-                  {tool.status === 'live' && <a class="card__link" href={`${baseUrl}${tool.slug}/`} aria-label={`Open ${tool.name}`}></a>}
-                  {tool.status === 'live' && (
-                    <button class="card__star" type="button" data-fav={tool.slug} aria-pressed="false" aria-label={`Keep ${tool.name} in your tools`} title="Keep in your tools">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.5 2.6 5.6 6.1.8-4.5 4.2 1.2 6L12 17.2 6.6 20.1l1.2-6-4.5-4.2 6.1-.8Z" /></svg>
-                    </button>
-                  )}
-                  <p class="card__category">{category}</p>
+              {group.tools.map((tool) => (
+                <li class={`sheet card card--${group.tone}`} data-tool-card data-slug={tool.slug} data-name={tool.name} data-search={`${tool.searchName} ${tool.name} ${tool.blurb} ${group.label}`.toLowerCase()}>
+                  <a class="card__link" href={`${baseUrl}${tool.slug}/`} aria-label={`Open ${tool.name}`}></a>
+                  <button class="card__star" type="button" data-fav={tool.slug} aria-pressed="false" aria-label={`Keep ${tool.name} in your tools`} title="Keep in your tools">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.5 2.6 5.6 6.1.8-4.5 4.2 1.2 6L12 17.2 6.6 20.1l1.2-6-4.5-4.2 6.1-.8Z" /></svg>
+                  </button>
+                  <ToolIcon slug={tool.slug} tone={group.tone} size="3.5rem" class="card__icon" />
+                  <p class="card__category">{group.label}</p>
                   <h4 class="card__name">{tool.name}</h4>
                   <p class="card__blurb">{tool.blurb}</p>
-                  <p class:list={['card__where', tool.runsWhere === 'server' && 'is-server']}>
-                    {tool.runsWhere === 'local' ? 'in your browser' : 'needs our server'}
-                    {tool.status === 'building' && <span class="card__soon">· building now</span>}
-                  </p>
+                  <p class="card__where">in your browser</p>
                 </li>
               ))}
             </ul>
@@ -311,20 +336,12 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     <div class="wrap">
       <div class="footer__cols">
         {
-          CATEGORIES.map((category) => (
+          NAVIGATION_GROUPS.map((group) => (
             <div>
-              <h4>{category}</h4>
+              <h4>{group.label}</h4>
               <ul>
-                {toolsByCategory(category).map((tool) => (
-                  <li>
-                    {tool.status === 'live' ? (
-                      <a href={`${baseUrl}${tool.slug}/`}>{tool.name}</a>
-                    ) : (
-                      <span class="footer__building" title="This tool is still being built">
-                        {tool.name}<small>Building</small>
-                      </span>
-                    )}
-                  </li>
+                {group.tools.map((tool) => (
+                  <li><a href={`${baseUrl}${tool.slug}/`}>{tool.name}</a></li>
                 ))}
               </ul>
             </div>
@@ -1246,21 +1263,75 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   }
 
   /* ── Tool grid ────────────────────────────────────────────────────── */
+  .tool-tree {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(8rem, 1fr));
+    gap: 0.55rem;
+    margin: 2rem 0 2.75rem;
+  }
+
+  .tool-tree__branch {
+    --group-color: #f97316;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 3.25rem;
+    padding: 0.6rem 0.65rem;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--group-color) 4%, var(--paper-raised));
+    color: var(--ink-2);
+    text-decoration: none;
+    transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+  }
+
+  .tool-tree__branch:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--group-color) 45%, var(--line));
+    background: color-mix(in srgb, var(--group-color) 8%, var(--paper-raised));
+  }
+
+  .tool-tree__branch > span {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: var(--group-color);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--group-color) 12%, transparent);
+  }
+
+  .tool-tree__branch strong { overflow: hidden; font-size: 0.68rem; line-height: 1.2; text-overflow: ellipsis; }
+  .tool-tree__branch small { color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
+
   .cluster {
+    --group-color: #f97316;
     margin-bottom: 2.5rem;
     scroll-margin-top: 6rem;
   }
 
-  .cluster__name {
-    font-size: var(--step--2);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--muted);
-    font-weight: 500;
+  .cluster--organize, .tool-tree__branch--organize { --group-color: #f97316; }
+  .cluster--optimize, .tool-tree__branch--optimize { --group-color: #65a30d; }
+  .cluster--to-pdf, .tool-tree__branch--to-pdf { --group-color: #ca8a04; }
+  .cluster--from-pdf, .tool-tree__branch--from-pdf { --group-color: #2563eb; }
+  .cluster--compose, .tool-tree__branch--compose { --group-color: #c026d3; }
+  .cluster--review, .tool-tree__branch--review { --group-color: #7c3aed; }
+  .cluster--secure, .tool-tree__branch--secure { --group-color: #0f766e; }
+
+  .cluster__head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem 2rem;
     padding-bottom: 0.75rem;
     border-bottom: 1px solid var(--line);
     margin-bottom: 1.25rem;
   }
+
+  .cluster__head > div { display: flex; align-items: center; gap: 0.6rem; }
+  .cluster__signal { width: 0.62rem; height: 0.62rem; border-radius: 50%; background: var(--group-color); box-shadow: 0 0 0 5px color-mix(in srgb, var(--group-color) 12%, transparent); }
+  .cluster__name { margin: 0; color: var(--ink); font-family: var(--font-brand); font-size: var(--step-1); font-weight: 700; letter-spacing: -0.025em; }
+  .cluster__head small { color: var(--muted); font: 600 var(--step--2)/1 var(--font-mono); }
+  .cluster__head p { max-width: 38ch; margin: 0; color: var(--muted); font-size: var(--step--1); text-align: right; }
 
   .grid {
     display: grid;
@@ -1291,7 +1362,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     height: 4.75rem;
     right: -2.25rem;
     bottom: -2.5rem;
-    border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border: 1px solid color-mix(in srgb, var(--group-color) 24%, transparent);
     border-radius: 50%;
     pointer-events: none;
   }
@@ -1300,10 +1371,10 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 
   .card:hover {
     transform: translateY(-4px);
-    border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+    border-color: color-mix(in srgb, var(--group-color) 48%, var(--line));
     box-shadow:
       0 1px 3px rgb(15 23 42 / 0.05),
-      0 20px 40px -28px color-mix(in srgb, var(--accent) 45%, transparent);
+      0 20px 40px -28px color-mix(in srgb, var(--group-color) 45%, transparent);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1319,9 +1390,19 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     letter-spacing: -0.02em;
   }
 
+  .card__icon {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 0.3rem;
+    pointer-events: none;
+    transition: transform 180ms ease;
+  }
+
+  .card:hover .card__icon { transform: translateY(-2px) rotate(-2deg) scale(1.035); }
+
   .card__category {
     margin: 0 0 0.35rem;
-    color: var(--accent);
+    color: var(--group-color);
     font-size: var(--step--2);
     font-weight: 600;
     letter-spacing: 0.1em;
@@ -1347,6 +1428,16 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 
   .card__soon {
     color: var(--muted);
+  }
+
+  @media (max-width: 64em) {
+    .tool-tree { display: flex; overflow-x: auto; padding: 0.15rem 0 0.45rem; scrollbar-width: thin; }
+    .tool-tree__branch { flex: 0 0 10.25rem; }
+  }
+
+  @media (max-width: 40em) {
+    .cluster__head { align-items: flex-start; flex-direction: column; gap: 0.35rem; }
+    .cluster__head p { padding-left: 1.2rem; text-align: left; }
   }
 
   /* ── Steps ────────────────────────────────────────────────────────── */

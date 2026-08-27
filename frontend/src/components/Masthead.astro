@@ -1,6 +1,7 @@
 ---
 import Lens from './Lens.astro';
 import Logo from './Logo.astro';
+import ToolIcon from './ToolIcon.astro';
 import { SITE } from '../config/site';
 import {
   CONVERSION_GROUPS,
@@ -17,18 +18,6 @@ const menuLabelOverrides: Record<string, string> = {
   'header-footer': 'Header, footer & Bates',
   'split-by': 'Split by size or bookmark',
   'text-to-pdf': 'Text, CSV or Markdown to PDF',
-};
-const glyphs: Record<string, string> = {
-  'merge-pdf': 'M', 'split-pdf': 'S', 'rotate-pdf': '↻', 'organise-pdf': '↕',
-  'extract-pages': 'E', 'delete-pages': '×', 'split-by': '⋮', 'scan-pdf': '⌑',
-  'compress-pdf': '↘', 'repair-pdf': '+', 'grayscale-pdf': '◐', 'auto-crop': 'A',
-  'crop-pdf': 'C', 'flatten-pdf': 'F', 'jpg-to-pdf': 'J', 'word-to-pdf': 'W',
-  'excel-to-pdf': 'X', 'powerpoint-to-pdf': 'P', 'text-to-pdf': 'T', 'pdf-to-jpg': 'J',
-  'pdf-to-word': 'W', 'pdf-to-excel': 'X', 'pdf-to-markdown': 'M', 'extract-images': 'I',
-  'edit-pdf': 'E', 'watermark-pdf': 'W', 'page-numbers': '#', 'impose-pdf': 'B',
-  'overlay-pdf': 'O', 'header-footer': 'H', 'compare-pdf': '≠', 'ocr-pdf': 'O',
-  'pdf-forms': 'F', 'metadata-pdf': 'M', 'protect-pdf': 'P', 'unlock-pdf': 'U',
-  'redact-pdf': 'R', 'sign-pdf': 'S', 'pdf-a': 'A',
 };
 const menuLabel = (slug: string, fallback: string) => menuLabelOverrides[slug] ?? fallback;
 ---
@@ -64,7 +53,7 @@ const menuLabel = (slug: string, fallback: string) => menuLabelOverrides[slug] ?
                 {group.tools.map((tool) => (
                   <li>
                     <a class="menu-tool" href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
-                      <span class={`tool-icon tool-icon--${group.tone}`} aria-hidden="true">{glyphs[tool.slug] ?? 'P'}</span>
+                      <ToolIcon slug={tool.slug} tone={group.tone} size="1.7rem" />
                       <span>{menuLabel(tool.slug, tool.searchName)}</span>
                     </a>
                   </li>
@@ -99,7 +88,7 @@ const menuLabel = (slug: string, fallback: string) => menuLabelOverrides[slug] ?
           <div>
             {POPULAR_TOOLS.map((tool) => (
               <a href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
-                <span>{glyphs[tool.slug] ?? 'P'}</span>{tool.name}
+                <ToolIcon slug={tool.slug} size="1.9rem" />{tool.name}
               </a>
             ))}
           </div>
@@ -113,7 +102,7 @@ const menuLabel = (slug: string, fallback: string) => menuLabelOverrides[slug] ?
                 {group.tools.map((tool) => (
                   <li>
                     <a class="menu-tool" href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
-                      <span class={`tool-icon tool-icon--${group.tone}`} aria-hidden="true">{glyphs[tool.slug] ?? 'P'}</span>
+                      <ToolIcon slug={tool.slug} tone={group.tone} size="1.7rem" />
                       <span>{menuLabel(tool.slug, tool.searchName)}</span>
                     </a>
                   </li>
@@ -134,7 +123,7 @@ const menuLabel = (slug: string, fallback: string) => menuLabelOverrides[slug] ?
                 {group.tools.map((tool) => (
                   <li>
                     <a class="menu-tool" href={toolHref(tool.slug)} data-nav-tool={tool.slug} aria-current={tool.slug === currentSlug ? 'page' : undefined}>
-                      <span class={`tool-icon tool-icon--${group.tone}`} aria-hidden="true">{glyphs[tool.slug] ?? 'P'}</span>
+                      <ToolIcon slug={tool.slug} tone={group.tone} size="1.7rem" />
                       <span>{menuLabel(tool.slug, tool.searchName)}</span>
                     </a>
                   </li>
@@ -197,20 +186,19 @@ const menuLabel = (slug: string, fallback: string) => menuLabelOverrides[slug] ?
   .panel-search kbd, .rail-search kbd { color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
   .desktop-tool-groups { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: clamp(0.7rem, 1.3vw, 1.4rem); padding: 1.15rem 0.15rem 1rem; }
   .nav-group { --group-color: #f97316; }
-  .nav-group--organize, .tool-icon--organize, .mobile-group--organize { --group-color: #f97316; }
-  .nav-group--optimize, .tool-icon--optimize, .mobile-group--optimize { --group-color: #65a30d; }
-  .nav-group--to-pdf, .tool-icon--to-pdf, .mobile-group--to-pdf { --group-color: #eab308; }
-  .nav-group--from-pdf, .tool-icon--from-pdf, .mobile-group--from-pdf { --group-color: #3b82f6; }
-  .nav-group--compose, .tool-icon--compose, .mobile-group--compose { --group-color: #c026d3; }
-  .nav-group--review, .tool-icon--review, .mobile-group--review { --group-color: #7c3aed; }
-  .nav-group--secure, .tool-icon--secure, .mobile-group--secure { --group-color: #0f766e; }
+  .nav-group--organize, .mobile-group--organize { --group-color: #f97316; }
+  .nav-group--optimize, .mobile-group--optimize { --group-color: #65a30d; }
+  .nav-group--to-pdf, .mobile-group--to-pdf { --group-color: #eab308; }
+  .nav-group--from-pdf, .mobile-group--from-pdf { --group-color: #3b82f6; }
+  .nav-group--compose, .mobile-group--compose { --group-color: #c026d3; }
+  .nav-group--review, .mobile-group--review { --group-color: #7c3aed; }
+  .nav-group--secure, .mobile-group--secure { --group-color: #0f766e; }
   .nav-group h2 { display: flex; align-items: center; gap: 0.45rem; min-height: 2rem; margin: 0 0 0.38rem; color: var(--muted); font: 700 0.66rem/1.2 var(--font-sans); letter-spacing: 0.075em; text-transform: uppercase; }
   .nav-group h2 > span { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--group-color); box-shadow: 0 0 0 4px color-mix(in srgb, var(--group-color) 12%, transparent); }
   .nav-group ul, .mobile-group ul { display: grid; gap: 0.08rem; margin: 0; padding: 0; list-style: none; }
-  .menu-tool { display: grid; grid-template-columns: 1.55rem minmax(0, 1fr); align-items: center; gap: 0.45rem; min-height: 2.25rem; padding: 0.18rem 0.22rem; border-radius: 9px; color: var(--ink-2); font-size: 0.72rem; font-weight: 520; line-height: 1.25; text-decoration: none; transition: color 140ms ease, background 140ms ease, transform 140ms ease; }
+  .menu-tool { display: grid; grid-template-columns: 1.8rem minmax(0, 1fr); align-items: center; gap: 0.4rem; min-height: 2.25rem; padding: 0.18rem 0.22rem; border-radius: 9px; color: var(--ink-2); font-size: 0.72rem; font-weight: 520; line-height: 1.25; text-decoration: none; transition: color 140ms ease, background 140ms ease, transform 140ms ease; }
   .menu-tool:hover, .menu-tool[aria-current='page'] { color: var(--ink); background: color-mix(in srgb, var(--group-color) 9%, var(--paper-sunk)); transform: translateX(2px); }
   .menu-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .tool-icon { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border: 1px solid color-mix(in srgb, var(--group-color) 38%, transparent); border-radius: 7px; background: color-mix(in srgb, var(--group-color) 12%, var(--paper-raised)); color: var(--group-color); font: 750 0.67rem/1 var(--font-brand); }
   .all-panel__foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 0.25rem 0.1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
   .privacy-note { display: inline-flex; align-items: center; gap: 0.45rem; }
   .privacy-note i { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 12%, transparent); }
@@ -252,7 +240,6 @@ const menuLabel = (slug: string, fallback: string) => menuLabelOverrides[slug] ?
     .mobile-popular h2 { margin: 0; color: var(--muted); font: 700 0.67rem/1 var(--font-sans); letter-spacing: 0.08em; text-transform: uppercase; }
     .mobile-popular > div { display: flex; gap: 0.45rem; overflow-x: auto; padding: 0.15rem 0.05rem 0.35rem; scrollbar-width: thin; }
     .mobile-popular a { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 0.42rem; min-height: 2.75rem; padding: 0.4rem 0.7rem 0.4rem 0.45rem; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-sunk); color: var(--ink); font-size: 0.75rem; font-weight: 650; text-decoration: none; }
-    .mobile-popular a > span { display: grid; width: 1.75rem; height: 1.75rem; place-items: center; border-radius: 8px; background: color-mix(in srgb, var(--accent) 12%, var(--paper-raised)); color: var(--accent); font: 750 0.72rem/1 var(--font-brand); }
     .mobile-popular a[aria-current='page'] { border-color: color-mix(in srgb, var(--accent) 48%, var(--line)); }
     .mobile-tool-groups { display: block; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border-top: 1px solid var(--line); scrollbar-width: thin; }
     .mobile-group { border-bottom: 1px solid var(--line); }
@@ -267,7 +254,7 @@ const menuLabel = (slug: string, fallback: string) => menuLabelOverrides[slug] ?
   }
   @media (max-width: 28em) { .brand span { display: none; } .mobile-group ul { grid-template-columns: 1fr; } .privacy-note { font-size: 0; } .privacy-note::after { content: 'Files stay here'; font-size: var(--step--2); } }
   @media (prefers-reduced-motion: reduce) { .caret, .menu-tool { transition: none; } }
-  @media (forced-colors: active) { .menu-surface { background: Canvas; } .tool-icon, .mobile-group__dot, .privacy-note i { forced-color-adjust: none; } }
+  @media (forced-colors: active) { .menu-surface { background: Canvas; } .mobile-group__dot, .privacy-note i { forced-color-adjust: none; } }
 </style>
 
 <script>
