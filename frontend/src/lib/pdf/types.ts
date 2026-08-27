@@ -286,6 +286,8 @@ export interface WorkerRequest {
   sessionId?: number;
   /** session: 'render' only — which pages to draw now. */
   wanted?: { file: number; page: number }[];
+  /** session: 'render' only — pixel width per page. Defaults to a thumbnail. */
+  thumbWidth?: number;
   /** compose only: the output, page by page. */
   plan?: PagePlan[];
   /** compose only: plan indexes after which a new output file begins. */

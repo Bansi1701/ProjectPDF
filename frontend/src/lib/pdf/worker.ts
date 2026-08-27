@@ -62,7 +62,7 @@ async function run(request: WorkerRequest): Promise<OpResult> {
   // are addressed to a session rather than run as a one-shot operation.
   if (request.session === 'open') return openSession(request.sessionId ?? 0, request.files);
   if (request.session === 'render') {
-    return renderThumbs(request.sessionId ?? 0, request.wanted ?? []);
+    return renderThumbs(request.sessionId ?? 0, request.wanted ?? [], request.thumbWidth);
   }
   if (request.session === 'close') {
     closeSession(request.sessionId ?? 0);

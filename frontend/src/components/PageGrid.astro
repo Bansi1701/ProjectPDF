@@ -49,6 +49,16 @@ const { mode } = Astro.props;
 
   <p class="page-grid__hint" data-grid-hint></p>
   <div class="page-grid__pages" data-grid-pages role="list"></div>
+
+  <dialog class="page-view" data-grid-view aria-label="Page preview">
+    <div class="page-view__frame" data-grid-view-frame></div>
+    <div class="page-view__bar">
+      <button type="button" class="page-grid__btn" data-grid-view-prev>‹ Previous</button>
+      <span class="page-view__label" data-grid-view-label aria-live="polite"></span>
+      <button type="button" class="page-grid__btn" data-grid-view-next>Next ›</button>
+      <button type="button" class="page-grid__btn" data-grid-view-close>Close</button>
+    </div>
+  </dialog>
   <p class="page-grid__limit" data-grid-limit hidden></p>
 </page-grid>
 
@@ -287,6 +297,65 @@ const { mode } = Astro.props;
     background: var(--accent);
   }
 
+  .page-view {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0;
+    background: var(--paper, #fff);
+    color: var(--ink);
+    max-width: min(94vw, 900px);
+    max-height: 94vh;
+    overflow: hidden;
+  }
+
+  .page-view::backdrop {
+    background: rgb(0 0 0 / 0.55);
+  }
+
+  .page-view__frame {
+    display: grid;
+    place-items: center;
+    padding: 1rem 1rem 0;
+    /* The page itself decides the height; the dialog just must not exceed the
+       viewport, or a landscape page pushes the controls off the bottom. */
+    max-height: calc(94vh - 4rem);
+    overflow: auto;
+  }
+
+  .page-view__frame canvas,
+  .page-view__frame img {
+    display: block;
+    max-width: 100%;
+    max-height: calc(94vh - 5rem);
+    height: auto;
+    width: auto;
+    background: #fff;
+    box-shadow: 0 8px 28px rgb(0 0 0 / 0.22);
+    border-radius: 2px;
+  }
+
+  .page-view__loading {
+    padding: 4rem 2rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .page-view__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    padding: 0.75rem 1rem 1rem;
+  }
+
+  .page-view__label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    min-width: 9rem;
+    text-align: center;
+  }
+
   .page-grid__float {
     position: fixed;
     z-index: 60;
@@ -351,12 +420,12 @@ const { mode } = Astro.props;
   const LIVE_BITMAPS = 240;
 
   const MODE_HINTS: Record<GridMode, string> = {
-    organise: 'Drag a page to move it. Hover for turn and remove. Arrow keys move the focus, [ and ] move the page, R turns it, Delete removes it.',
-    merge: 'Drag pages into the order you want — across files as well as within them. Hover for turn and remove.',
-    rotate: 'Click a page to turn it right; hover for the other direction. R turns the focused page, Shift+R turns it back.',
-    delete: 'Click the pages you want gone. They stay visible, struck through, until you export.',
-    extract: 'Click the pages you want to keep. Everything unpicked is left behind.',
-    split: 'Click the mark between two pages to cut there. Each run of pages becomes its own file.',
+    organise: 'Drag a page to move it. Double-click to see it big. Hover for turn and remove. Arrow keys move the focus, [ and ] move the page, R turns it, V views it, Delete removes it.',
+    merge: 'Drag pages into the order you want — across files as well as within them. Hover for turn and remove. Double-click any page to see it big.',
+    rotate: 'Click a page to turn it right; hover for the other direction. R turns the focused page, Shift+R turns it back. Double-click to see it big.',
+    delete: 'Click the pages you want gone. They stay visible, struck through, until you export. Double-click to check one first.',
+    extract: 'Click the pages you want to keep. Everything unpicked is left behind. Double-click to check one first.',
+    split: 'Click the mark between two pages to cut there. Each run of pages becomes its own file. Double-click a page to see it big.',
   };
 
   class PageGridElement extends HTMLElement {
@@ -371,6 +440,9 @@ const { mode } = Astro.props;
     private flushTimer = 0;
     private recent: Cell[] = [];
     private previewLimit = Number.POSITIVE_INFINITY;
+    private viewer: HTMLDialogElement | null = null;
+    private viewing: Cell | null = null;
+    private viewToken = 0;
     private sessionOpen = false;
 
     private pagesEl!: HTMLElement;
@@ -386,9 +458,12 @@ const { mode } = Astro.props;
       this.limitEl = this.querySelector('[data-grid-limit]') as HTMLElement;
       this.hintEl.textContent = MODE_HINTS[this.mode];
 
+      this.viewer = this.querySelector('[data-grid-view]');
+
       this.wireToolbar();
       this.wirePointer();
       this.wireKeyboard();
+      this.wireViewer();
     }
 
     attach(host: GridHost): void {
@@ -464,6 +539,10 @@ const { mode } = Astro.props;
 
       const tools = document.createElement('div');
       tools.className = 'page-cell__tools';
+
+      // Every mode gets this. Click already means something different in three
+      // of them — toggle, turn, cut — so checking a page cannot be click.
+      tools.append(this.makeTool('\u2315', 'View this page larger', 'view'));
 
       if (this.mode !== 'delete' && this.mode !== 'extract' && this.mode !== 'split') {
         tools.append(
@@ -566,12 +645,24 @@ const { mode } = Astro.props;
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('bitmaprenderer');
 
+      // Size the element from the bitmap BEFORE handing it over.
+      //
+      // transferFromImageBitmap is documented to adopt the bitmap's
+      // dimensions, and Chromium does not: the canvas keeps its default
+      // 300x150 and is LAID OUT at that size. Every thumbnail therefore drew
+      // into a 2:1 letterbox inside a cell whose own aspect ratio was correct,
+      // which is why the pages appeared as a band across the middle with dead
+      // space above and below.
+      //
+      // Reading the size first is also the only chance to read it: the
+      // transfer neuters the bitmap and it reports 0x0 afterwards.
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+
       if (ctx) {
         // Hands the pixels over without a copy or a decode.
         ctx.transferFromImageBitmap(bitmap);
       } else {
-        canvas.width = bitmap.width;
-        canvas.height = bitmap.height;
         canvas.getContext('2d')?.drawImage(bitmap, 0, 0);
         bitmap.close();
       }
@@ -820,6 +911,7 @@ const { mode } = Astro.props;
           event.stopPropagation();
           const cell = this.cellOf(action);
           if (!cell) return;
+          if (action.dataset.gridAction === 'view') return void this.showPage(cell);
           if (action.dataset.gridAction === 'turn-left') this.turn(cell, -90);
           else if (action.dataset.gridAction === 'turn-right') this.turn(cell, 90);
           else if (action.dataset.gridAction === 'remove') this.toggleRemoved(cell);
@@ -880,6 +972,113 @@ const { mode } = Astro.props;
       });
     }
 
+    /** Double-click is the shortcut; the magnifier is the discoverable one. */
+    private wireViewer(): void {
+      this.pagesEl.addEventListener('dblclick', (event) => {
+        const cell = this.cellOf(event.target as HTMLElement);
+        if (cell) void this.showPage(cell);
+      });
+
+      const dialog = this.viewer;
+      if (!dialog) return;
+
+      this.querySelector('[data-grid-view-close]')?.addEventListener('click', () => dialog.close());
+      this.querySelector('[data-grid-view-prev]')?.addEventListener('click', () => this.step(-1));
+      this.querySelector('[data-grid-view-next]')?.addEventListener('click', () => this.step(1));
+
+      // Clicking the backdrop closes, the way the rest of the site behaves.
+      dialog.addEventListener('click', (event) => {
+        if (event.target === dialog) dialog.close();
+      });
+
+      dialog.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+          event.preventDefault();
+          this.step(1);
+        } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          this.step(-1);
+        }
+      });
+
+      dialog.addEventListener('close', () => {
+        // Give focus back to the page it was opened from, or the grid is lost.
+        this.viewing?.el.focus();
+        this.viewing = null;
+      });
+    }
+
+    private step(by: number): void {
+      if (!this.viewing) return;
+      const at = this.cells.indexOf(this.viewing);
+      const next = this.cells[at + by];
+      if (next) void this.showPage(next);
+    }
+
+    /**
+     * Opens one page big enough to read.
+     *
+     * Rendered fresh rather than scaled up from the cell: the thumbnail is 220
+     * pixels wide, and blowing that up to check a page is the one thing this
+     * is for. The rotation the grid is holding is applied here too, so what is
+     * on screen is what will be exported.
+     */
+    private async showPage(cell: Cell): Promise<void> {
+      const dialog = this.viewer;
+      const frame = this.querySelector('[data-grid-view-frame]');
+      const label = this.querySelector('[data-grid-view-label]');
+      if (!dialog || !frame) return;
+
+      this.viewing = cell;
+      const at = this.cells.indexOf(cell);
+      if (label) {
+        const moved = cell.page !== at + 1;
+        label.textContent = `Page ${at + 1}${moved ? ` (was ${cell.page})` : ''} of ${this.cells.length}${cell.removed ? ' · removed' : ''}`;
+      }
+
+      if (!dialog.open) dialog.showModal();
+
+      const holding = document.createElement('p');
+      holding.className = 'page-view__loading';
+      holding.textContent = 'Rendering…';
+      frame.replaceChildren(holding);
+
+      const token = ++this.viewToken;
+      const result = await this.host?.request({
+        session: 'render',
+        wanted: [{ file: cell.file, page: cell.page }],
+        thumbWidth: 1400,
+      });
+
+      // A fast click through several pages leaves earlier renders in flight.
+      if (token !== this.viewToken || this.viewing !== cell) return;
+
+      if (!result?.ok || !('thumbs' in result) || result.frames.length === 0) {
+        holding.textContent = 'That page could not be rendered.';
+        return;
+      }
+
+      const bitmap = result.frames[0].bitmap;
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('bitmaprenderer');
+      if (ctx) ctx.transferFromImageBitmap(bitmap);
+      else {
+        canvas.getContext('2d')?.drawImage(bitmap, 0, 0);
+        bitmap.close();
+      }
+
+      // Show it as it will be exported, not as it is stored.
+      if (cell.rotate % 360 !== 0) {
+        const quarter = cell.rotate % 180 !== 0;
+        canvas.style.transform = `rotate(${cell.rotate}deg)`;
+        if (quarter) canvas.style.maxHeight = 'calc(94vw - 5rem)';
+      }
+
+      frame.replaceChildren(canvas);
+    }
+
     private cellOf(node: HTMLElement): Cell | null {
       const el = node.closest('.page-cell');
       return this.cells.find((cell) => cell.el === el) ?? null;
@@ -903,6 +1102,7 @@ const { mode } = Astro.props;
       let started = false;
       let originX = 0;
       let originY = 0;
+      let pointer = -1;
 
       const clear = () => {
         for (const cell of this.cells) delete cell.el.dataset.drop;
@@ -918,7 +1118,10 @@ const { mode } = Astro.props;
         originX = event.clientX;
         originY = event.clientY;
         started = false;
-        this.pagesEl.setPointerCapture(event.pointerId);
+        pointer = event.pointerId;
+        // Capture is taken when a DRAG begins, not here. Capturing on
+        // pointerdown stops the browser synthesising the click and dblclick
+        // that follow, which silently cost the grid its double-click-to-view.
       });
 
       this.pagesEl.addEventListener('pointermove', (event) => {
@@ -928,6 +1131,7 @@ const { mode } = Astro.props;
           // A few pixels of slop, so a click stays a click.
           if (Math.hypot(event.clientX - originX, event.clientY - originY) < 5) return;
           started = true;
+          if (pointer >= 0) this.pagesEl.setPointerCapture(pointer);
           rects = this.cells.map((cell) => cell.el.getBoundingClientRect());
           source.el.dataset.dragging = 'true';
 
@@ -969,6 +1173,10 @@ const { mode } = Astro.props;
         if (!source) return;
         const dragged = source;
         source = null;
+        if (pointer >= 0 && this.pagesEl.hasPointerCapture(pointer)) {
+          this.pagesEl.releasePointerCapture(pointer);
+        }
+        pointer = -1;
 
         delete dragged.el.dataset.dragging;
         float?.remove();
@@ -1052,6 +1260,9 @@ const { mode } = Astro.props;
           if (this.mode !== 'delete' && this.mode !== 'extract' && this.mode !== 'split') {
             this.turn(cell, event.shiftKey ? -90 : 90);
           }
+        } else if (key === 'v' || key === 'V') {
+          event.preventDefault();
+          void this.showPage(cell);
         } else if (key === 'Delete' || key === 'Backspace') {
           event.preventDefault();
           this.toggleRemoved(cell);

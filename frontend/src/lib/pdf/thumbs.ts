@@ -42,6 +42,15 @@ export const PREVIEW_LIMIT = 600;
 /** Most pages that may be asked for in one message, so a batch stays brief. */
 const BATCH_LIMIT = 24;
 
+/**
+ * The largest single render this will produce.
+ *
+ * Reading a page to check it is the right one needs far more than a cell does,
+ * but a page is not always A4: a plan or a poster at this width is still a
+ * sane number of pixels, whereas scaling by a DPI is not.
+ */
+const MAX_RENDER_WIDTH = 1600;
+
 interface Session {
   docs: Awaited<ReturnType<Awaited<ReturnType<typeof loadPdfjs>>['getDocument']>['promise']>[];
   geometry: PageGeometry[];
@@ -101,7 +110,8 @@ export async function openSession(id: number, files: InputFile[]): Promise<OpRes
  */
 export async function renderThumbs(
   id: number,
-  wanted: { file: number; page: number }[]
+  wanted: { file: number; page: number }[],
+  width = THUMB_WIDTH
 ): Promise<OpResult> {
   const session = sessions.get(id);
   if (!session) {
@@ -117,7 +127,9 @@ export async function renderThumbs(
     try {
       const page = await doc.getPage(request.page);
       const unit = page.getViewport({ scale: 1 });
-      const scale = THUMB_WIDTH / unit.width;
+      // Clamped so a malformed request cannot ask for a canvas the tab cannot
+      // allocate; the enlarged view wants far more than a cell does.
+      const scale = Math.min(Math.max(width, 32), MAX_RENDER_WIDTH) / unit.width;
       const viewport = page.getViewport({ scale });
 
       const canvas = new OffscreenCanvas(
