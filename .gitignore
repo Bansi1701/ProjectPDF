@@ -67,3 +67,7 @@ frontend/.tmp-test/
 
 # NOT ignored: frontend/public/tessdata/ — the OCR language data is fetched
 # once by hand, not produced by the build, so a clean checkout needs it.
+
+# Benchmark harness for the iLovePDF comparison. Generates its corpus into
+# /tmp; nothing here ships, and no fixture may enter the repo.
+frontend/_bench/

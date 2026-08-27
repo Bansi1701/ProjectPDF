@@ -37,6 +37,25 @@ const PAGE_SIZES: Record<'a4' | 'letter', readonly [number, number]> = {
 /** Breathing room on a fixed-size page, so the image is not printed to the bleed. */
 const PAGE_MARGIN = 18;
 
+/**
+ * What a pixel is worth, in the absence of anything better.
+ *
+ * PDF has no notion of an image's own resolution — the page box is in points
+ * and the image is stretched to it — and neither JPEG nor PNG is required to
+ * carry a DPI. 96 is the long-standing screen convention and the one that makes
+ * a typical photo land near a sheet of paper rather than a poster.
+ */
+const ASSUMED_DPI = 96;
+
+/** Page sides are kept between a postcard and A2. */
+const MIN_SIDE = 72;
+const MAX_SIDE = 1684;
+
+function clampSide(value: number, fallback?: number): number {
+  if (!Number.isFinite(value) || value <= 0) return fallback ?? 595.28;
+  return Math.min(MAX_SIDE, Math.max(MIN_SIDE, value));
+}
+
 const baseName = (name: string): string => name.replace(/\.[^./\\]+$/, '');
 
 const total = (files: OutputFile[]): number =>
@@ -194,6 +213,7 @@ export async function imagesToPdf(files: InputFile[], pageSize: PageSize): Promi
 
   let bytesIn = 0;
   let verbatim = 0;
+  let redeflated = 0;
   let transcoded = 0;
   let rotated = 0;
   let mirrored = 0;
@@ -221,8 +241,12 @@ export async function imagesToPdf(files: InputFile[], pageSize: PageSize): Promi
         image = await pdf.embedJpg(raw);
         verbatim += 1;
       } else if (kind === 'png') {
+        // Not verbatim, whatever it looks like. PDF has no PNG filter, so the
+        // file is decoded to raw samples and re-deflated. No pixel changes —
+        // but the PNG's own filtering and palette are gone, and the stream can
+        // come out larger than the file it replaced.
         image = await pdf.embedPng(raw);
-        verbatim += 1;
+        redeflated += 1;
       } else {
         image = await pdf.embedJpg(await webpToJpeg(raw));
         transcoded += 1;
@@ -243,8 +267,19 @@ export async function imagesToPdf(files: InputFile[], pageSize: PageSize): Promi
     let spot: Placement;
 
     if (pageSize === 'fit') {
-      page = pdf.addPage([natW, natH]);
-      spot = place(0, 0, natW, natH, turn);
+      // Pixels are not points.
+      //
+      // addPage takes a MediaBox in points, 1/72 inch. Handing it the pixel
+      // count assumes every image is 72 DPI, which almost none are: a 1200x800
+      // phone photo became a 42 x 28 cm page — bigger than A3 — and printed or
+      // shared it is unusable. Screen images are 96 DPI far more often than 72,
+      // so that is the assumption, and the result is clamped so a very large or
+      // very small image still lands on a page somebody can handle.
+      const scale = 72 / ASSUMED_DPI;
+      const pageW = clampSide(natW * scale);
+      const pageH = clampSide(natH * scale, pageW / (natW / natH));
+      page = pdf.addPage([pageW, pageH]);
+      spot = place(0, 0, pageW, pageH, turn);
     } else {
       const [pw, ph] = PAGE_SIZES[pageSize];
       page = pdf.addPage([pw, ph]);
@@ -266,7 +301,12 @@ export async function imagesToPdf(files: InputFile[], pageSize: PageSize): Promi
   const notes: string[] = [];
   if (verbatim > 0) {
     notes.push(
-      `${verbatim} JPG/PNG image${verbatim === 1 ? '' : 's'} embedded byte-for-byte — not re-encoded, so nothing was lost.`
+      `${verbatim} JPG image${verbatim === 1 ? '' : 's'} embedded byte-for-byte — the original file is inside the PDF, not a re-encoding of it.`
+    );
+  }
+  if (redeflated > 0) {
+    notes.push(
+      `${redeflated} PNG image${redeflated === 1 ? '' : 's'} stored as raw samples: PDF has no PNG filter, so a PNG has to be decoded and re-compressed. Every pixel is identical — this is lossless — but the file's own compression is not carried over, so that part of the PDF can be larger than the PNG was.`
     );
   }
   if (transcoded > 0) {

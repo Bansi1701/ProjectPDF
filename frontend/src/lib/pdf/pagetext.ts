@@ -1332,6 +1332,32 @@ function findTables(
   const tables: TableBlock[] = [];
   let group: Candidate[] = [];
 
+  /**
+   * What separates two tables is a gap out of keeping with the rest of the
+   * column, not a gap past a fixed number of ems.
+   *
+   * The old test was `line.top - previous.bottom > body * 1.6`. A grid set on a
+   * 30pt pitch in 11pt text leaves 19.8pt of white between every pair of rows
+   * against a 17.6pt threshold, so every row was called detached, flushed on
+   * its own, and no group ever reached MIN_TABLE_ROWS — a fully ruled seven-row
+   * table came back as "no tables in this PDF". Airy tables are common; a fixed
+   * em multiple cannot tell "airy" from "different table".
+   *
+   * So the threshold comes from the column's own median row pitch, which is the
+   * same relative-not-absolute approach buildBlocks already takes for leading.
+   */
+  const gaps: number[] = [];
+  for (let index = 1; index < column.lines.length; index += 1) {
+    const gap = column.lines[index].top - column.lines[index - 1].bottom;
+    if (gap > 0) gaps.push(gap);
+  }
+  const typicalGap = gaps.length
+    ? [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)]
+    : 0;
+  // Half again the usual gap reads as a break. The em floor keeps a column of
+  // tightly-set lines from calling a one-point wobble a new table.
+  const breakGap = Math.max(body * 1.6, typicalGap * 1.75);
+
   const flush = (): void => {
     if (group.length >= MIN_TABLE_ROWS) {
       const table = buildTable(group, body, rules, band, columnIndex);
@@ -1345,7 +1371,7 @@ function findTables(
     const previous = column.lines[index - 1];
     // A row far below the last one belongs to a different table, even if it
     // splits into the same number of cells.
-    const detached = previous ? line.top - previous.bottom > body * 1.6 : false;
+    const detached = previous ? line.top - previous.bottom > breakGap : false;
 
     if (cells.length >= 2) {
       if (detached) flush();

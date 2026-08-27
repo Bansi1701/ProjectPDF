@@ -658,9 +658,11 @@ const dropTitle = takesExcel
             <option value="letter">Letter</option>
           </select>
           <small>
-            JPG and PNG are embedded byte-for-byte — not decoded, not re-encoded, nothing lost.
-            WebP has no PDF equivalent, so those images alone are converted to JPEG at quality
-            0.92. On A4 or Letter the image is centred and scaled to fit.
+            A JPG is embedded byte-for-byte — the original file ends up inside the PDF. A PNG
+            cannot be: PDF has no PNG filter, so it is decoded and re-compressed losslessly —
+            every pixel identical, but its own compression is not carried over. WebP has no PDF
+            equivalent either and is converted to JPEG at quality 0.92. On A4 or Letter the image
+            is centred and scaled to fit.
           </small>
         </label>
       )

@@ -11,26 +11,68 @@
  * claims conformance and fails validation — worse than not converting, because
  * the claim is what an archive relies on.
  */
-import { PDFDict, PDFDocument, PDFName, PDFRef } from '@cantoo/pdf-lib';
+import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
 import type { InputFile, OpResult } from './types';
 
 const baseName = (name: string): string => name.replace(/\.pdf$/i, '');
 
-/** Font descriptors carrying no embedded program. */
+const FONT_FILES = ['FontFile', 'FontFile2', 'FontFile3'] as const;
+
+/** True when this descriptor actually carries a font program. */
+function descriptorHasProgram(descriptor: PDFDict | undefined): boolean {
+  return Boolean(descriptor) && FONT_FILES.some((key) => descriptor!.has(PDFName.of(key)));
+}
+
+/**
+ * Fonts the document uses but does not carry.
+ *
+ * This walks /Font dictionaries, not /FontDescriptor objects. Scanning
+ * descriptors was the original approach and it cannot see the case that matters
+ * most: a standard-14 font is written as
+ *
+ *     << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+ *
+ * with no descriptor at all. A document set entirely in Helvetica therefore has
+ * zero FontDescriptor objects, the old scan found nothing missing, and the
+ * converter went on to stamp PDF/A metadata onto a file in which *none* of the
+ * fonts were embedded — while telling the reader every font was. Measured on a
+ * five-face document: 5 /Font dicts, 0 /FontDescriptor dicts, guard passed.
+ *
+ * PDF/A has no standard-14 exemption. The viewer's copy of Helvetica is exactly
+ * the dependency the format exists to remove.
+ */
 function unembeddedFonts(doc: PDFDocument): string[] {
   const missing = new Set<string>();
 
   for (const [, obj] of doc.context.enumerateIndirectObjects()) {
     if (!(obj instanceof PDFDict)) continue;
-    if (String(obj.get(PDFName.of('Type'))) !== '/FontDescriptor') continue;
+    if (String(obj.get(PDFName.of('Type'))) !== '/Font') continue;
 
-    const embedded = ['FontFile', 'FontFile2', 'FontFile3'].some((key) =>
-      obj.has(PDFName.of(key))
-    );
+    const subtype = String(obj.get(PDFName.of('Subtype')) ?? '');
+
+    // A Type 3 font's glyphs are content streams inside the file, so there is
+    // nothing to embed and nothing to miss.
+    if (subtype === '/Type3') continue;
+
+    let embedded: boolean;
+    if (subtype === '/Type0') {
+      // Composite fonts keep the descriptor on the descendant.
+      const descendants = doc.context.lookupMaybe(obj.get(PDFName.of('DescendantFonts')), PDFArray);
+      embedded = false;
+      for (let i = 0; i < (descendants?.size() ?? 0); i += 1) {
+        const child = doc.context.lookupMaybe(descendants!.get(i), PDFDict);
+        const descriptor = child && doc.context.lookupMaybe(child.get(PDFName.of('FontDescriptor')), PDFDict);
+        if (descriptorHasProgram(descriptor ?? undefined)) embedded = true;
+      }
+    } else {
+      const descriptor = doc.context.lookupMaybe(obj.get(PDFName.of('FontDescriptor')), PDFDict);
+      embedded = descriptorHasProgram(descriptor ?? undefined);
+    }
+
     if (embedded) continue;
 
-    const name = String(obj.get(PDFName.of('FontName')) ?? '(unnamed)').replace(/^\//, '');
+    const name = String(obj.get(PDFName.of('BaseFont')) ?? '(unnamed)').replace(/^\//, '');
     // Subset prefixes are noise when listing what is missing.
     missing.add(name.replace(/^[A-Z]{6}\+/, ''));
   }
@@ -58,7 +100,7 @@ export async function toPdfA(files: InputFile[]): Promise<OpResult> {
       ok: false,
       error:
         `This document uses ${missing.length} font${missing.length === 1 ? '' : 's'} it does not carry: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? ', and others' : ''}. ` +
-        'PDF/A requires every font to be embedded, and the font files are not in the document to embed. ' +
+        'PDF/A requires every font to be embedded, including the standard ones — relying on the reader having a copy of Helvetica is exactly the dependency the format exists to remove. ' +
         'Converting anyway would produce a file that claims conformance and fails validation, which is worse than not converting. Re-export it from the original application with fonts embedded.',
     };
   }
