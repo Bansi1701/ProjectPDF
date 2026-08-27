@@ -19,6 +19,8 @@
 import { PDFDocument, degrees } from '@cantoo/pdf-lib';
 
 import type { InputFile, OpResult, PagePlan } from './types';
+import { preserveDocumentMetadata } from './documentinfo';
+import { preserveDocumentOutlines } from './outlines';
 
 const baseName = (name: string): string => name.replace(/\.pdf$/i, '');
 
@@ -85,6 +87,9 @@ export async function compose(
     if (group.length === 0) continue;
 
     const out = await PDFDocument.create();
+    // The first participating source owns the output document metadata. This
+    // mirrors how merge tools conventionally treat the first file as the base.
+    preserveDocumentMetadata(sources[group[0].file], out);
 
     // Copy per source file in one call rather than per page: copyPages walks
     // the object graph each time it is invoked, and doing that once per page
@@ -123,7 +128,12 @@ export async function compose(
       out.addPage(page);
     });
 
-    const bytes = await out.save({ useObjectStreams: true, addDefaultPage: false });
+    // Outline destinations point at source page references. Rebuild the tree
+    // only after every output page exists, remapping each surviving bookmark
+    // to the page position the plan gave it in this particular output group.
+    preserveDocumentOutlines(sources, out, group);
+
+    const bytes = await out.save({ useObjectStreams: true, addDefaultPage: false, updateMetadata: false });
     outputs.push({
       name: groups.length > 1 ? `${label}-${index + 1}.pdf` : `${label}.pdf`,
       bytes,
@@ -156,6 +166,7 @@ export async function compose(
     summary: parts.join(' · '),
     notes: [
       'Pages were copied, not re-encoded — text, images and fonts are byte-for-byte what they were.',
+      'Title, author, subject, keywords, creator, creation date and every bookmark whose destination remains in this result were preserved and remapped.',
       'Everything happened in this tab. Nothing was uploaded.',
     ],
   };

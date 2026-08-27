@@ -5,12 +5,14 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/copy-wasm.mjs && astro dev",
-    "build": "node scripts/copy-wasm.mjs && astro build",
+    "build": "node scripts/audit-actions.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs",
     "preview": "astro preview",
     "assets": "node scripts/copy-wasm.mjs",
     "audit:icons": "node scripts/audit-icons.mjs",
+    "audit:actions": "node scripts/audit-actions.mjs",
+    "audit:bundles": "node scripts/audit-bundles.mjs",
     "audit:links": "node scripts/audit-links.mjs",
-    "check": "node scripts/audit-icons.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-links.mjs"
+    "check": "node scripts/audit-icons.mjs && node scripts/audit-actions.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-links.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",

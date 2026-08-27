@@ -41,6 +41,7 @@ export type Operation =
   | 'ocr'
   | 'redact'
   | 'word-to-pdf'
+  | 'url-to-pdf'
   | 'excel-to-pdf'
   | 'powerpoint-to-pdf'
   | 'compose'

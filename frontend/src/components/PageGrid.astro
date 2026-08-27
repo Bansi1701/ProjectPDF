@@ -67,6 +67,8 @@ const { mode } = Astro.props;
      attribute. Everything is namespaced under .page-grid instead. */
   .page-grid {
     display: block;
+    min-width: 0;
+    max-width: 100%;
     margin: 0 0 1.25rem;
   }
 
@@ -121,6 +123,8 @@ const { mode } = Astro.props;
   .page-grid__pages {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+    min-width: 0;
+    max-width: 100%;
     gap: 0.85rem;
     max-height: 62vh;
     overflow-y: auto;
@@ -142,6 +146,8 @@ const { mode } = Astro.props;
     cursor: pointer;
     user-select: none;
     touch-action: manipulation;
+    min-width: 0;
+    box-sizing: border-box;
   }
 
   .page-cell:focus-visible {
@@ -432,6 +438,23 @@ const { mode } = Astro.props;
 
   @media (prefers-reduced-motion: reduce) {
     .page-cell__frame { transition: none; }
+  }
+
+  @media (hover: none), (max-width: 42rem) {
+    .page-grid__pages {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem;
+      overflow-x: hidden;
+    }
+
+    /* Touch has no hover state. Page-level actions must be available before
+       somebody taps a thumbnail, not appear only after an accidental focus. */
+    .page-cell__tools {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .page-cell__cut { right: -0.25rem; }
   }
 </style>
 
@@ -838,35 +861,62 @@ const { mode } = Astro.props;
       return this.undoStack.length > 0;
     }
 
+    /** Original page count, including pages currently marked for removal. */
+    get totalPages(): number {
+      return this.cells.length;
+    }
+
+    /**
+     * Keeps a person's page arrangement while another source PDF is appended.
+     * The new pages have no entry in the snapshot, so `restoreState` places
+     * them after the existing arrangement ready to be dragged into position.
+     */
+    getState(): Snapshot {
+      return this.snapshot();
+    }
+
+    restoreState(snapshot: Snapshot): void {
+      this.restore(snapshot, true);
+      this.undoStack = [];
+      this.redoStack = [];
+    }
+
     /** Kept pages as a range string, for the text box to mirror. */
     getRanges(): string {
-      const kept = this.cells
-        .map((cell, index) => ({ cell, index }))
-        .filter((entry) => !entry.cell.removed)
-        .map((entry) => entry.cell.page);
-
-      if (kept.length === 0) return '';
-
-      const parts: string[] = [];
-      let start = kept[0];
-      let previous = kept[0];
-
-      for (const page of kept.slice(1)) {
-        if (page === previous + 1) {
+      const compact = (pages: number[]): string => {
+        if (pages.length === 0) return '';
+        const parts: string[] = [];
+        let start = pages[0];
+        let previous = pages[0];
+        for (const page of pages.slice(1)) {
+          if (page === previous + 1) {
+            previous = page;
+            continue;
+          }
+          parts.push(start === previous ? String(start) : `${start}-${previous}`);
+          start = page;
           previous = page;
-          continue;
         }
         parts.push(start === previous ? String(start) : `${start}-${previous}`);
-        start = page;
-        previous = page;
+        return parts.join(', ');
+      };
+
+      if (this.mode !== 'split') {
+        return compact(this.cells.filter((cell) => !cell.removed).map((cell) => cell.page));
       }
-      parts.push(start === previous ? String(start) : `${start}-${previous}`);
-      return parts.join(', ');
+
+      const groups: number[][] = [[]];
+      this.cells.forEach((cell, index) => {
+        if (!cell.removed) groups[groups.length - 1].push(cell.page);
+        if (this.cuts.has(index) && groups[groups.length - 1].length > 0) groups.push([]);
+      });
+      return groups.filter((group) => group.length > 0).map(compact).join(', ');
     }
 
     /** Applies a typed range so the box and the grid never disagree. */
     applyRanges(text: string): void {
       const wanted = new Set<number>();
+      const groups: number[][] = [];
       for (const part of text.split(',')) {
         const range = part.trim();
         if (!range) continue;
@@ -874,12 +924,51 @@ const { mode } = Astro.props;
         if (!match) continue;
         const from = Number(match[1]);
         const to = match[2] ? Number(match[2]) : from;
-        for (let page = Math.min(from, to); page <= Math.max(from, to); page += 1) {
+        const group: number[] = [];
+        const step = from <= to ? 1 : -1;
+        for (let page = from; step > 0 ? page <= to : page >= to; page += step) {
           wanted.add(page);
+          group.push(page);
         }
+        groups.push(group);
       }
 
       if (wanted.size === 0) return;
+
+      if (this.mode === 'split') {
+        const byPage = new Map(this.cells.map((cell) => [cell.page, cell]));
+        const placed = new Set<number>();
+        const ordered: Cell[] = [];
+        const cutAfterPages = new Set<number>();
+
+        groups.forEach((group, groupIndex) => {
+          let last: number | null = null;
+          for (const page of group) {
+            const cell = byPage.get(page);
+            if (!cell || placed.has(page)) continue;
+            cell.removed = false;
+            ordered.push(cell);
+            placed.add(page);
+            last = page;
+          }
+          if (last !== null && groupIndex < groups.length - 1) cutAfterPages.add(last);
+        });
+
+        for (const cell of this.cells) {
+          if (placed.has(cell.page)) continue;
+          cell.removed = true;
+          ordered.push(cell);
+        }
+
+        this.cells = ordered;
+        this.cuts.clear();
+        this.cells.forEach((cell, index) => {
+          if (cutAfterPages.has(cell.page)) this.cuts.add(index);
+        });
+        this.reflow();
+        this.refresh();
+        return;
+      }
 
       // `delete` names the pages to lose; the others name the pages to keep.
       for (const cell of this.cells) {
@@ -909,7 +998,7 @@ const { mode } = Astro.props;
       this.redoStack = [];
     }
 
-    private restore(snapshot: Snapshot): void {
+    private restore(snapshot: Snapshot, appendNew = false): void {
       // Cells are matched by identity, then re-ordered, so their canvases and
       // their place in the render queue survive an undo.
       const byKey = new Map<string, Cell>();
@@ -917,12 +1006,17 @@ const { mode } = Astro.props;
 
       const next: Cell[] = [];
       for (const entry of snapshot.order) {
-        const cell = byKey.get(`${entry.file}:${entry.page}`);
+        const key = `${entry.file}:${entry.page}`;
+        const cell = byKey.get(key);
         if (!cell) continue;
         cell.rotate = entry.rotate;
         cell.removed = entry.removed;
+        this.applyRotation(cell);
         next.push(cell);
+        byKey.delete(key);
       }
+
+      if (appendNew) next.push(...byKey.values());
 
       this.cells = next;
       this.cuts = new Set(snapshot.cuts);
