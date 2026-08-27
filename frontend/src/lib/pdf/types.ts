@@ -14,6 +14,7 @@ import type { MetadataChanges, MetadataReport } from './metadata';
 import type { HeaderFooterOptions } from './headerfooter';
 import type { SplitByOptions } from './splitby';
 import type { GrayscaleOptions } from './grayscale';
+import type { AutoCropOptions } from './autocrop';
 
 /** Every tool the worker can run. */
 export type Operation =
@@ -55,7 +56,8 @@ export type Operation =
   | 'metadata'
   | 'header-footer'
   | 'split-by'
-  | 'grayscale';
+  | 'grayscale'
+  | 'auto-crop';
 
 /**
  * One page of the output: which source page it is, and how it is turned.
@@ -271,6 +273,7 @@ export interface WorkerRequest {
   headerFooterOptions?: HeaderFooterOptions;
   splitByOptions?: SplitByOptions;
   grayscaleOptions?: GrayscaleOptions;
+  autoCropOptions?: AutoCropOptions;
   /** Reorder only: zero-based page indexes in their new order. */
   pageOrder?: number[];
   /** Text tools only. */

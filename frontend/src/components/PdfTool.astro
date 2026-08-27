@@ -53,6 +53,7 @@ const ACTIONS: Record<Operation, string> = {
   'pdf-to-excel': 'Extract the tables',
   crop: 'Crop the pages',
   grayscale: 'Convert to greyscale',
+  'auto-crop': 'Trim the margins',
   scan: 'Build the PDF',
   compose: 'Save the changes',
 };
@@ -440,6 +441,29 @@ const dropTitle = takesExcel
               stops allocating the canvas and hands back a blank image instead of an error.
             </small>
           </fieldset>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'auto-crop' && (
+        <Fragment>
+          <label class="field">
+            <span>Crop</span>
+            <select data-ac-mode>
+              <option value="uniform" selected>Every page to the same box</option>
+              <option value="per-page">Each page to its own content</option>
+            </select>
+            <small>
+              The same box keeps a book steady as you page through it. Per-page trims tighter and
+              makes the page size jump around.
+            </small>
+          </label>
+          <label class="field">
+            <span>Leave a margin of</span>
+            <input data-ac-pad type="number" min="0" max="72" step="1" value="6" />
+            <small>Points. A little breathing room so the crop does not sit flush against the text.</small>
+          </label>
         </Fragment>
       )
     }
@@ -1797,7 +1821,12 @@ const dropTitle = takesExcel
       };
       const sel = (s2: string) => root.querySelector<HTMLSelectElement>(s2)?.value ?? '';
 
-      if (mode === 'grayscale') {
+      if (mode === 'auto-crop') {
+        request.autoCropOptions = {
+          mode: sel('[data-ac-mode]') === 'per-page' ? 'per-page' : 'uniform',
+          padding: num('[data-ac-pad]', 6),
+        };
+      } else if (mode === 'grayscale') {
         request.grayscaleOptions = { jpegQuality: num('[data-gs-q]', 0.82) };
       } else if (mode === 'crop') {
         const top = Math.min(Math.max(num('[data-crop-top]', 0), 0), 45) / 100;

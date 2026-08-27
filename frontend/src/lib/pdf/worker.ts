@@ -8,6 +8,7 @@
 import { compress } from './compress';
 import { imagesToPdf, pdfToImages, probePdf } from './images';
 import { compose } from './pageplan';
+import { autoCrop } from './autocrop';
 import { crop } from './crop';
 import { extractImages } from './extractimages';
 import { flattenPdf } from './flatten';
@@ -152,6 +153,8 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return writeMetadata(request.files, request.metadataChanges ?? {});
     case 'header-footer':
       return headerFooter(request.files, request.headerFooterOptions ?? {});
+    case 'auto-crop':
+      return autoCrop(request.files, request.autoCropOptions ?? {});
     case 'grayscale':
       return grayscale(request.files, request.grayscaleOptions ?? {});
     case 'split-by':

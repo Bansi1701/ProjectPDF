@@ -1,0 +1,20 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import PdfTool from '../components/PdfTool.astro';
+
+const description =
+  'Finds where the content actually sits on each page and crops to it — the trim scanned books and papers need. Nothing is deleted: only the page box moves.';
+---
+
+<BaseLayout title="Trim PDF margins — ProjectPDF" description={description}>
+  <Masthead />
+  <main id="main">
+    <PdfTool
+      mode="auto-crop"
+      eyebrow="Runs entirely in your browser"
+      title="Trim the margins"
+      description={description}
+    />
+  </main>
+</BaseLayout>
