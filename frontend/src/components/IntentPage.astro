@@ -1,0 +1,48 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from './Masthead.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  toolSlug: string;
+  toolName: string;
+  explanation: string;
+  steps: { title: string; text: string }[];
+  limitation: string;
+}
+
+const { title, description, toolSlug, toolName, explanation, steps, limitation } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<BaseLayout {title} {description}>
+  <Masthead />
+  <main id="main" class="intent">
+    <header><p class="eyebrow">Local PDF processing</p><h1>{title}</h1><p>{description}</p><a href={`${base}/${toolSlug}/`}>Open {toolName} →</a></header>
+    <section class="proof"><div class="proof__zero">0<small>document bytes sent</small></div><div><h2>Offline-like, without installing an app.</h2><p>{explanation}</p></div></section>
+    <section class="steps"><p class="eyebrow">How it works</p><h2>Three transparent moments</h2><ol>{steps.map((step, index) => <li><span>{index + 1}</span><div><h3>{step.title}</h3><p>{step.text}</p></div></li>)}</ol></section>
+    <aside><strong>Know the limit</strong><p>{limitation}</p></aside>
+    <footer><h2>Ready to keep this PDF on your device?</h2><a href={`${base}/${toolSlug}/`}>Use {toolName}</a></footer>
+  </main>
+</BaseLayout>
+<style>
+  .intent { width: min(66rem, calc(100% - 2rem)); margin: 0 auto; padding: clamp(4rem, 10vw, 8rem) 0; }
+  .eyebrow { margin: 0 0 0.7rem; color: var(--accent); font-size: var(--step--2); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  header { max-width: 54rem; }
+  h1 { max-width: 16ch; margin: 0; font-family: var(--font-display); font-size: var(--step-5); line-height: 0.98; letter-spacing: -0.05em; }
+  header > p:not(.eyebrow) { color: var(--ink-2); font-size: var(--step-1); line-height: 1.7; }
+  header a, footer a { display: inline-flex; min-height: 3rem; align-items: center; padding: 0 1.2rem; border-radius: var(--radius); background: var(--accent); color: white; font-weight: 700; text-decoration: none; }
+  h2 { font-family: var(--font-display); font-size: var(--step-3); }
+  .proof { display: grid; grid-template-columns: 16rem 1fr; gap: 2rem; align-items: center; margin: clamp(4rem, 9vw, 7rem) 0; padding: 2rem; border: 1px solid var(--line); border-radius: var(--radius-xl); background: var(--paper-raised); }
+  .proof__zero { color: var(--accent); font-family: var(--font-display); font-size: 7rem; font-weight: 700; line-height: 0.8; }
+  .proof__zero small { display: block; margin-top: 1rem; color: var(--muted); font-family: var(--font-body); font-size: var(--step--2); text-transform: uppercase; }
+  .proof p, .steps p, aside p { color: var(--ink-2); line-height: 1.7; }
+  .steps ol { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem; padding: 0; list-style: none; }
+  .steps li { padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius-lg); }
+  .steps li > span { color: var(--accent); font-family: var(--font-mono); }
+  .steps h3 { font-family: var(--font-display); }
+  aside { margin: 4rem 0; padding: 1.25rem; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--paper-raised)); }
+  aside p { margin-bottom: 0; }
+  footer { display: flex; justify-content: space-between; align-items: center; gap: 2rem; padding-top: 4rem; border-top: 1px solid var(--line); }
+  @media (max-width: 44rem) { h1 { font-size: var(--step-4); } .proof { grid-template-columns: 1fr; } .steps ol { grid-template-columns: 1fr; } footer { align-items: flex-start; flex-direction: column; } footer a { width: 100%; justify-content: center; } }
+</style>
