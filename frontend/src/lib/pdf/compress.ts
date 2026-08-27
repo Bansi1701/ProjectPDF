@@ -7,13 +7,17 @@
 import { PDFDocument } from '@cantoo/pdf-lib';
 
 import { analyse, explainSmallSaving } from './composition';
+import { compressImages, describeImagePass, type ImagePreset } from './compressimages';
 import { rewrite, stripNonRendering } from './lossless';
 import { decodeAll, replaceStream } from './streams';
 import { subsetFonts } from './subset';
 import type { InputFile, OpResult } from './types';
 import { validate } from './validate';
 
-export async function compress(files: InputFile[]): Promise<OpResult> {
+export async function compress(
+  files: InputFile[],
+  preset: ImagePreset = 'lossless'
+): Promise<OpResult> {
   const file = files[0];
   if (!file) return { ok: false, error: 'Choose a PDF to compress.' };
 
@@ -64,6 +68,25 @@ export async function compress(files: InputFile[]): Promise<OpResult> {
     // Subsetting is an optimisation, never a requirement.
   }
 
+  // The lossy pass, when asked for. Lossless stays the default: a tool that
+  // silently re-encodes someone's photographs is not one they can trust with an
+  // archive copy.
+  let imageNotes: string[] = [];
+  if (preset !== 'lossless') {
+    try {
+      const pass = await compressImages(doc, preset);
+      imageNotes = describeImagePass(pass, preset);
+      if (pass.rewritten > 0) savings.images = pass.bytesBefore - pass.bytesAfter;
+    } catch (error) {
+      // The picture pass is an optimisation. Losing it costs the extra saving
+      // and nothing else, exactly as with font subsetting above — but say what
+      // went wrong rather than leaving a silent no-op that looks like success.
+      imageNotes = [
+        `The pictures could not be rebuilt here, so only the lossless steps ran (${(error as Error).message}).`,
+      ];
+    }
+  }
+
   let candidate: Uint8Array;
   try {
     candidate = await rewrite(doc);
@@ -103,8 +126,10 @@ export async function compress(files: InputFile[]): Promise<OpResult> {
       unchanged: true,
       explanation:
         explainSmallSaving(composition) ??
-        'This PDF is already packed as tightly as lossless compression allows.',
-      notes: [],
+        (preset === 'lossless'
+          ? 'This PDF is already packed as tightly as lossless compression allows.'
+          : 'Nothing here could be made smaller, including the pictures.'),
+      notes: imageNotes,
     };
   }
 
@@ -123,6 +148,6 @@ export async function compress(files: InputFile[]): Promise<OpResult> {
     unchanged: false,
     // Only explain when the number would otherwise look like a failure.
     explanation: ratio < 0.08 ? explainSmallSaving(composition) : null,
-    notes,
+    notes: [...imageNotes, ...notes],
   };
 }

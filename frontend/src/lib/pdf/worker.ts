@@ -102,7 +102,7 @@ async function run(request: WorkerRequest): Promise<OpResult> {
 
   switch (request.op) {
     case 'compress':
-      return compress(request.files);
+      return compress(request.files, request.imagePreset ?? 'lossless');
     case 'merge':
       return merge(request.files);
     case 'split':

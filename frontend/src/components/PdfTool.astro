@@ -669,6 +669,33 @@ const dropTitle = takesExcel
     }
 
     {
+      mode === 'compress' && (
+        <fieldset class="field field--turns">
+          <legend>How hard to squeeze</legend>
+          <label>
+            <input type="radio" name="cx" value="lossless" checked /> Maximum quality
+          </label>
+          <label>
+            <input type="radio" name="cx" value="balanced" /> Recommended
+          </label>
+          <label>
+            <input type="radio" name="cx" value="smallest" /> Smallest file
+          </label>
+          <small>
+            <strong>Maximum quality</strong> changes nothing you can see: it rebuilds the file's
+            structure and fonts and leaves every picture exactly as it was. On a document that is
+            mostly photographs or a scan, that often means it barely shrinks — the bytes are in the
+            pictures, and this setting will not touch them.
+          </small>
+          <small>
+            The other two re-encode the pictures, which is lossy and cannot be undone. Keep the
+            original if you may need it again.
+          </small>
+        </fieldset>
+      )
+    }
+
+    {
       mode === 'pdf-to-images' && (
         <Fragment>
           <label class="field">
@@ -1366,7 +1393,14 @@ const dropTitle = takesExcel
           }
           onDone(message);
         };
-        worker.onerror = () => fail('The engine failed to start.');
+        // Say what went wrong. "The engine failed to start" with no reason is
+        // unactionable for the person reading it and for a bug report.
+        worker.onerror = (event) => {
+          const detail = typeof event === 'object' && event && 'message' in event
+            ? String((event as ErrorEvent).message)
+            : '';
+          fail(detail ? `The engine stopped: ${detail}` : 'The engine failed to start.');
+        };
       }
       return worker;
     }
@@ -2724,6 +2758,8 @@ const dropTitle = takesExcel
         };
       } else if (mode === 'grayscale') {
         request.grayscaleOptions = { jpegQuality: Number(picked('gs-q') ?? 0.82) };
+      } else if (mode === 'compress') {
+        request.imagePreset = (picked('cx') ?? 'lossless') as import('../lib/pdf/compressimages').ImagePreset;
       } else if (mode === 'pdf-to-images') {
         request.imagePages = val('[data-image-pages]');
       } else if (mode === 'ocr') {

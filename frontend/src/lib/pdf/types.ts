@@ -282,6 +282,8 @@ export interface OutputFile {
 
 /** Where the savings came from. Shown to the user — the honesty is the product. */
 export interface Savings {
+  /** Bytes freed by re-encoding pictures. Absent on a lossless run. */
+  images?: number;
   metadata: number;
   pieceInfo: number;
   attachments: number;
@@ -460,6 +462,8 @@ export interface WorkerRequest {
   headerFooterOptions?: HeaderFooterOptions;
   splitByOptions?: SplitByOptions;
   grayscaleOptions?: GrayscaleOptions;
+  /** Compress only: how hard to squeeze the pictures. */
+  imagePreset?: import('./compressimages').ImagePreset;
   watermarkOptions?: import('./watermark').WatermarkOptions;
   autoCropOptions?: AutoCropOptions;
   /** Reorder only: zero-based page indexes in their new order. */
