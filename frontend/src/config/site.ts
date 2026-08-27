@@ -55,7 +55,7 @@ export const TOOLS: Tool[] = [
   { slug: 'text-to-pdf', name: 'Text, CSV or Markdown to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Plain text, a spreadsheet export, or Markdown — typeset here.' },
   { slug: 'extract-images', name: 'Extract images', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'The original pictures at their own resolution, not screenshots.' },
   { slug: 'edit-pdf', name: 'Edit', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Text, shapes, highlights and images on the page.' },
-  { slug: 'watermark-pdf', name: 'Watermark', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Stamp text or an image across every page.' },
+  { slug: 'watermark-pdf', name: 'Watermark', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Text or a logo — placed, tiled, angled, on the pages you pick.' },
   { slug: 'page-numbers', name: 'Page numbers', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Numbering that matches the page labels people cite.' },
   { slug: 'grayscale-pdf', name: 'Greyscale', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Drop the colour without flattening the text into pixels.' },
   { slug: 'auto-crop', name: 'Trim margins', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Finds the content and crops to it — for scans with huge margins.' },
@@ -67,7 +67,7 @@ export const TOOLS: Tool[] = [
   { slug: 'metadata-pdf', name: 'Metadata', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'See what your file is carrying, then change or remove it.' },
   { slug: 'compare-pdf', name: 'Compare', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'What changed between two drafts, in words not pixels.' },
   { slug: 'ocr-pdf', name: 'OCR', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Make a scan searchable. Small jobs stay on your machine.' },
-  { slug: 'pdf-forms', name: 'Forms', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Fill a form, or build the fields yourself.' },
+  { slug: 'pdf-forms', name: 'Forms', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Fill in a form and save it, or bake the answers in for good.' },
 
   // --- Secure ---
   { slug: 'protect-pdf', name: 'Protect', category: 'Secure', runsWhere: 'local', status: 'live', blurb: 'AES-256 password and permissions, set in your browser.' },

@@ -107,7 +107,7 @@ async function run(request: WorkerRequest): Promise<OpResult> {
     case 'split':
       return split(request.files, request.ranges ?? '');
     case 'rotate':
-      return rotate(request.files, request.turn ?? 90);
+      return rotate(request.files, request.turn ?? 90, request.rotatePages ?? '');
     case 'images-to-pdf':
       return imagesToPdf(request.files, request.pageSize ?? 'fit');
     case 'pdf-to-images':
@@ -126,7 +126,10 @@ async function run(request: WorkerRequest): Promise<OpResult> {
         text: request.watermarkOptions?.text ?? request.text ?? '',
       });
     case 'page-numbers':
-      return pageNumbers(request.files, request.startNumber ?? 1, request.prefix ?? '');
+      return pageNumbers(request.files, {
+        ...request.pageNumberOptions,
+        start: request.pageNumberOptions?.start ?? request.startNumber ?? 1,
+      });
     case 'compare':
       return compare(request.files);
     case 'protect':
@@ -222,6 +225,8 @@ async function run(request: WorkerRequest): Promise<OpResult> {
   }
 }
 
+import { setProgressSink } from './progress';
+
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 
 ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
@@ -239,6 +244,11 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     ctx.postMessage({ id: Number.isInteger(request.id) ? request.id : -1, result: { ok: false, error: 'Invalid worker request.' } } satisfies WorkerResponse);
     return;
   }
+
+  // Scoped to this request, so a report can never land on the next job's bar.
+  setProgressSink((progress) => {
+    ctx.postMessage({ id: request.id, progress } satisfies import('./types').WorkerProgress);
+  });
 
   try {
     const result = await run(request);
@@ -260,5 +270,7 @@ ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       id: request.id,
       result: { ok: false, error: (error as Error).message },
     } satisfies WorkerResponse);
+  } finally {
+    setProgressSink(null);
   }
 };

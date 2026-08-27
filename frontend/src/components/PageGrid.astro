@@ -436,6 +436,7 @@ const { mode } = Astro.props;
 </style>
 
 <script>
+  import { parsePageSet } from '../lib/pdf/pageset';
   import type {
     GridMode,
     OpResult,
@@ -794,6 +795,30 @@ const { mode } = Astro.props;
       return this.cells
         .filter((cell) => !cell.removed)
         .map((cell) => ({ file: cell.file, page: cell.page, rotate: cell.rotate }));
+    }
+
+    /**
+     * Turns every page a selection names, in one undoable step.
+     *
+     * Tapping ⟲ on each page is fine for one crooked scan and miserable for
+     * "every even page is upside down", which is what a duplex scanner
+     * produces. Returns how many were turned so the caller can say so.
+     */
+    turnPages(spec: string, by: number): number {
+      const total = this.cells.length;
+      const wanted = new Set(parsePageSet(spec, total).pages);
+      if (wanted.size === 0) return 0;
+
+      this.commit();
+      let turned = 0;
+      this.cells.forEach((cell, index) => {
+        if (!wanted.has(index + 1)) return;
+        cell.rotate = ((cell.rotate + by) % 360 + 360) % 360;
+        this.applyRotation(cell);
+        turned += 1;
+      });
+      this.refresh();
+      return turned;
     }
 
     /** Cut points expressed against the kept pages, not the displayed ones. */

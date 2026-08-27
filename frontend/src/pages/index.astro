@@ -203,14 +203,24 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
         </p>
       </header>
 
+      <div class="cluster cluster--yours" id="yours" data-yours hidden>
+        <h3 class="cluster__name">Your tools</h3>
+        <nav class="shortcuts" data-yours-row aria-label="Your saved tools"></nav>
+      </div>
+
       {
         CATEGORIES.map((category) => (
           <div class="cluster" id={category.toLowerCase()}>
             <h3 class="cluster__name">{category}</h3>
             <ul class="grid">
               {toolsByCategory(category).map((tool) => (
-                <li class="sheet card" data-tool-card data-search={`${tool.name} ${tool.blurb} ${category}`.toLowerCase()}>
+                <li class="sheet card" data-tool-card data-slug={tool.slug} data-name={tool.name} data-search={`${tool.name} ${tool.blurb} ${category}`.toLowerCase()}>
                   {tool.status === 'live' && <a class="card__link" href={`${baseUrl}${tool.slug}/`} aria-label={`Open ${tool.name}`}></a>}
+                  {tool.status === 'live' && (
+                    <button class="card__star" type="button" data-fav={tool.slug} aria-pressed="false" aria-label={`Keep ${tool.name} in your tools`} title="Keep in your tools">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.5 2.6 5.6 6.1.8-4.5 4.2 1.2 6L12 17.2 6.6 20.1l1.2-6-4.5-4.2 6.1-.8Z" /></svg>
+                    </button>
+                  )}
                   <p class="card__category">{category}</p>
                   <h4 class="card__name">{tool.name}</h4>
                   <p class="card__blurb">{tool.blurb}</p>
@@ -403,6 +413,64 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   document.addEventListener('click', (event) => {
     if (!(event.target as HTMLElement).closest('.quickfind')) close();
   });
+
+  /* ── Your tools ────────────────────────────────────────────────────────
+     Kept in this browser, like everything else here. Nobody is asked to make
+     an account to remember which five of forty tools they actually use. */
+  const FAVOURITES = 'projectpdf-favourites';
+  const yours = document.querySelector<HTMLElement>('[data-yours]');
+  const yoursRow = document.querySelector<HTMLElement>('[data-yours-row]');
+  const stars = [...document.querySelectorAll<HTMLButtonElement>('[data-fav]')];
+
+  const readFavourites = (): string[] => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(FAVOURITES) ?? '[]');
+      return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === 'string') : [];
+    } catch {
+      // Private mode, or storage the browser refuses. Not worth an error.
+      return [];
+    }
+  };
+
+  function paintFavourites() {
+    const saved = readFavourites();
+    const set = new Set(saved);
+    for (const star of stars) {
+      star.setAttribute('aria-pressed', String(set.has(star.dataset.fav ?? '')));
+    }
+
+    if (!yours || !yoursRow) return;
+    yoursRow.replaceChildren(
+      ...saved
+        .map((slug) => document.querySelector<HTMLElement>(`[data-tool-card][data-slug="${slug}"]`))
+        .filter((card): card is HTMLElement => Boolean(card))
+        .map((card) => {
+          const link = document.createElement('a');
+          link.className = 'shortcuts__item';
+          link.href = card.querySelector<HTMLAnchorElement>('.card__link')?.href ?? '#';
+          link.textContent = card.dataset.name ?? '';
+          return link;
+        })
+    );
+    yours.hidden = yoursRow.childElementCount === 0;
+  }
+
+  for (const star of stars) {
+    star.addEventListener('click', () => {
+      const slug = star.dataset.fav;
+      if (!slug) return;
+      const saved = readFavourites();
+      const next = saved.includes(slug) ? saved.filter((item) => item !== slug) : [...saved, slug];
+      try {
+        localStorage.setItem(FAVOURITES, JSON.stringify(next));
+      } catch {
+        // Nothing to do but leave the star as it was.
+      }
+      paintFavourites();
+    });
+  }
+
+  paintFavourites();
 </script>
 
 <style>
@@ -1038,6 +1106,30 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     color: var(--muted);
     font-size: var(--step--1);
   }
+
+  .cluster--yours .shortcuts { margin-top: 0; }
+
+  .card__star {
+    position: absolute;
+    z-index: 2;
+    top: 0.6rem;
+    right: 0.6rem;
+    width: 1.9rem;
+    height: 1.9rem;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: var(--line-strong);
+    cursor: pointer;
+    transition: color 140ms ease-out;
+  }
+
+  .card__star svg { width: 1.05rem; height: 1.05rem; fill: currentColor; }
+  .card__star:hover { color: var(--accent); }
+  .card__star[aria-pressed='true'] { color: var(--accent); }
 
   /* ── Shortcuts ──────────────────────────────────────────────────────
      Named destinations, not a generic "explore". Above the fold on a phone. */

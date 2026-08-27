@@ -23,6 +23,7 @@ import { PDFDocument, StandardFonts } from '@cantoo/pdf-lib';
 
 import { documentOptions, loadPdfjs } from './pdfjs';
 import type { InputFile, OpResult, OutputFile } from './types';
+import { reportProgress } from './progress';
 
 const baseName = (name: string): string => name.replace(/\.pdf$/i, '');
 
@@ -81,6 +82,7 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
 
   try {
     for (let n = 1; n <= source.numPages; n += 1) {
+      reportProgress(n - 1, source.numPages, `Reading page ${n} of ${source.numPages}`);
       const page = await source.getPage(n);
       const unit = page.getViewport({ scale: 1 });
 
@@ -149,6 +151,10 @@ export async function ocrPdf(files: InputFile[], searchable: boolean): Promise<O
     await source.destroy();
     return { ok: false, error: `OCR failed: ${(error as Error).message}` };
   }
+
+  // Every page is read; what remains is assembly, which is fast but not free
+  // on a long document. Reporting it stops the bar sticking at (n-1)/n.
+  reportProgress(source.numPages, source.numPages, 'Assembling the result…');
 
   await worker.terminate();
   await source.destroy();

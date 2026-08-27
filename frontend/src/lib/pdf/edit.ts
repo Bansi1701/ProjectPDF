@@ -1,4 +1,5 @@
-import { PDFDocument, degrees, rgb } from '@cantoo/pdf-lib';
+import { PDFDocument, StandardFonts, degrees, rgb } from '@cantoo/pdf-lib';
+import { parsePageSet } from './pageset';
 import type { EditMark, InputFile, OpResult } from './types';
 
 const baseName = (name: string) => name.replace(/\.pdf$/i, '');
@@ -306,18 +307,107 @@ export async function addText(files: InputFile[], text: string, targetPage: numb
   return { ok: true, files: [{ name: `${baseName(file.name)}-edited.pdf`, bytes }], bytesIn: file.bytes.byteLength, bytesOut: bytes.length, pages: doc.getPageCount(), durationMs: performance.now() - started, summary: `Added text to page ${targetPage}` };
 }
 
-export async function pageNumbers(files: InputFile[], start: number, prefix: string): Promise<OpResult> {
+/**
+ * Page numbering.
+ *
+ * The format is a token string rather than a prefix box, matching the header
+ * and footer tool — people who have used one should not have to learn a second
+ * grammar for the same idea. "Page 3 of 12" is the numbering most documents
+ * actually want, and a prefix alone could not express it.
+ */
+export interface PageNumberOptions {
+  /** The number printed on the first numbered page. */
+  start: number;
+  /** Tokens: {page} and {pages}. */
+  format: string;
+  position: 'bottom-left' | 'bottom' | 'bottom-right' | 'top-left' | 'top' | 'top-right';
+  size: number;
+  /** Which pages get a number. Empty means all of them. */
+  pages: string;
+  /** Leave the cover bare, which is what a title page usually wants. */
+  skipFirst: boolean;
+}
+
+const NUMBER_DEFAULTS: PageNumberOptions = {
+  start: 1,
+  format: '{page}',
+  position: 'bottom-right',
+  size: 11,
+  pages: '',
+  skipFirst: false,
+};
+
+export async function pageNumbers(
+  files: InputFile[],
+  options: Partial<PageNumberOptions>
+): Promise<OpResult> {
   const file = files[0];
   if (!file) return { ok: false, error: 'Choose a PDF to number.' };
-  if (!Number.isInteger(start) || start < 1) return { ok: false, error: 'Starting number must be 1 or higher.' };
+
+  const settings: PageNumberOptions = { ...NUMBER_DEFAULTS, ...options };
+  if (!Number.isInteger(settings.start) || settings.start < 1) {
+    return { ok: false, error: 'The starting number has to be 1 or higher.' };
+  }
+
   const started = performance.now();
   const doc = await load(file);
-  doc.getPages().forEach((page, index) => {
-    const { width } = page.getSize();
-    page.drawText(`${prefix}${start + index}`, { x: Math.max(24, width - 76), y: 24, size: 11, color: rgb(0.18, 0.18, 0.18) });
+  const count = doc.getPageCount();
+
+  const chosen = parsePageSet(settings.pages, count).pages
+    .filter((number) => !(settings.skipFirst && number === 1));
+
+  if (chosen.length === 0) {
+    return {
+      ok: false,
+      error: settings.skipFirst && count === 1
+        ? 'This document is one page, and you asked to leave the first page bare.'
+        : `That page selection matches nothing. This document has ${count} pages.`,
+    };
+  }
+
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const size = Math.min(48, Math.max(6, settings.size));
+  const margin = Math.max(18, size * 2);
+  const total = chosen.length;
+
+  chosen.forEach((number, index) => {
+    const page = doc.getPage(number - 1);
+    const { width, height } = page.getSize();
+    // The printed number counts the numbered pages, so "3 of 12" stays true
+    // when a cover is skipped or a range is numbered.
+    const label = settings.format
+      .replace(/\{page\}/g, String(settings.start + index))
+      .replace(/\{pages\}/g, String(settings.start + total - 1));
+
+    const textWidth = font.widthOfTextAtSize(label, size);
+    const bottom = settings.position.startsWith('bottom');
+    const y = bottom ? margin - size * 0.3 : height - margin;
+    const x = settings.position.endsWith('left')
+      ? margin
+      : settings.position.endsWith('right')
+        ? width - margin - textWidth
+        : (width - textWidth) / 2;
+
+    page.drawText(label, { x, y, size, font, color: rgb(0.18, 0.18, 0.18) });
   });
+
+  const notes: string[] = [];
+  if (settings.skipFirst) notes.push('The first page is left bare, so a cover stays clean.');
+  if (chosen.length < count) {
+    notes.push(`${chosen.length} of ${count} pages were numbered. The rest are untouched.`);
+  }
+
   const bytes = await doc.save({ useObjectStreams: true, addDefaultPage: false });
-  return { ok: true, files: [{ name: `${baseName(file.name)}-numbered.pdf`, bytes }], bytesIn: file.bytes.byteLength, bytesOut: bytes.length, pages: doc.getPageCount(), durationMs: performance.now() - started, summary: `Numbered ${doc.getPageCount()} pages` };
+  return {
+    ok: true,
+    files: [{ name: `${baseName(file.name)}-numbered.pdf`, bytes }],
+    bytesIn: file.bytes.byteLength,
+    bytesOut: bytes.length,
+    pages: count,
+    durationMs: performance.now() - started,
+    summary: `Numbered ${chosen.length} page${chosen.length === 1 ? '' : 's'}`,
+    notes,
+  };
 }
 
 export async function compare(files: InputFile[]): Promise<OpResult> {

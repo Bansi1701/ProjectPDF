@@ -448,6 +448,9 @@ export interface WorkerRequest {
   /** Page-number tool only. */
   startNumber?: number;
   prefix?: string;
+  pageNumberOptions?: import('./edit').PageNumberOptions;
+  /** Rotate only: which pages to turn. Empty means all of them. */
+  rotatePages?: string;
   /** Redact only. */
   boxes?: RedactionBox[];
   /** OCR only: also produce a searchable PDF, not just text. */
@@ -474,3 +477,10 @@ export interface WorkerResponse {
   id: number;
   result: OpResult;
 }
+
+/** Sent while a job is still running, so a bar can move for real. */
+export interface WorkerProgress {
+  id: number;
+  progress: { done: number; total: number; label?: string };
+}
+

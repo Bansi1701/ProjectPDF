@@ -13,6 +13,11 @@ interface Props {
   multiple?: boolean;
   /** Shown above the dropzone. */
   eyebrow?: string;
+  /**
+   * Set when the tool is not finished. It renders a notice and disables the
+   * controls, rather than presenting a form that quietly does nothing.
+   */
+  unavailable?: string;
 }
 
 const {
@@ -21,6 +26,7 @@ const {
   description,
   multiple = false,
   eyebrow = 'Runs entirely in your browser',
+  unavailable,
 } = Astro.props;
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -163,7 +169,7 @@ const dropTitle = takesExcel
     : 'Choose a PDF, or drop one here';
 ---
 
-<section class="tool wrap" data-pdf-tool data-mode={mode} data-stage="choose" data-live-workspace={supportsLiveEditor || undefined}>
+<section class="tool wrap" data-pdf-tool data-mode={mode} data-stage="choose" data-unavailable={unavailable ? '' : undefined} data-live-workspace={supportsLiveEditor || undefined}>
   <a class="back" href={`${base}/#tools`}>← All tools</a>
 
   <header class="tool__head">
@@ -171,6 +177,15 @@ const dropTitle = takesExcel
     <h1>{title}</h1>
     <p class="lede">{description}</p>
   </header>
+
+  {
+    unavailable && (
+      <aside class="unavailable" role="status">
+        <strong>Not finished yet.</strong>
+        <span>{unavailable}</span>
+      </aside>
+    )
+  }
 
   <ol class="flow" data-flow aria-label="Where you are">
     <li data-step="choose"><span class="flow__n">1</span><span class="flow__label">Choose</span></li>
@@ -256,12 +271,27 @@ const dropTitle = takesExcel
 
     {
       mode === 'rotate' && (
-        <fieldset class="field field--turns">
-          <legend>Turn</legend>
-          <label><input type="radio" name="turn" value="90" checked /> 90° right</label>
-          <label><input type="radio" name="turn" value="180" /> 180°</label>
-          <label><input type="radio" name="turn" value="270" /> 90° left</label>
-        </fieldset>
+        <Fragment>
+          <fieldset class="field field--turns">
+            <legend>Turn</legend>
+            <label><input type="radio" name="turn" value="90" checked /> 90° right</label>
+            <label><input type="radio" name="turn" value="180" /> 180°</label>
+            <label><input type="radio" name="turn" value="270" /> 90° left</label>
+          </fieldset>
+          <label class="field">
+            <span>Turn several at once</span>
+            <span class="reveal">
+              <input data-rot-pages placeholder="odd, or 2-6, or last" />
+              <button type="button" data-rot-apply>Turn these</button>
+            </span>
+            <small>
+              A duplex scanner puts every other page upside down, and tapping ⟲ forty times is
+              nobody's afternoon. <code>odd</code>, <code>even</code>, <code>last</code> and open
+              ranges like <code>5-</code> all work. It turns them in the grid below, where you can
+              see the result and undo it.
+            </small>
+          </label>
+        </Fragment>
       )
     }
 
@@ -394,13 +424,57 @@ const dropTitle = takesExcel
       mode === 'page-numbers' && (
         <Fragment>
           <label class="field">
-            <span>Start at</span>
-            <input data-start-number type="number" min="1" value="1" />
+            <span>Look</span>
+            <select data-pn-format>
+              <option value="{page}" selected>1</option>
+              <option value="{page} of {pages}">1 of 10</option>
+              <option value="Page {page}">Page 1</option>
+              <option value="Page {page} of {pages}">Page 1 of 10</option>
+              <option value="— {page} —">— 1 —</option>
+              <option value="[{page}]">[1]</option>
+            </select>
+            <small>
+              Same tokens as the header and footer tool: <code>{'{page}'}</code> and
+              <code>{'{pages}'}</code>.
+            </small>
           </label>
+
+          <fieldset class="field field--turns">
+            <legend>Corner</legend>
+            <label><input type="radio" name="pn-pos" value="bottom-left" /> Bottom left</label>
+            <label><input type="radio" name="pn-pos" value="bottom" /> Bottom centre</label>
+            <label><input type="radio" name="pn-pos" value="bottom-right" checked /> Bottom right</label>
+            <label><input type="radio" name="pn-pos" value="top-left" /> Top left</label>
+            <label><input type="radio" name="pn-pos" value="top" /> Top centre</label>
+            <label><input type="radio" name="pn-pos" value="top-right" /> Top right</label>
+          </fieldset>
+
+          <div class="pair">
+            <label class="field">
+              <span>Start at</span>
+              <input data-start-number type="number" min="1" value="1" />
+            </label>
+            <label class="field">
+              <span>Size</span>
+              <input data-pn-size type="number" min="6" max="48" step="1" value="11" />
+            </label>
+          </div>
+
           <label class="field">
-            <span>Prefix</span>
-            <input data-prefix placeholder="Page " />
-            <small>Optional. Numbers are drawn in the bottom-right corner.</small>
+            <span>Which pages</span>
+            <input data-pn-pages placeholder="all, or 2-, odd" />
+            <small>Empty means every page.</small>
+          </label>
+
+          <label class="check">
+            <input type="checkbox" data-pn-skip-first />
+            <span>
+              Leave the first page bare
+              <small>
+                For a cover or title page. The count still starts at the number above, so
+                "1 of 10" stays true for the pages that carry a number.
+              </small>
+            </span>
           </label>
         </Fragment>
       )
@@ -447,9 +521,21 @@ const dropTitle = takesExcel
         <Fragment>
           <label class="field">
             <span>Password to open the document</span>
-            <input data-user-password type="password" autocomplete="new-password" />
+            <span class="reveal">
+              <input data-user-password type="password" autocomplete="new-password" />
+              <button type="button" data-reveal aria-pressed="false">Show</button>
+            </span>
             <small data-strength>
               This is the one that encrypts. Leave it empty to set permissions only.
+            </small>
+          </label>
+
+          <label class="field">
+            <span>Type it again</span>
+            <input data-confirm-password type="password" autocomplete="new-password" />
+            <small data-confirm-note>
+              There is no reset link and no copy of this document anywhere else. A password
+              you mistyped once locks the file for good.
             </small>
           </label>
 
@@ -559,16 +645,18 @@ const dropTitle = takesExcel
 
     {
       mode === 'grayscale' && (
-        <label class="field">
-          <span>JPEG quality, where a photo has to be re-encoded</span>
-          <input data-gs-q type="number" min="0.3" max="1" step="0.02" value="0.82" />
+        <fieldset class="field field--turns">
+          <legend>Where a photo has to be re-encoded</legend>
+          <label><input type="radio" name="gs-q" value="0.92" /> Keep the detail</label>
+          <label><input type="radio" name="gs-q" value="0.82" checked /> Balanced</label>
+          <label><input type="radio" name="gs-q" value="0.65" /> Smallest file</label>
           <small>
             Only photographs are re-encoded; everything else converts without a second lossy
             pass. Greyscale usually shrinks a file because three channels become one — but on a
             scan that was already packed hard it can come out larger, and you will be told which
             happened rather than left to guess.
           </small>
-        </label>
+        </fieldset>
       )
     }
 
@@ -707,6 +795,14 @@ const dropTitle = takesExcel
       mode === 'metadata' && (
         <Fragment>
           <div class="fields" data-meta-current />
+          <div class="preset">
+            <button class="btn btn--quiet" type="button" data-meta-clean>Privacy clean</button>
+            <small>
+              Clears the title, author, subject and keywords, and removes the XMP packet — the
+              part that usually still names the software, the original author and the machine
+              after everything visible has been emptied.
+            </small>
+          </div>
           <label class="field"><span>Title</span><input data-meta-title /></label>
           <label class="field"><span>Author</span><input data-meta-author /></label>
           <label class="field"><span>Subject</span><input data-meta-subject /></label>
@@ -794,7 +890,15 @@ const dropTitle = takesExcel
       <p class="workspace__summary" data-action-summary></p>
     </div>
 
-    <p class="status" data-status role="status" aria-live="polite"></p>
+    <div class="running" data-running hidden>
+      <div class="running__head">
+        <p class="status" data-status role="status" aria-live="polite"></p>
+        <button class="btn btn--quiet running__stop" type="button" data-cancel>Stop</button>
+      </div>
+      <div class="running__track" data-progress-track hidden aria-hidden="true">
+        <span class="running__fill" data-progress-fill></span>
+      </div>
+    </div>
   </div>
 
   <section class="result" data-result hidden aria-live="polite">
@@ -889,6 +993,67 @@ const dropTitle = takesExcel
     const fileBarLabel = q('[data-file-bar-label]');
     const changeFileBtn = q<HTMLButtonElement>('[data-change-file]');
     const actionSummary = root.querySelector<HTMLElement>('[data-action-summary]');
+    const running = root.querySelector<HTMLElement>('[data-running]');
+    const cancelBtn = root.querySelector<HTMLButtonElement>('[data-cancel]');
+    const progressTrack = root.querySelector<HTMLElement>('[data-progress-track]');
+    const progressFill = root.querySelector<HTMLElement>('[data-progress-fill]');
+
+    /** The job the Stop button would cancel, or -1 when nothing is running. */
+    let activeJob = -1;
+    let elapsedTimer = 0;
+    let startedAt = 0;
+
+    function beginRun(id: number, message: string) {
+      activeJob = id;
+      startedAt = performance.now();
+      status.textContent = message;
+      if (running) running.hidden = false;
+      if (progressTrack) progressTrack.hidden = true;
+      if (progressFill) progressFill.style.width = '0%';
+
+      // An elapsed count is the honest thing to show when an operation cannot
+      // say how far through it is. A bar that moves on a guess is a lie.
+      clearInterval(elapsedTimer);
+      elapsedTimer = window.setInterval(() => {
+        if (activeJob === -1) return;
+        const seconds = (performance.now() - startedAt) / 1000;
+        if (seconds < 1.5) return;
+        const shown = status.dataset.label ?? message;
+        status.textContent = `${shown} · ${seconds.toFixed(0)}s`;
+      }, 250);
+    }
+
+    function endRun() {
+      activeJob = -1;
+      clearInterval(elapsedTimer);
+      elapsedTimer = 0;
+      delete status.dataset.label;
+      if (running) running.hidden = true;
+      if (progressTrack) progressTrack.hidden = true;
+    }
+
+    function onProgress(progress: { done: number; total: number; label?: string }) {
+      if (progress.label) {
+        status.dataset.label = progress.label;
+        status.textContent = progress.label;
+      }
+      if (progress.total > 0 && progressTrack && progressFill) {
+        progressTrack.hidden = false;
+        progressFill.style.width = `${Math.round((progress.done / progress.total) * 100)}%`;
+      }
+    }
+
+    cancelBtn?.addEventListener('click', () => {
+      if (activeJob === -1) return;
+      // Each operation runs to completion inside the worker, so terminating it
+      // is the only way to stop one. The next run builds a fresh worker.
+      worker?.terminate();
+      worker = null;
+      endRun();
+      runBtn.disabled = false;
+      status.textContent = 'Stopped. Nothing was saved, and nothing left this device.';
+    });
+
     const previewExpand = root.querySelector<HTMLButtonElement>('[data-preview-expand]');
 
     /**
@@ -926,6 +1091,7 @@ const dropTitle = takesExcel
       getCuts(): number[];
       getRanges(): string;
       applyRanges(text: string): void;
+      turnPages(spec: string, by: number): number;
       readonly touched: boolean;
     }
 
@@ -1080,7 +1246,14 @@ const dropTitle = takesExcel
     function ensureWorker(): Worker {
       if (!worker) {
         worker = new Worker(new URL('../lib/pdf/worker.ts', import.meta.url), { type: 'module' });
-        worker.onmessage = (e: MessageEvent<WorkerResponse>) => onDone(e.data);
+        worker.onmessage = (e: MessageEvent<WorkerResponse | import('../lib/pdf/types').WorkerProgress>) => {
+          const message = e.data;
+          if ('progress' in message) {
+            if (message.id === activeJob) onProgress(message.progress);
+            return;
+          }
+          onDone(message);
+        };
         worker.onerror = () => fail('The engine failed to start.');
       }
       return worker;
@@ -1092,6 +1265,7 @@ const dropTitle = takesExcel
     }
 
     function fail(message: string) {
+      endRun();
       errorEl.textContent = message;
       errorEl.hidden = false;
       runBtn.disabled = false;
@@ -1234,8 +1408,10 @@ const dropTitle = takesExcel
           });
         } else if (mode === 'page-numbers') {
           const start = Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value || 1);
-          const prefix = root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '';
-          liveEditor.setToolPreview({ kind: 'page-number', text: prefix, start });
+          const format = root.querySelector<HTMLSelectElement>('[data-pn-format]')?.value ?? '{page}';
+          // The editor draws "<text><n>", so hand it whatever precedes the number.
+          const lead = format.slice(0, format.indexOf('{page}'));
+          liveEditor.setToolPreview({ kind: 'page-number', text: lead, start });
         } else {
           liveEditor.setToolPreview({ kind: 'none' });
         }
@@ -1251,8 +1427,18 @@ const dropTitle = takesExcel
         for (const figure of figures) addOverlay(figure, text, 'watermark');
       } else if (mode === 'page-numbers') {
         const start = Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value || 1);
-        const prefix = root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '';
-        figures.forEach((figure, index) => addOverlay(figure, `${prefix}${start + index}`, 'page-number'));
+        const format = root.querySelector<HTMLSelectElement>('[data-pn-format]')?.value ?? '{page}';
+        const skipFirst = root.querySelector<HTMLInputElement>('[data-pn-skip-first]')?.checked ?? false;
+        const numbered = figures.filter((figure) => !(skipFirst && Number(figure.dataset.page) === 1));
+        numbered.forEach((figure, index) =>
+          addOverlay(
+            figure,
+            format
+              .replace(/\{page\}/g, String(start + index))
+              .replace(/\{pages\}/g, String(start + numbered.length - 1)),
+            'page-number'
+          )
+        );
       } else if (mode === 'edit') {
         const text = root.querySelector<HTMLInputElement>('[data-text]')?.value ?? '';
         const targetPage = Number(root.querySelector<HTMLInputElement>('[data-target-page]')?.value || 1);
@@ -1445,10 +1631,10 @@ const dropTitle = takesExcel
       // Tiling makes the nine-way position meaningless, so say so rather than
       // leaving a control that silently stops doing anything.
       const tile = root.querySelector<HTMLInputElement>('[data-wm-tile]');
-      const grid = root.querySelector<HTMLElement>('.wm__grid');
+      const posGrid = root.querySelector<HTMLElement>('.wm__grid');
       const syncTile = () => {
         const tiled = tile?.checked ?? false;
-        grid?.toggleAttribute('data-off', tiled);
+        posGrid?.toggleAttribute('data-off', tiled);
         for (const spot of root.querySelectorAll<HTMLButtonElement>('[data-wm-pos]')) {
           spot.disabled = tiled;
         }
@@ -1481,6 +1667,83 @@ const dropTitle = takesExcel
         watermarkImage = { bytes: await chosen.arrayBuffer(), type: chosen.type };
       });
     }
+
+    /* Show a password back to the person who typed it. There is no reset link
+       for an encrypted PDF, so a typo is unrecoverable. */
+    const revealBtn = root.querySelector<HTMLButtonElement>('[data-reveal]');
+    revealBtn?.addEventListener('click', () => {
+      const field = root.querySelector<HTMLInputElement>('[data-user-password]');
+      if (!field) return;
+      const shown = field.type === 'text';
+      field.type = shown ? 'password' : 'text';
+      revealBtn.textContent = shown ? 'Show' : 'Hide';
+      revealBtn.setAttribute('aria-pressed', String(!shown));
+    });
+
+    const confirmField = root.querySelector<HTMLInputElement>('[data-confirm-password]');
+    const confirmNote = root.querySelector<HTMLElement>('[data-confirm-note]');
+    if (confirmField && confirmNote) {
+      const baseline = confirmNote.textContent ?? '';
+      const check = () => {
+        const chosen = root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '';
+        if (!confirmField.value) {
+          confirmNote.textContent = baseline;
+          confirmNote.removeAttribute('data-tone');
+          return;
+        }
+        const same = chosen === confirmField.value;
+        confirmNote.textContent = same ? 'These match.' : 'These do not match yet.';
+        confirmNote.dataset.tone = same ? 'ok' : 'warn';
+      };
+      confirmField.addEventListener('input', check);
+      root.querySelector('[data-user-password]')?.addEventListener('input', check);
+    }
+
+    /* Metadata: one button for the thing most people came to do. */
+    root.querySelector<HTMLButtonElement>('[data-meta-clean]')?.addEventListener('click', () => {
+      for (const name of ['title', 'author', 'subject', 'keywords']) {
+        const field = root.querySelector<HTMLInputElement>(`[data-meta-${name}]`);
+        if (field) field.value = '';
+      }
+      const strip = root.querySelector<HTMLInputElement>('[data-meta-strip]');
+      if (strip) strip.checked = true;
+      status.textContent = 'Set to remove everything, including the XMP packet. Save to apply it.';
+    });
+
+    /* Split by: a size limit means nothing when splitting at bookmarks, and an
+       N means nothing when splitting at a size. Only show what applies. */
+    const splitMode = root.querySelector<HTMLSelectElement>('[data-sb-mode]');
+    if (splitMode) {
+      const nField = root.querySelector<HTMLElement>('[data-sb-n]')?.closest('label');
+      const nLabel = nField?.querySelector('span');
+      const mbField = root.querySelector<HTMLElement>('[data-sb-mb]')?.closest('label');
+      const syncSplit = () => {
+        const how = splitMode.value;
+        if (nField) nField.hidden = how !== 'every' && how !== 'parts';
+        if (mbField) mbField.hidden = how !== 'size';
+        if (nLabel) {
+          nLabel.textContent = how === 'parts' ? 'How many files' : 'Pages per file';
+        }
+      };
+      splitMode.addEventListener('change', syncSplit);
+      syncSplit();
+    }
+
+    /* Rotate: the typed selection acts on the grid, which is what actually gets
+       exported — so what you see is what you save. */
+    const rotApply = root.querySelector<HTMLButtonElement>('[data-rot-apply]');
+    rotApply?.addEventListener('click', () => {
+      if (!grid || grid.hidden) {
+        status.textContent = 'Choose a PDF first.';
+        return;
+      }
+      const spec = root.querySelector<HTMLInputElement>('[data-rot-pages]')?.value ?? '';
+      const by = Number(root.querySelector<HTMLInputElement>('input[name="turn"]:checked')?.value ?? 90);
+      const turned = grid.turnPages(spec, by);
+      status.textContent = turned
+        ? `Turned ${turned} page${turned === 1 ? '' : 's'} by ${by}°. Undo is in the grid.`
+        : 'That selection matches no pages in this document.';
+    });
 
     const sampleBtn = root.querySelector<HTMLButtonElement>('[data-sample]');
     sampleBtn?.addEventListener('click', async () => {
@@ -1576,6 +1839,7 @@ const dropTitle = takesExcel
     }
 
     function onDone({ id, result: res }: WorkerResponse) {
+      if (id === activeJob) endRun();
       // Grid traffic is answered where it was asked from.
       const waiting = gridWaiting.get(id);
       if (waiting) {
@@ -2058,7 +2322,6 @@ const dropTitle = takesExcel
       runBtn.disabled = true;
       errorEl.hidden = true;
       result.hidden = true;
-      status.textContent = 'Working on this device…';
 
       const payload = await Promise.all(
         files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
@@ -2066,6 +2329,16 @@ const dropTitle = takesExcel
 
       const picked = (name: string) =>
         root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
+
+      if (mode === 'protect') {
+        const chosen = root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '';
+        const again = root.querySelector<HTMLInputElement>('[data-confirm-password]')?.value ?? '';
+        if (chosen !== again) {
+          fail('The two passwords do not match. Nothing was encrypted.');
+          runBtn.disabled = false;
+          return;
+        }
+      }
 
       const edits = liveEditor?.getEdits() ?? [];
       const hasPlacedSignature = edits.some((mark) => mark.kind === 'signature' || mark.kind === 'signature-text');
@@ -2086,7 +2359,6 @@ const dropTitle = takesExcel
         edits,
         targetPage: readTargetPage(),
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
-        prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
         searchable: root.querySelector<HTMLInputElement>('[data-searchable]')?.checked ?? true,
         fieldValues: readFields(),
         flatten: root.querySelector<HTMLInputElement>('[data-flatten]')?.checked ?? false,
@@ -2118,7 +2390,18 @@ const dropTitle = takesExcel
           padding: num('[data-ac-pad]', 6),
         };
       } else if (mode === 'grayscale') {
-        request.grayscaleOptions = { jpegQuality: num('[data-gs-q]', 0.82) };
+        request.grayscaleOptions = { jpegQuality: Number(picked('gs-q') ?? 0.82) };
+      } else if (mode === 'rotate') {
+        request.rotatePages = val('[data-rot-pages]');
+      } else if (mode === 'page-numbers') {
+        request.pageNumberOptions = {
+          start: num('[data-start-number]', 1),
+          format: sel('[data-pn-format]') || '{page}',
+          position: (picked('pn-pos') ?? 'bottom-right') as import('../lib/pdf/edit').PageNumberOptions['position'],
+          size: num('[data-pn-size]', 11),
+          pages: val('[data-pn-pages]'),
+          skipFirst: on('[data-pn-skip-first]'),
+        };
       } else if (mode === 'watermark') {
         const kind = root.dataset.wmKind === 'image' ? 'image' : 'text';
         if (kind === 'image' && !watermarkImage) {
@@ -2263,6 +2546,7 @@ const dropTitle = takesExcel
       }
 
       // Transfer, don't copy — a 50 MB file should not exist twice in memory.
+      beginRun(request.id, mode === 'ocr' ? 'Starting the recognition engine…' : 'Working on this device…');
       ensureWorker().postMessage(request, payload.map((f) => f.bytes));
     });
   }
@@ -2884,5 +3168,75 @@ const dropTitle = takesExcel
   @media (min-width: 40em) {
     .wm__place { grid-template-columns: auto 1fr; align-items: start; column-gap: 1.25rem; }
     .wm__place legend { grid-column: 1 / -1; }
+  }
+
+  /* ── While a job runs ─────────────────────────────────────────────────
+     A bar that moves on a guess is a lie, so operations that cannot say how
+     far along they are get an elapsed count instead — and either way, a way
+     out. Each op runs to completion inside the worker, so Stop terminates it. */
+  .running { display: grid; gap: 0.5rem; }
+
+  .running__head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+  }
+
+  .running__head .status { margin: 0; }
+  .running__stop { flex: none; }
+
+  .running__track {
+    height: 4px; border-radius: 999px; overflow: hidden;
+    background: var(--line);
+  }
+
+  .running__fill {
+    display: block; height: 100%; width: 0;
+    background: var(--accent);
+    transition: width 240ms ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .running__fill { transition: none; }
+  }
+
+  .pair { display: grid; gap: 1rem; }
+  @media (min-width: 30em) { .pair { grid-template-columns: 1fr 1fr; } }
+
+  .preset { display: grid; gap: 0.4rem; justify-items: start; }
+  .preset small { color: var(--muted); font-size: var(--step--2); }
+
+  .reveal { display: flex; gap: 0.4rem; }
+  .reveal input { flex: 1; min-width: 0; }
+  .reveal button {
+    flex: none; padding: 0.4rem 0.75rem; border: 1px solid var(--line-strong);
+    border-radius: 8px; background: var(--paper-raised); color: var(--ink-2);
+    font: inherit; font-size: var(--step--2); cursor: pointer;
+  }
+  .reveal button:hover { border-color: var(--accent); color: var(--accent); }
+
+  [data-tone='ok'] { color: var(--ok); }
+  [data-tone='warn'] { color: var(--disclose); }
+
+  /* A tool that cannot work yet says so, instead of presenting a form that
+     quietly does nothing when you press the button. */
+  .unavailable {
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid color-mix(in oklab, var(--disclose) 45%, var(--line));
+    border-left-width: 4px;
+    border-radius: var(--radius);
+    background: color-mix(in oklab, var(--disclose) 7%, transparent);
+    font-size: var(--step--1);
+  }
+  .unavailable span { color: var(--ink-2); }
+
+  .tool[data-unavailable] .flow,
+  .tool[data-unavailable] :global(.drop),
+  .tool[data-unavailable] .workspace__actions,
+  .tool[data-unavailable] .field--url,
+  .tool[data-unavailable] .try {
+    opacity: 0.45;
+    pointer-events: none;
   }
 </style>

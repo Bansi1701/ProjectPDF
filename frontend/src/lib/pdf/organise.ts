@@ -8,6 +8,7 @@
 import { PDFDocument, degrees } from '@cantoo/pdf-lib';
 
 import type { InputFile, OpResult, OutputFile } from './types';
+import { parsePageSet } from './pageset';
 
 const load = async (file: InputFile): Promise<PDFDocument> =>
   PDFDocument.load(file.bytes, { updateMetadata: false });
@@ -122,23 +123,33 @@ export async function split(files: InputFile[], ranges: string): Promise<OpResul
   };
 }
 
-export async function rotate(files: InputFile[], turn: number): Promise<OpResult> {
+export async function rotate(files: InputFile[], turn: number, pageSpec = ''): Promise<OpResult> {
   if (files.length === 0) return { ok: false, error: 'Choose a PDF to rotate.' };
 
   const started = performance.now();
   const out: OutputFile[] = [];
   let bytesIn = 0;
   let pages = 0;
+  let turned = 0;
 
   for (const file of files) {
     bytesIn += file.bytes.byteLength;
     const doc = await load(file);
 
-    for (const page of doc.getPages()) {
+    // A sideways scan is usually sideways on some pages, not all of them —
+    // rotating the whole document then meant fixing half and breaking half.
+    const chosen = new Set(parsePageSet(pageSpec, doc.getPageCount()).pages);
+    if (chosen.size === 0) {
+      return { ok: false, error: `That page selection matches nothing. ${file.name.replace(/\.[^.]+$/, '')} has ${doc.getPageCount()} pages.` };
+    }
+
+    doc.getPages().forEach((page, index) => {
+      if (!chosen.has(index + 1)) return;
       // Normalise into 0–359 so repeated turns stay valid.
       const next = (((page.getRotation().angle + turn) % 360) + 360) % 360;
       page.setRotation(degrees(next));
-    }
+      turned += 1;
+    });
 
     pages += doc.getPageCount();
     out.push({
@@ -154,7 +165,7 @@ export async function rotate(files: InputFile[], turn: number): Promise<OpResult
     bytesOut: total(out),
     pages,
     durationMs: performance.now() - started,
-    summary: `Rotated ${pages} page${pages === 1 ? '' : 's'} by ${turn}°`,
+    summary: `Rotated ${turned} of ${pages} page${pages === 1 ? '' : 's'} by ${turn}°`,
   };
 }
 
