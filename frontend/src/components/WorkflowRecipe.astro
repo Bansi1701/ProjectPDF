@@ -1,0 +1,192 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from './Masthead.astro';
+import type { Recipe } from '../config/recipes';
+import { TOOLS } from '../config/site';
+import { breadcrumbLd, howToLd } from '../lib/seo';
+
+interface Props {
+  recipe: Recipe;
+}
+
+const { recipe } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const firstStep = recipe.steps[0];
+const steps = recipe.steps.map((step) => ({
+  ...step,
+  tool: TOOLS.find((tool) => tool.slug === step.slug),
+}));
+const structuredSteps = recipe.steps.map((step) => ({ name: step.name, text: step.instruction }));
+const crumbs = [
+  { name: 'Home', path: '/' },
+  { name: 'How-to recipes', path: '/how-to/' },
+  { name: recipe.title, path: `/how-to/${recipe.slug}/` },
+];
+---
+
+<BaseLayout title={`${recipe.title} | ProjectPDF`} description={recipe.summary}>
+  <Masthead />
+  <main id="main" class="recipe-page" data-workflow-recipe data-recipe={recipe.slug} data-first-step={firstStep.slug}>
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href={`${base}/`}>Home</a><span aria-hidden="true">/</span><span>How-to</span>
+    </nav>
+
+    <header class="recipe-hero">
+      <p class="eyebrow">{recipe.eyebrow}</p>
+      <h1>{recipe.title}</h1>
+      <p>{recipe.summary}</p>
+    </header>
+
+    <section class="starter" aria-labelledby="starter-title">
+      <div>
+        <p class="starter__count">One file · {recipe.steps.length} connected steps</p>
+        <h2 id="starter-title">Start the workflow here</h2>
+        <p>Choose the PDF once. Each completed step passes it directly to the next tool on this device.</p>
+      </div>
+      <label class="starter__drop" data-recipe-drop>
+        <input type="file" accept="application/pdf,.pdf" data-recipe-input />
+        <span class="starter__icon" aria-hidden="true">PDF</span>
+        <strong data-recipe-file>Drop a PDF here, or choose one</strong>
+        <small>No upload · no account · cleared after handoff</small>
+      </label>
+      <button class="starter__button" type="button" data-recipe-start disabled>
+        Start with {firstStep.name}
+      </button>
+      <p class="starter__status" data-recipe-status role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="steps" aria-labelledby="steps-title">
+      <div class="section-head">
+        <p class="eyebrow">The whole job, visible up front</p>
+        <h2 id="steps-title">What will happen</h2>
+      </div>
+      <ol>
+        {steps.map((step, index) => (
+          <li>
+            <span class="steps__number">{String(index + 1).padStart(2, '0')}</span>
+            <div>
+              <h3>{step.name}</h3>
+              <p>{step.instruction}</p>
+              {step.tool && <a href={`${base}/${step.slug}/`}>Open {step.tool.name} by itself</a>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+
+    <aside class="outcome">
+      <span aria-hidden="true">✓</span>
+      <div><strong>Finished result</strong><p>{recipe.outcome}</p></div>
+    </aside>
+
+    <section class="explain">
+      <h2>Why this works differently</h2>
+      <p>
+        Most multi-step PDF instructions send you back to a file picker after every action. This recipe stores only the
+        current handoff in your browser's private local database, deletes that handoff as soon as the next page claims it,
+        and never sends document bytes to ProjectPDF or a third party.
+      </p>
+      <p>
+        You remain in control: download at any step, leave the recipe, or use each tool on its own. A handoff abandoned in
+        a closed tab expires automatically.
+      </p>
+    </section>
+  </main>
+
+  <script type="application/ld+json" set:html={JSON.stringify(howToLd(recipe.title, structuredSteps))} is:inline />
+  <script type="application/ld+json" set:html={JSON.stringify(breadcrumbLd(crumbs))} is:inline />
+</BaseLayout>
+
+<script>
+  const page = document.querySelector<HTMLElement>('[data-workflow-recipe]');
+
+  if (page) {
+    const input = page.querySelector<HTMLInputElement>('[data-recipe-input]');
+    const drop = page.querySelector<HTMLElement>('[data-recipe-drop]');
+    const start = page.querySelector<HTMLButtonElement>('[data-recipe-start]');
+    const fileLabel = page.querySelector<HTMLElement>('[data-recipe-file]');
+    const status = page.querySelector<HTMLElement>('[data-recipe-status]');
+    let chosen: File | null = null;
+
+    function choose(file: File | undefined) {
+      if (!file || file.type !== 'application/pdf') {
+        chosen = null;
+        if (start) start.disabled = true;
+        if (status) status.textContent = file ? 'Choose a PDF file to start this recipe.' : '';
+        return;
+      }
+      chosen = file;
+      if (start) start.disabled = false;
+      if (fileLabel) fileLabel.textContent = `${file.name} · ${(file.size / 1_048_576).toFixed(1)} MB`;
+      if (status) status.textContent = 'Ready. The file has not left this page.';
+    }
+
+    input?.addEventListener('change', () => choose(input.files?.[0]));
+    drop?.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      drop.dataset.dragging = 'true';
+    });
+    drop?.addEventListener('dragleave', () => delete drop.dataset.dragging);
+    drop?.addEventListener('drop', (event) => {
+      event.preventDefault();
+      delete drop.dataset.dragging;
+      choose(event.dataTransfer?.files[0]);
+    });
+
+    start?.addEventListener('click', async () => {
+      if (!chosen || !start) return;
+      start.disabled = true;
+      if (status) status.textContent = 'Preparing the private handoff…';
+      const { stash } = await import('../lib/handoff');
+      const key = await stash(chosen, chosen.name);
+      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const destination = `${base}/${page.dataset.firstStep}/`;
+      const params = new URLSearchParams({ recipe: page.dataset.recipe ?? '', step: '1' });
+      if (key) params.set('from', key);
+      location.href = `${destination}?${params}`;
+    });
+  }
+</script>
+
+<style>
+  .recipe-page { width: min(70rem, calc(100% - 2rem)); margin: 0 auto; padding: 2rem 0 5rem; }
+  .crumbs { display: flex; gap: 0.55rem; color: var(--muted); font-size: var(--step--2); }
+  .crumbs a { color: inherit; }
+  .recipe-hero { max-width: 54rem; padding: clamp(3rem, 8vw, 6.5rem) 0 2.5rem; }
+  .eyebrow { margin: 0 0 0.7rem; color: var(--accent); font-size: var(--step--2); font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; }
+  .recipe-hero h1 { max-width: 16ch; margin: 0; font-family: var(--font-display); font-size: var(--step-5); line-height: 0.98; letter-spacing: -0.05em; }
+  .recipe-hero > p:last-child { max-width: 48rem; margin: 1.35rem 0 0; color: var(--ink-2); font-size: var(--step-1); line-height: 1.7; }
+  .starter { display: grid; grid-template-columns: 1fr minmax(19rem, 0.9fr); gap: 1.25rem 2rem; align-items: center; padding: clamp(1.25rem, 4vw, 2.5rem); border: 1px solid var(--line-strong); border-radius: var(--radius-xl); background: var(--paper-raised); box-shadow: var(--shadow-lg); }
+  .starter h2, .section-head h2, .explain h2 { margin: 0.3rem 0; font-family: var(--font-display); font-size: var(--step-2); }
+  .starter p { color: var(--ink-2); }
+  .starter__count { margin: 0; color: var(--accent) !important; font-size: var(--step--2); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+  .starter__drop { grid-column: 2; grid-row: 1 / span 2; display: grid; min-height: 13rem; place-items: center; align-content: center; gap: 0.6rem; padding: 1.25rem; text-align: center; border: 1.5px dashed var(--line-strong); border-radius: var(--radius-lg); background: var(--paper); cursor: pointer; transition: 160ms ease; }
+  .starter__drop[data-dragging='true'] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--paper)); transform: scale(1.01); }
+  .starter__drop input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .starter__drop small { color: var(--muted); }
+  .starter__icon { display: grid; width: 3.5rem; height: 3.5rem; place-items: center; border-radius: 1.1rem; background: var(--accent); color: white; font-family: var(--font-mono); font-size: var(--step--2); font-weight: 700; transform: rotate(-4deg); }
+  .starter__button { justify-self: start; min-height: 3rem; padding: 0 1.25rem; border: 0; border-radius: var(--radius); background: var(--accent); color: white; font: inherit; font-weight: 700; cursor: pointer; }
+  .starter__button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .starter__status { min-height: 1.5em; margin: 0; font-size: var(--step--2); }
+  .steps { padding: clamp(4rem, 9vw, 7rem) 0 2rem; }
+  .section-head { margin-bottom: 2rem; }
+  .steps ol { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: 1rem; padding: 0; list-style: none; }
+  .steps li { display: grid; grid-template-columns: auto 1fr; gap: 1rem; min-height: 14rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--paper-raised); }
+  .steps__number { color: var(--accent); font-family: var(--font-mono); font-size: var(--step--2); }
+  .steps h3 { margin: 0 0 0.6rem; font-family: var(--font-display); }
+  .steps p { color: var(--ink-2); line-height: 1.6; }
+  .steps a { color: var(--accent); font-size: var(--step--2); font-weight: 700; }
+  .outcome { display: flex; gap: 1rem; align-items: center; padding: 1.25rem 1.5rem; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--accent) 7%, var(--paper-raised)); }
+  .outcome > span { display: grid; flex: 0 0 auto; width: 2.4rem; height: 2.4rem; place-items: center; border-radius: 999px; background: var(--accent); color: white; }
+  .outcome p { margin: 0.2rem 0 0; color: var(--ink-2); }
+  .explain { max-width: 48rem; padding-top: 4rem; }
+  .explain p { color: var(--ink-2); line-height: 1.75; }
+  @media (max-width: 46rem) {
+    .recipe-hero h1 { font-size: var(--step-4); }
+    .starter { grid-template-columns: 1fr; }
+    .starter__drop { grid-column: 1; grid-row: auto; min-height: 11rem; }
+    .starter__button { width: 100%; }
+    .steps ol { grid-template-columns: 1fr; }
+    .steps li { min-height: 0; }
+  }
+</style>
