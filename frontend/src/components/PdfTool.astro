@@ -4,6 +4,7 @@ import SaveDialog from './SaveDialog.astro';
 import Lens from './Lens.astro';
 import LivePdfEditor from './LivePdfEditor.astro';
 import type { Operation } from '../lib/pdf/types';
+import { TOOLS } from '../config/site';
 
 interface Props {
   mode: Operation;
@@ -79,6 +80,47 @@ const gridMode = GRID_MODES[mode];
 
 const action = ACTIONS[mode];
 
+/**
+ * What people reach for next, per tool.
+ *
+ * Only tools whose result is a single PDF appear here: an images export or a
+ * .docx has nothing a PDF tool can pick up. Protect is a dead end on purpose —
+ * its output is encrypted, so handing it on would just fail at the next door.
+ */
+const CHAIN: Partial<Record<Operation, string[]>> = {
+  compress: ['sign-pdf', 'protect-pdf', 'merge-pdf'],
+  merge: ['compress-pdf', 'page-numbers', 'protect-pdf'],
+  split: ['compress-pdf', 'merge-pdf'],
+  rotate: ['compress-pdf', 'merge-pdf'],
+  reorder: ['page-numbers', 'compress-pdf'],
+  extract: ['compress-pdf', 'protect-pdf'],
+  delete: ['compress-pdf', 'protect-pdf'],
+  watermark: ['compress-pdf', 'protect-pdf'],
+  'page-numbers': ['compress-pdf', 'protect-pdf'],
+  sign: ['protect-pdf', 'compress-pdf', 'flatten-pdf'],
+  edit: ['sign-pdf', 'compress-pdf', 'protect-pdf'],
+  crop: ['compress-pdf', 'page-numbers'],
+  'auto-crop': ['compress-pdf', 'page-numbers'],
+  grayscale: ['compress-pdf', 'protect-pdf'],
+  flatten: ['compress-pdf', 'protect-pdf'],
+  impose: ['compress-pdf'],
+  overlay: ['compress-pdf', 'protect-pdf'],
+  ocr: ['pdf-to-word', 'compress-pdf'],
+  unlock: ['redact-pdf', 'watermark-pdf', 'compress-pdf'],
+  repair: ['compress-pdf', 'protect-pdf'],
+  scan: ['ocr-pdf', 'compress-pdf', 'protect-pdf'],
+  'images-to-pdf': ['compress-pdf', 'page-numbers', 'protect-pdf'],
+  'word-to-pdf': ['sign-pdf', 'compress-pdf', 'protect-pdf'],
+  'excel-to-pdf': ['compress-pdf', 'protect-pdf'],
+  'powerpoint-to-pdf': ['compress-pdf', 'protect-pdf'],
+  'pdf-a': ['protect-pdf'],
+  forms: ['flatten-pdf', 'sign-pdf', 'protect-pdf'],
+};
+
+const nextTools = (CHAIN[mode] ?? [])
+  .map((slug) => TOOLS.find((tool) => tool.slug === slug && tool.status === 'live'))
+  .filter((tool): tool is (typeof TOOLS)[number] => Boolean(tool));
+
 /** The only tool whose input is not a PDF. */
 const takesImages = mode === 'images-to-pdf';
 const takesWord = mode === 'word-to-pdf';
@@ -105,6 +147,9 @@ const accept = takesImages
           ? 'text/plain,text/csv,text/markdown,.txt,.csv,.md,.markdown,.tsv,.log'
           : 'application/pdf,.pdf';
 
+/* Every tool whose input is a PDF can be tried on the generated sample. */
+const takesPdf = !takesImages && !takesWord && !takesExcel && !takesSlides && !takesText && mode !== 'url-to-pdf';
+
 const dropTitle = takesExcel
   ? 'Choose a spreadsheet, or drop one here'
   : takesSlides
@@ -118,7 +163,7 @@ const dropTitle = takesExcel
     : 'Choose a PDF, or drop one here';
 ---
 
-<section class="tool wrap" data-pdf-tool data-mode={mode} data-live-workspace={supportsLiveEditor || undefined}>
+<section class="tool wrap" data-pdf-tool data-mode={mode} data-stage="choose" data-live-workspace={supportsLiveEditor || undefined}>
   <a class="back" href={`${base}/#tools`}>← All tools</a>
 
   <header class="tool__head">
@@ -126,6 +171,12 @@ const dropTitle = takesExcel
     <h1>{title}</h1>
     <p class="lede">{description}</p>
   </header>
+
+  <ol class="flow" data-flow aria-label="Where you are">
+    <li data-step="choose"><span class="flow__n">1</span><span class="flow__label">Choose</span></li>
+    <li data-step="adjust"><span class="flow__n">2</span><span class="flow__label">Adjust</span></li>
+    <li data-step="save"><span class="flow__n">3</span><span class="flow__label">Save</span></li>
+  </ol>
 
   {
     mode === 'url-to-pdf' && (
@@ -171,6 +222,16 @@ const dropTitle = takesExcel
     </label>
   </Lens>
 
+  {
+    takesPdf && (
+      <p class="try">
+        No file to hand?
+        <button type="button" data-sample>Try it on a sample document</button>
+        <small>Five pages, built in this tab. Nothing is downloaded.</small>
+      </p>
+    )
+  }
+
   <div class="file-bar" data-file-bar hidden>
     <span class="file-bar__label" data-file-bar-label></span>
     <button class="btn btn--quiet" type="button" data-change-file>Change file</button>
@@ -182,18 +243,6 @@ const dropTitle = takesExcel
     {gridMode && <PageGrid mode={gridMode} />}
 
     {supportsLiveEditor && <LivePdfEditor profile={editorProfile} />}
-
-    <section class="preview" data-preview hidden>
-      <div class="preview__head">
-        <p class="preview__note" data-preview-note hidden></p>
-        <div class="preview__sizes" data-preview-sizes role="group" aria-label="Preview size">
-          <button type="button" data-size="sm">S</button>
-          <button type="button" data-size="md">M</button>
-          <button type="button" data-size="lg">L</button>
-        </div>
-      </div>
-      <div class="preview__pages" data-preview-pages data-size="md"></div>
-    </section>
 
     {
       mode === 'split' && (
@@ -298,49 +347,6 @@ const dropTitle = takesExcel
             </small>
           </span>
         </label>
-      )
-    }
-
-    {
-      mode === 'sign' && (
-        <Fragment>
-          <div class="sign">
-            <p class="sign__mode-note"><strong>Quick corner placement</strong> — or use <strong>Sign</strong> in the page editor above to draw, click anywhere, and drag the mark into position.</p>
-            <div class="sign__tabs" role="group" aria-label="Signature style">
-              <button type="button" data-sign-tab="draw" class="is-on">Draw</button>
-              <button type="button" data-sign-tab="type">Type</button>
-            </div>
-
-            <div data-sign-panel="draw">
-              <canvas data-signature-canvas width="720" height="240"></canvas>
-              <div class="sign__row">
-                <button class="btn btn--quiet" type="button" data-sign-clear>Clear</button>
-                <span class="sign__hint">Draw with a mouse, trackpad or finger.</span>
-              </div>
-            </div>
-
-            <div data-sign-panel="type" hidden>
-              <input data-sign-text placeholder="Your name" />
-              <span class="sign__hint">Rendered in a handwriting-like italic.</span>
-            </div>
-          </div>
-
-          <label class="field">
-            <span>Page</span>
-            <input data-target-page type="number" min="1" placeholder="last page" />
-            <small>Leave empty to sign the last page.</small>
-          </label>
-
-          <label class="field">
-            <span>Position</span>
-            <select data-corner>
-              <option value="bottom-right">Bottom right</option>
-              <option value="bottom-left">Bottom left</option>
-              <option value="top-right">Top right</option>
-              <option value="top-left">Top left</option>
-            </select>
-          </label>
-        </Fragment>
       )
     }
 
@@ -695,9 +701,25 @@ const dropTitle = takesExcel
       )
     }
 
-    <div class="workspace__actions">
+    <section class="preview" data-preview hidden>
+      <div class="preview__head">
+        <p class="preview__note" data-preview-note hidden></p>
+        <button class="preview__all" type="button" data-preview-expand aria-expanded="false">
+          Show all pages
+        </button>
+        <div class="preview__sizes" data-preview-sizes role="group" aria-label="Preview size">
+          <button type="button" data-size="sm">S</button>
+          <button type="button" data-size="md">M</button>
+          <button type="button" data-size="lg">L</button>
+        </div>
+      </div>
+      <div class="preview__pages" data-preview-pages data-size="md" data-view="strip"></div>
+    </section>
+
+    <div class="workspace__actions" data-actions>
       <button class="btn btn--primary" data-run type="button">{action}</button>
       <button class="btn btn--quiet" data-clear type="button">Clear</button>
+      <p class="workspace__summary" data-action-summary></p>
     </div>
 
     <p class="status" data-status role="status" aria-live="polite"></p>
@@ -717,6 +739,26 @@ const dropTitle = takesExcel
     <ul class="result__notes" data-notes></ul>
 
     <div class="result__actions" data-downloads></div>
+
+    {
+      nextTools.length > 0 && (
+        <div class="chain" data-chain hidden>
+          <p class="chain__title">Keep going with this result</p>
+          <div class="chain__row">
+            {nextTools.map((tool) => (
+              <button class="chain__item" type="button" data-chain-to={tool.slug}>
+                <strong>{tool.name}</strong>
+                <span>{tool.blurb}</span>
+              </button>
+            ))}
+          </div>
+          <p class="chain__note">
+            The file is handed straight to the next tool on this device — not uploaded — and
+            the handover is deleted the moment that tool picks it up.
+          </p>
+        </div>
+      )
+    }
 
     <p class="result__receipt" data-receipt></p>
   </section>
@@ -774,6 +816,18 @@ const dropTitle = takesExcel
     const fileBar = q<HTMLElement>('[data-file-bar]');
     const fileBarLabel = q('[data-file-bar-label]');
     const changeFileBtn = q<HTMLButtonElement>('[data-change-file]');
+    const actionSummary = root.querySelector<HTMLElement>('[data-action-summary]');
+    const previewExpand = root.querySelector<HTMLButtonElement>('[data-preview-expand]');
+
+    /**
+     * Which of Choose / Adjust / Save the person is in. Drives the rail, and on a
+     * phone also collapses the marketing header — once a file is chosen the h1 and
+     * lede are pure scroll cost, and they were pushing every control off-screen.
+     * A crawler never picks a file, so it always sees the full `choose` markup.
+     */
+    function setStage(stage: 'choose' | 'adjust' | 'save') {
+      root.dataset.stage = stage;
+    }
 
     let files: File[] = [];
     let worker: Worker | null = null;
@@ -863,144 +917,6 @@ const dropTitle = takesExcel
 
     const perm = (name: string): boolean =>
       root.querySelector<HTMLInputElement>(`[data-perm="${name}"]`)?.checked ?? false;
-
-    /**
-     * The signature pad.
-     *
-     * Drawn at 3x the placed size so the mark stays crisp when a reader zooms,
-     * and trimmed to its ink before embedding — a canvas-sized PNG would put a
-     * large transparent rectangle on the page and push the mark out of place.
-     */
-    function setupSignature() {
-      const canvas = root.querySelector<HTMLCanvasElement>('[data-signature-canvas]');
-      if (!canvas) return;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.lineWidth = 3.5;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.strokeStyle = '#1a2340';
-
-      let drawing = false;
-
-      const at = (event: PointerEvent) => {
-        const box = canvas.getBoundingClientRect();
-        return {
-          x: ((event.clientX - box.left) / box.width) * canvas.width,
-          y: ((event.clientY - box.top) / box.height) * canvas.height,
-        };
-      };
-
-      canvas.addEventListener('pointerdown', (event) => {
-        drawing = true;
-        canvas.setPointerCapture(event.pointerId);
-        const { x, y } = at(event);
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-      });
-
-      canvas.addEventListener('pointermove', (event) => {
-        if (!drawing) return;
-        event.preventDefault();
-        const { x, y } = at(event);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      });
-
-      for (const name of ['pointerup', 'pointercancel', 'pointerleave'] as const) {
-        canvas.addEventListener(name, () => {
-          drawing = false;
-        });
-      }
-
-      root.querySelector('[data-sign-clear]')?.addEventListener('click', () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      });
-
-      for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-sign-tab]')) {
-        tab.addEventListener('click', () => {
-          const wanted = tab.dataset.signTab;
-          for (const other of root.querySelectorAll<HTMLButtonElement>('[data-sign-tab]')) {
-            other.classList.toggle('is-on', other === tab);
-          }
-          for (const panel of root.querySelectorAll<HTMLElement>('[data-sign-panel]')) {
-            panel.hidden = panel.dataset.signPanel !== wanted;
-          }
-        });
-      }
-    }
-
-    /** Crops a canvas to its drawn pixels. */
-    function trimmed(source: HTMLCanvasElement): HTMLCanvasElement | null {
-      const ctx = source.getContext('2d');
-      if (!ctx) return null;
-
-      const { data } = ctx.getImageData(0, 0, source.width, source.height);
-      let minX = source.width;
-      let minY = source.height;
-      let maxX = -1;
-      let maxY = -1;
-
-      for (let y = 0; y < source.height; y += 1) {
-        for (let x = 0; x < source.width; x += 1) {
-          if (data[(y * source.width + x) * 4 + 3] < 8) continue;
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-
-      if (maxX < 0) return null; // nothing drawn
-
-      const pad = 6;
-      minX = Math.max(0, minX - pad);
-      minY = Math.max(0, minY - pad);
-      maxX = Math.min(source.width - 1, maxX + pad);
-      maxY = Math.min(source.height - 1, maxY + pad);
-
-      const out = document.createElement('canvas');
-      out.width = maxX - minX + 1;
-      out.height = maxY - minY + 1;
-      out.getContext('2d')?.drawImage(source, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
-      return out;
-    }
-
-    function signatureBytes(): ArrayBuffer | undefined {
-      if (mode !== 'sign') return undefined;
-
-      const typed = root.querySelector<HTMLInputElement>('[data-sign-text]');
-      const typePanel = root.querySelector<HTMLElement>('[data-sign-panel="type"]');
-
-      if (typePanel && !typePanel.hidden && typed?.value.trim()) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 900;
-        canvas.height = 260;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return undefined;
-        ctx.fillStyle = '#1a2340';
-        ctx.font = 'italic 120px ui-serif, Georgia, serif';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(typed.value.trim(), 20, canvas.height / 2);
-        const cropped = trimmed(canvas);
-        return cropped ? dataToBytes(cropped) : undefined;
-      }
-
-      const pad = root.querySelector<HTMLCanvasElement>('[data-signature-canvas]');
-      if (!pad) return undefined;
-      const cropped = trimmed(pad);
-      return cropped ? dataToBytes(cropped) : undefined;
-    }
-
-    function dataToBytes(canvas: HTMLCanvasElement): ArrayBuffer {
-      const url = canvas.toDataURL('image/png');
-      const binary = atob(url.slice(url.indexOf(',') + 1));
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-      return bytes.buffer;
-    }
 
     /**
      * Builds an input per field the document actually has. A form is different
@@ -1392,6 +1308,12 @@ const dropTitle = takesExcel
       const hasFiles = files.length > 0;
       fileUi.hidden = hasFiles;
       fileBar.hidden = !hasFiles;
+      setStage(hasFiles ? 'adjust' : 'choose');
+      if (actionSummary) {
+        actionSummary.textContent = hasFiles
+          ? `${files.length === 1 ? '1 file' : `${files.length} files`} · stays on this device`
+          : '';
+      }
       if (hasFiles) {
         fileBarLabel.textContent =
           files.length === 1 ? files[0].name : `${files.length} files, in this order`;
@@ -1413,6 +1335,29 @@ const dropTitle = takesExcel
     }
 
     changeFileBtn.addEventListener('click', () => input.click());
+
+    const sampleBtn = root.querySelector<HTMLButtonElement>('[data-sample]');
+    sampleBtn?.addEventListener('click', async () => {
+      sampleBtn.disabled = true;
+      const label = sampleBtn.textContent;
+      sampleBtn.textContent = 'Building it…';
+      try {
+        const { sampleDocument } = await import('../lib/sample');
+        showFiles([await sampleDocument()]);
+      } catch {
+        fail('The sample could not be built here. Choosing a file still works.');
+      } finally {
+        sampleBtn.disabled = false;
+        sampleBtn.textContent = label;
+      }
+    });
+
+    previewExpand?.addEventListener('click', () => {
+      const expanded = previewPages.dataset.view === 'grid';
+      previewPages.dataset.view = expanded ? 'strip' : 'grid';
+      previewExpand.setAttribute('aria-expanded', String(!expanded));
+      previewExpand.textContent = expanded ? 'Show all pages' : 'Show fewer';
+    });
 
     // Purely visual — reruns on every keystroke or toggle so the preview
     // tracks whatever the tool's own fields currently say, with no worker
@@ -1631,7 +1576,57 @@ const dropTitle = takesExcel
 
       receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
       result.hidden = false;
+      setStage('save');
+      offerChain(res);
     }
+
+    /**
+     * "Compress → Sign → Protect without picking the file again."
+     *
+     * Only a single PDF can be handed on: a ZIP of images or a .docx has nothing
+     * the next tool could open.
+     */
+    const chain = root.querySelector<HTMLElement>('[data-chain]');
+
+    function offerChain(res: { files: { name: string; bytes: Uint8Array; type?: string }[] }) {
+      if (!chain) return;
+      const only = res.files.length === 1 ? res.files[0] : null;
+      const isPdf = Boolean(only) && (only!.type ?? 'application/pdf') === 'application/pdf';
+      chain.hidden = !isPdf;
+      if (!isPdf || !only) return;
+
+      for (const button of chain.querySelectorAll<HTMLButtonElement>('[data-chain-to]')) {
+        button.onclick = async () => {
+          button.disabled = true;
+          const { stash } = await import('../lib/handoff');
+          const key = await stash(
+            new Blob([only.bytes as BlobPart], { type: 'application/pdf' }),
+            only.name
+          );
+          const slug = button.dataset.chainTo!;
+          const root = import.meta.env.BASE_URL.replace(/\/$/, '');
+          const to = `${root}/${slug}/`;
+          // No key means IndexedDB is unavailable (private mode, or blocked).
+          // Still send them to the tool rather than dead-ending on the click.
+          location.href = key ? `${to}?from=${encodeURIComponent(key)}` : to;
+        };
+      }
+    }
+
+    /** A result handed over from the previous tool, if there is one. */
+    async function acceptHandoff() {
+      const key = new URLSearchParams(location.search).get('from');
+      if (!key) return;
+      // Drop the parameter first, so a refresh does not look like a failed claim.
+      history.replaceState(null, '', location.pathname + location.hash);
+      const { claim } = await import('../lib/handoff');
+      const file = await claim(key);
+      if (!file) return;
+      showFiles([file]);
+      status.textContent = 'Carried over from the last tool. Still on this device.';
+    }
+
+    void acceptHandoff();
 
     // Real crypto makes the password the weak link, so say so as it is typed.
     const pw = root.querySelector<HTMLInputElement>('[data-user-password]');
@@ -1649,7 +1644,6 @@ const dropTitle = takesExcel
       });
     }
 
-    if (mode === 'sign') setupSignature();
 
     // The URL tool has no file to pick, so the dropzone and worker are unused.
     if (mode === 'url-to-pdf') {
@@ -1929,9 +1923,8 @@ const dropTitle = takesExcel
 
       const edits = liveEditor?.getEdits() ?? [];
       const hasPlacedSignature = edits.some((mark) => mark.kind === 'signature' || mark.kind === 'signature-text');
-      const signature = hasPlacedSignature ? undefined : signatureBytes();
-      if (mode === 'sign' && !signature && !hasPlacedSignature) {
-        fail('Use Sign in the page editor to draw and place a signature, or use the quick corner signature below.');
+      if (mode === 'sign' && !hasPlacedSignature) {
+        fail('Draw, type or upload a signature in the panel above, then click the page to place it.');
         runBtn.disabled = false;
         status.textContent = '';
         return;
@@ -1949,9 +1942,6 @@ const dropTitle = takesExcel
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
         prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
         searchable: root.querySelector<HTMLInputElement>('[data-searchable]')?.checked ?? true,
-        signature,
-        corner: root.querySelector<HTMLSelectElement>('[data-corner]')?.value as WorkerRequest['corner'],
-        signatureWidth: 180,
         fieldValues: readFields(),
         flatten: root.querySelector<HTMLInputElement>('[data-flatten]')?.checked ?? false,
         userPassword: root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '',
@@ -2313,72 +2303,6 @@ const dropTitle = takesExcel
   .status { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); }
   .status:empty { display: none; }
 
-  .sign {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .sign__mode-note { margin: 0; max-width: 70ch; color: var(--muted); font-size: var(--step--1); line-height: 1.5; }
-  .sign__mode-note strong { color: var(--ink-2); }
-
-  .sign__tabs {
-    display: inline-flex;
-    gap: 0.25rem;
-    padding: 0.2rem;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    justify-self: start;
-  }
-
-  .sign__tabs button {
-    padding: 0.35rem 0.9rem;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--muted);
-    font: inherit;
-    font-size: var(--step--1);
-    cursor: pointer;
-  }
-
-  .sign__tabs button.is-on {
-    background: var(--accent);
-    color: var(--paper-raised);
-  }
-
-  .sign canvas {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 3 / 1;
-    border: 1.5px dashed var(--line-strong);
-    border-radius: var(--radius);
-    background: var(--paper-raised);
-    touch-action: none;
-    cursor: crosshair;
-  }
-
-  .sign__row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 0.5rem;
-  }
-
-  .sign__hint {
-    font-size: var(--step--2);
-    color: var(--muted);
-  }
-
-  .sign input[data-sign-text] {
-    width: 100%;
-    padding: 0.7rem 0.85rem;
-    border: 1px solid var(--line-strong);
-    border-radius: 8px;
-    background: var(--paper-raised);
-    color: var(--ink);
-    font: italic 1.5rem ui-serif, Georgia, serif;
-  }
-
   .field--url input {
     padding: 0.7rem 0.85rem;
     border: 1px solid var(--line-strong);
@@ -2508,4 +2432,230 @@ const dropTitle = takesExcel
     border-top: 1px solid var(--line); font-size: var(--step--1); color: var(--muted);
   }
   .privacy strong { color: var(--ink); }
+
+  /* ── The three-step flow ──────────────────────────────────────────────
+     Choose → Adjust → Save. It is a status display, not navigation: the steps
+     are not links because you cannot skip to Save without a file. */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--step--2);
+    color: var(--muted);
+  }
+
+  .flow li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.7rem 0.3rem 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .flow__n {
+    display: grid;
+    place-items: center;
+    width: 1.2rem;
+    height: 1.2rem;
+    border-radius: 50%;
+    background: var(--line);
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    line-height: 1;
+  }
+
+  /* A caret between steps, drawn rather than typed so it never wraps oddly. */
+  .flow li:not(:last-child)::after {
+    content: '';
+    width: 0.35rem;
+    height: 0.35rem;
+    margin-left: 0.15rem;
+    border-top: 1.5px solid var(--line-strong);
+    border-right: 1.5px solid var(--line-strong);
+    transform: rotate(45deg);
+  }
+
+  .tool[data-stage='choose'] .flow [data-step='choose'],
+  .tool[data-stage='adjust'] .flow [data-step='adjust'],
+  .tool[data-stage='save'] .flow [data-step='save'] {
+    border-color: var(--accent);
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .tool[data-stage='choose'] .flow [data-step='choose'] .flow__n,
+  .tool[data-stage='adjust'] .flow [data-step='adjust'] .flow__n,
+  .tool[data-stage='save'] .flow [data-step='save'] .flow__n {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* Steps already behind you read as done, not as pending. */
+  .tool[data-stage='adjust'] .flow [data-step='choose'] .flow__n,
+  .tool[data-stage='save'] .flow [data-step='choose'] .flow__n,
+  .tool[data-stage='save'] .flow [data-step='adjust'] .flow__n {
+    background: var(--ok);
+    color: #fff;
+  }
+
+  .workspace__summary {
+    margin: 0;
+    flex-basis: 100%;
+    font-size: var(--step--2);
+    color: var(--muted);
+  }
+  .workspace__summary:empty { display: none; }
+
+  .preview__all {
+    display: none;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 999px;
+    background: var(--paper-raised);
+    color: var(--ink-2);
+    font: inherit;
+    font-size: var(--step--2);
+    cursor: pointer;
+  }
+  .preview__all:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Phone ────────────────────────────────────────────────────────────
+     The desktop layout is a document you read top to bottom. A phone screen is
+     roughly one control tall, so the same markup buried the controls: a Watermark
+     job put its text box ~1500px down and Sign put Save at ~2800px. Three changes
+     fix that class of problem for every tool at once, rather than page by page. */
+  @media (max-width: 48em) {
+    /* 1. The header has done its job the moment a file exists. */
+    .tool[data-stage='adjust'] .tool__head .lede,
+    .tool[data-stage='save'] .tool__head .lede,
+    .tool[data-stage='adjust'] .tool__head .eyebrow,
+    .tool[data-stage='save'] .tool__head .eyebrow {
+      display: none;
+    }
+
+    .tool[data-stage='adjust'] .tool__head h1,
+    .tool[data-stage='save'] .tool__head h1 {
+      font-size: var(--step-1);
+      margin-block: 0 0;
+    }
+
+    /* 2. Save is always one thumb away. Sticky rather than a second fixed bar,
+          so there is exactly one Run button in the DOM and nothing to keep in
+          sync — it pins while the workspace is on screen and releases after. */
+    .workspace__actions[data-actions] {
+      position: sticky;
+      bottom: 0;
+      z-index: 15;
+      margin-inline: calc(var(--gutter) * -1);
+      padding: 0.7rem var(--gutter) calc(0.7rem + env(safe-area-inset-bottom));
+      border-top: 1px solid var(--line);
+      background: color-mix(in oklab, var(--paper) 92%, transparent);
+      backdrop-filter: blur(8px);
+      align-items: center;
+    }
+
+    .workspace__actions[data-actions] .btn { flex: 1 1 auto; justify-content: center; }
+    .workspace__actions[data-actions] .btn--quiet { flex: 0 0 auto; }
+
+    /* 3. Pages scroll sideways in one thumbnail of height instead of eight. */
+    .preview__all { display: inline-block; }
+
+    .preview__pages[data-view='strip'] {
+      display: flex;
+      gap: 0.6rem;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding-bottom: 0.4rem;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .preview__pages[data-view='strip'] :global(figure) {
+      flex: 0 0 7.5rem;
+      scroll-snap-align: start;
+    }
+
+    .preview__pages[data-view='grid'] {
+      grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+    }
+
+    .flow { font-size: 0.6875rem; }
+    .flow li { padding: 0.25rem 0.55rem 0.25rem 0.3rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .preview__pages[data-view='strip'] { scroll-snap-type: none; }
+  }
+
+  /* ── Continue with ────────────────────────────────────────────────────
+     The result of one tool is usually the input to the next. */
+  .chain {
+    display: grid;
+    gap: 0.6rem;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .chain__title { margin: 0; font-size: var(--step--1); font-weight: 600; }
+
+  .chain__row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+  .chain__item {
+    flex: 1 1 12rem;
+    display: grid;
+    gap: 0.1rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--line-strong);
+    border-radius: calc(var(--radius) * 0.6);
+    background: var(--paper-raised);
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .chain__item:hover:not(:disabled) { border-color: var(--accent); }
+  .chain__item:disabled { opacity: 0.5; cursor: progress; }
+  .chain__item strong { font-size: var(--step--1); font-weight: 600; }
+  .chain__item span {
+    font-size: var(--step--2);
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chain__note { margin: 0; font-size: var(--step--2); color: var(--muted); }
+
+  /* The first-run barrier is "go and find a file". This removes it. */
+  .try {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin: -0.5rem 0 0;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+
+  .try button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+
+  .try button:hover:not(:disabled) { color: var(--accent-bright); }
+  .try button:disabled { color: var(--muted); cursor: progress; text-decoration: none; }
+  .try small { flex-basis: 100%; font-size: var(--step--2); }
 </style>
