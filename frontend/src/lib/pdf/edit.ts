@@ -410,17 +410,3 @@ export async function pageNumbers(
   };
 }
 
-export async function compare(files: InputFile[]): Promise<OpResult> {
-  if (files.length !== 2) return { ok: false, error: 'Choose exactly two PDFs to compare.' };
-  const started = performance.now();
-  const [first, second] = await Promise.all(files.map(load));
-  const a = new Uint8Array(files[0].bytes);
-  const b = new Uint8Array(files[1].bytes);
-  const identical = a.length === b.length && a.every((value, index) => value === b[index]);
-  return {
-    ok: true, files: [], bytesIn: a.length + b.length, bytesOut: 0,
-    pages: first.getPageCount() + second.getPageCount(), durationMs: performance.now() - started,
-    summary: identical ? 'Files are exactly identical' : 'Files are different',
-    notes: [`First PDF: ${first.getPageCount()} pages`, `Second PDF: ${second.getPageCount()} pages`, 'Comparison checks page count and byte-for-byte file identity.'],
-  };
-}

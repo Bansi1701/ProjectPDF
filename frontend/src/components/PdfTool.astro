@@ -911,6 +911,8 @@ const dropTitle = takesExcel
       <span class="result__bar-fill" data-bar></span>
     </div>
 
+    <div class="diff" data-diff hidden></div>
+
     <p class="result__why" data-why hidden></p>
     <ul class="result__notes" data-notes></ul>
 
@@ -1984,10 +1986,92 @@ const dropTitle = takesExcel
         });
       }
 
+      renderDiff('comparison' in res ? res.comparison : undefined);
+
       receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
       result.hidden = false;
       setStage('save');
       offerChain(res);
+    }
+
+    /**
+     * Shows the diff rather than counting it.
+     *
+     * Unchanged text is trimmed to a few words either side of each edit: a page
+     * printed in full is the document again, and the point is to find the four
+     * words that moved.
+     */
+    const diffHost = root.querySelector<HTMLElement>('[data-diff]');
+    const CONTEXT_WORDS = 8;
+
+    function renderDiff(pages?: import('../lib/pdf/compare').PageComparison[]) {
+      if (!diffHost) return;
+      if (!pages) {
+        diffHost.hidden = true;
+        diffHost.replaceChildren();
+        return;
+      }
+
+      const changed = pages.filter((page) => page.added || page.removed);
+      diffHost.hidden = false;
+
+      if (changed.length === 0) {
+        const note = document.createElement('p');
+        note.className = 'diff__none';
+        note.textContent = 'Every word matches.';
+        diffHost.replaceChildren(note);
+        return;
+      }
+
+      diffHost.replaceChildren(
+        ...changed.map((page) => {
+          const section = document.createElement('section');
+          section.className = 'diff__page';
+
+          const heading = document.createElement('h3');
+          heading.textContent =
+            page.before === null
+              ? `Page ${page.after} · added`
+              : page.after === null
+                ? `Page ${page.before} · removed`
+                : page.before === page.after
+                  ? `Page ${page.before}`
+                  : `Page ${page.before} → ${page.after}`;
+
+          const count = document.createElement('span');
+          count.className = 'diff__count';
+          count.textContent = `+${page.added} −${page.removed}`;
+          heading.append(count);
+
+          const body = document.createElement('p');
+          body.className = 'diff__text';
+
+          page.changes.forEach((change, index) => {
+            if (change.kind === 'same') {
+              const parts = change.text.split(' ');
+              const first = index === 0;
+              const last = index === page.changes.length - 1;
+              // Keep the ends nearest an edit; elide the middle.
+              const head = first ? [] : parts.slice(0, CONTEXT_WORDS);
+              const tail = last ? [] : parts.slice(-CONTEXT_WORDS);
+              const elided = parts.length > head.length + tail.length;
+              const span = document.createElement('span');
+              span.className = 'diff__same';
+              span.textContent = elided
+                ? `${head.join(' ')} … ${tail.join(' ')} `
+                : `${change.text} `;
+              body.append(span);
+              return;
+            }
+            const mark = document.createElement(change.kind === 'added' ? 'ins' : 'del');
+            mark.textContent = change.text;
+            body.append(mark, document.createTextNode(' '));
+          });
+
+          section.append(heading, body);
+          return section;
+        })
+      );
     }
 
     /**
@@ -3238,5 +3322,56 @@ const dropTitle = takesExcel
   .tool[data-unavailable] .try {
     opacity: 0.45;
     pointer-events: none;
+  }
+
+  /* ── What changed ─────────────────────────────────────────────────────
+     Added and removed words in place, with the unchanged text between them
+     trimmed to context. Printing a page in full is the document again. */
+  .diff { display: grid; gap: 1rem; margin-top: 1rem; }
+
+  .diff__none { margin: 0; color: var(--ok); font-size: var(--step--1); }
+
+  .diff__page {
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius) * 0.6);
+    background: var(--paper-raised);
+  }
+
+  .diff__page h3 {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
+    margin: 0 0 0.5rem;
+    font-size: var(--step--1);
+  }
+
+  .diff__count {
+    font-family: var(--font-mono);
+    font-size: var(--step--2);
+    color: var(--muted);
+  }
+
+  .diff__text {
+    margin: 0;
+    font-size: var(--step--1);
+    line-height: 1.6;
+    max-height: 18rem;
+    overflow-y: auto;
+  }
+
+  .diff__same { color: var(--muted); }
+
+  .diff__text ins {
+    background: color-mix(in oklab, var(--ok) 16%, transparent);
+    color: var(--ink);
+    text-decoration: none;
+    border-radius: 3px;
+    padding: 0.05em 0.2em;
+  }
+
+  .diff__text del {
+    background: color-mix(in oklab, var(--seal) 14%, transparent);
+    color: var(--ink-2);
+    border-radius: 3px;
+    padding: 0.05em 0.2em;
   }
 </style>

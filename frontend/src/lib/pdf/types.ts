@@ -289,6 +289,10 @@ export interface OpSuccess {
   /** True when the input was already optimal and came back untouched. */
   unchanged?: boolean;
   notes?: string[];
+
+  // --- compare only ----------------------------------------------------
+  /** Page-by-page word diff, so the UI can show it rather than just count it. */
+  comparison?: import('./compare').PageComparison[];
 }
 
 export interface OpFailure {
