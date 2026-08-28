@@ -244,9 +244,11 @@ const { mode } = Astro.props;
 
   .page-cell__tool {
     font: inherit;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
     line-height: 1;
-    padding: 0.22rem 0.34rem;
+    min-width: 2.05rem;
+    min-height: 2.05rem;
+    padding: 0.15rem 0.35rem;
     border: 1px solid var(--line);
     border-radius: 999px;
     background: var(--paper, #fff);
@@ -435,6 +437,62 @@ const { mode } = Astro.props;
 
   .page-grid__float canvas,
   .page-grid__float img { display: block; width: 100%; height: auto; }
+
+  @media (max-width: 40rem) {
+    .page-cell__tools {
+      position: static;
+      inset: unset;
+      margin-top: 0.2rem;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .page-grid__bar {
+      align-items: stretch;
+      gap: 0.6rem;
+    }
+
+    .page-grid__count {
+      width: 100%;
+    }
+
+    .page-grid__actions {
+      width: 100%;
+      justify-content: stretch;
+    }
+
+    .page-grid__btn {
+      flex: 1 1 auto;
+      min-height: 2.75rem;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.8rem;
+      text-align: center;
+      min-width: 7.5rem;
+    }
+
+    .page-grid__pages {
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 0.65rem;
+      padding: 0.45rem;
+      max-height: 54vh;
+    }
+
+    .page-cell__tool {
+      min-width: 2.35rem;
+      min-height: 2.35rem;
+      padding: 0.25rem 0.42rem;
+    }
+
+    .page-cell__cut {
+      width: 1.65rem;
+      aspect-ratio: 1 / 1;
+      height: auto;
+      right: 0.1rem;
+      font-size: 0.95rem;
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--paper-raised) 84%, transparent);
+    }
+  }
 
   @media (prefers-reduced-motion: reduce) {
     .page-cell__frame { transition: none; }

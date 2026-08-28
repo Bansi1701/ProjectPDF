@@ -1,54 +1,21 @@
 ---
 import SaveDialog from './SaveDialog.astro';
 import Lens from './Lens.astro';
-import Breadcrumbs from './Breadcrumbs.astro';
-import ToolFooter from './ToolFooter.astro';
-import { getCollection } from 'astro:content';
-import { RECIPES } from '../config/recipes';
-import { TOOLS } from '../config/site';
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const currentTool = TOOLS.find((tool) => tool.slug === 'redact-pdf');
-const siblings = currentTool
-  ? TOOLS.filter((tool) => tool.status === 'live' && tool.category === currentTool.category)
-  : [];
-const contentEntries = await getCollection('tools');
-const content = contentEntries.find((entry) => entry.id === 'redact-pdf');
-const related = content
-  ? content.data.related
-      .map((slug) => TOOLS.find((tool) => tool.slug === slug && tool.status === 'live'))
-      .filter((tool): tool is (typeof TOOLS)[number] => Boolean(tool))
-  : [];
-const recipeAppearances = RECIPES.flatMap((recipe) =>
-  recipe.steps.flatMap((step, index) => step.slug === 'redact-pdf' ? [{ recipe, index }] : [])
-);
-const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
-  .map((slug) => TOOLS.find((tool) => tool.slug === slug && tool.status === 'live'))
-  .filter((tool): tool is (typeof TOOLS)[number] => Boolean(tool));
 ---
 
 <section class="tool wrap" data-redact>
-  {currentTool ? <Breadcrumbs tool={currentTool} siblings={siblings} /> : <a class="back" href={`${base}/#tools`}>← All tools</a>}
+  <a class="back" href={`${base}/#tools`}>← All tools</a>
 
   <header class="tool__head">
     <p class="eyebrow"><span class="dot"></span>Removes the content, not just the view</p>
     <h1>Redact a PDF</h1>
     <p class="lede">
-      Search private text across the document or drag a box over anything that has to go.
-      Marked pages are rebuilt from pixels, so what was underneath is not covered up — it stops existing.
+      Drag a box over anything that has to go. The page is then rebuilt from pixels, so what
+      was underneath is not covered up — it stops existing.
     </p>
   </header>
-
-  {
-    recipeAppearances.map(({ recipe, index }) => (
-      <aside class="recipe-progress" data-recipe-progress data-recipe={recipe.slug} data-recipe-step={index + 1} data-recipe-next={recipe.steps[index + 1]?.slug} hidden>
-        <div><p>Guided recipe · step {index + 1} of {recipe.steps.length}</p><strong>{recipe.title}</strong></div>
-        <ol aria-label={`${recipe.title} steps`}>
-          {recipe.steps.map((step, at) => <li data-state={at < index ? 'done' : at === index ? 'current' : 'next'}><span>{at + 1}</span>{step.name}</li>)}
-        </ol>
-      </aside>
-    ))
-  }
 
   <Lens variant="loupe" class="drop">
     <label class="drop__zone" data-drop>
@@ -58,34 +25,10 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
     </label>
   </Lens>
 
-  <p class="try">
-    No file to hand?
-    <button type="button" data-sample>Try it on a sample document</button>
-    <small>Five pages, built in this tab. Nothing is downloaded.</small>
-  </p>
-
   <div class="stage" data-stage hidden>
     <p class="stage__hint">
       Drag across the page to mark an area. Click a mark to remove it.
     </p>
-    <section class="redact-search" aria-labelledby="redact-search-title">
-      <div>
-        <strong id="redact-search-title">Find and mark private text</strong>
-        <small>Search a name, account number, email address, or exact phrase across every page.</small>
-      </div>
-      <div class="redact-search__row">
-        <label>
-          <span class="sr-only">Text to redact</span>
-          <input data-redact-search type="search" placeholder="For example: SECRET-7391" autocomplete="off" />
-        </label>
-        <button class="btn btn--quiet" data-redact-find type="button">Find and mark all</button>
-      </div>
-      <label class="redact-search__ocr">
-        <input data-redact-ocr type="checkbox" checked />
-        <span>Use local OCR on scanned pages that have no text layer</span>
-      </label>
-      <p data-redact-search-status role="status" aria-live="polite"></p>
-    </section>
     <div class="pages" data-pages></div>
 
     <div class="stage__actions">
@@ -103,13 +46,6 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
     </div>
     <ul class="result__notes" data-notes></ul>
     <div class="result__actions" data-downloads></div>
-    <div class="chain" data-chain hidden>
-      <p class="chain__title">Keep going with this result</p>
-      <div class="chain__row">
-        {nextTools.map((tool) => <button class="chain__item" type="button" data-chain-to={tool.slug}><strong>{tool.name}</strong><span>{tool.blurb}</span></button>)}
-      </div>
-      <p class="chain__note">The redacted PDF is handed directly to the next tool on this device and deleted from the handoff store as soon as it is claimed.</p>
-    </div>
     <p class="result__receipt" data-receipt></p>
   </section>
 
@@ -126,14 +62,13 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
       editor. People have lost cases that way.
     </p>
     <p>
-      This rebuilds each page you mark from pixels instead. On those pages there is no text
-      layer left to leak. Pages you do not mark stay searchable, selectable, and lossless.
-      Every redacted page is checked before you get the result — if any text can still be
-      extracted from one, you get an error rather than a file.
+      This rebuilds every page from pixels instead. There is no text layer left to leak,
+      because there is no text layer at all. The cost is that the result is images: not
+      searchable, and a larger file. That is the price of the guarantee, and the result is
+      checked before you get it — if any text can still be extracted, you get an error rather
+      than a file.
     </p>
   </section>
-
-  {currentTool && content && <ToolFooter tool={currentTool} content={content.data} related={related} />}
 </section>
 
 <script>
@@ -155,11 +90,6 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
     const sizes = q('[data-sizes]');
     const notes = q('[data-notes]');
     const downloads = q('[data-downloads]');
-    const sampleBtn = root.querySelector<HTMLButtonElement>('[data-sample]');
-    const searchInput = q<HTMLInputElement>('[data-redact-search]');
-    const searchBtn = q<HTMLButtonElement>('[data-redact-find]');
-    const searchOcr = q<HTMLInputElement>('[data-redact-ocr]');
-    const searchStatus = q<HTMLElement>('[data-redact-search-status]');
 
     interface SaveDialogElement extends HTMLElement {
       ask(request: { name: string; siblings: string[]; index: number }): Promise<{
@@ -178,17 +108,6 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
     const receipt = q('[data-receipt]');
     const errorEl = q('[data-error]');
     const count = q('[data-count]');
-    const chain = root.querySelector<HTMLElement>('[data-chain]');
-    const pageParams = new URLSearchParams(location.search);
-    const activeRecipe = pageParams.get('recipe');
-    const activeRecipeStep = Number.parseInt(pageParams.get('step') ?? '', 10);
-    const recipeProgress = activeRecipe
-      ? root.querySelector<HTMLElement>(`[data-recipe-progress][data-recipe="${CSS.escape(activeRecipe)}"]`)
-      : null;
-
-    if (recipeProgress && Number(recipeProgress.dataset.recipeStep) === activeRecipeStep) {
-      recipeProgress.hidden = false;
-    }
 
     let file: File | null = null;
     let worker: Worker | null = null;
@@ -196,18 +115,6 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
     let urls: string[] = [];
     /** Fractions of the page, so they survive any rendering scale. */
     let boxes: RedactionBox[] = [];
-
-    interface SearchWord {
-      text: string;
-      key: string;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-    }
-
-    const searchWords = new Map<number, SearchWord[]>();
-    const pageCanvases = new Map<number, HTMLCanvasElement>();
 
     const size = (n: number) =>
       n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : `${(n / 1024).toFixed(1)} KB`;
@@ -235,79 +142,6 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
       runBtn.disabled = boxes.length === 0;
     }
 
-    const tokenMatches = (text: string): RegExpMatchArray[] =>
-      [...text.matchAll(/[\p{L}\p{N}]+/gu)];
-
-    const keyOf = (text: string): string =>
-      text.normalize('NFKC').toLocaleLowerCase();
-
-    /** Turn one pdf.js text item into word-sized normalized rectangles. */
-    function wordsFromTextItem(
-      item: Record<string, unknown>,
-      viewport: { width: number; height: number; scale: number; transform: number[] },
-      transform: (a: number[], b: number[]) => number[]
-    ): SearchWord[] {
-      const text = typeof item.str === 'string' ? item.str : '';
-      const matrix = Array.isArray(item.transform) ? item.transform.map(Number) : [];
-      if (!text.trim() || matrix.length !== 6) return [];
-
-      const positioned = transform(viewport.transform, matrix);
-      const height = Math.max(1, Math.hypot(positioned[2], positioned[3]));
-      const width = Math.max(1, Number(item.width ?? 0) * viewport.scale);
-
-      return tokenMatches(text).flatMap((match) => {
-        const key = keyOf(match[0]);
-        if (!key) return [];
-        const start = match.index ?? 0;
-        const span = Math.max(match[0].length, 1);
-        return [{
-          text: match[0],
-          key,
-          x: Math.max(0, positioned[4] + width * (start / Math.max(text.length, 1))) / viewport.width,
-          y: Math.max(0, positioned[5] - height) / viewport.height,
-          width: Math.min(width * (span / Math.max(text.length, 1)), viewport.width) / viewport.width,
-          height: Math.min(height * 1.18, viewport.height) / viewport.height,
-        }];
-      });
-    }
-
-    /** Adds one reviewable mark and keeps manual and search marks identical. */
-    function addMark(box: RedactionBox): boolean {
-      const duplicate = boxes.some((item) =>
-        item.page === box.page &&
-        Math.abs(item.x - box.x) < 0.002 &&
-        Math.abs(item.y - box.y) < 0.002 &&
-        Math.abs(item.width - box.width) < 0.004 &&
-        Math.abs(item.height - box.height) < 0.004
-      );
-      if (duplicate) return false;
-
-      const marks = pagesHost.querySelector<HTMLElement>(`.page[data-page="${box.page}"] .page__marks`);
-      if (!marks) return false;
-
-      boxes.push(box);
-      const mark = document.createElement('button');
-      mark.type = 'button';
-      mark.className = 'mark';
-      Object.assign(mark.style, {
-        left: `${box.x * 100}%`,
-        top: `${box.y * 100}%`,
-        width: `${box.width * 100}%`,
-        height: `${box.height * 100}%`,
-      });
-      mark.title = 'Remove this redaction mark';
-      mark.setAttribute('aria-label', `Remove redaction mark on page ${box.page}`);
-      mark.addEventListener('click', (event) => {
-        event.stopPropagation();
-        boxes = boxes.filter((item) => item !== box);
-        mark.remove();
-        refresh();
-      });
-      marks.append(mark);
-      refresh();
-      return true;
-    }
-
     /**
      * Renders every page as a still image to draw on.
      *
@@ -318,9 +152,6 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
     async function showPages(chosen: File) {
       file = chosen;
       boxes = [];
-      searchWords.clear();
-      pageCanvases.clear();
-      searchStatus.textContent = '';
       errorEl.hidden = true;
       result.hidden = true;
       stage.hidden = false;
@@ -341,6 +172,7 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
         standardFontDataUrl: asset('standard_fonts'),
         wasmUrl: asset('wasm'),
         iccUrl: asset('iccs'),
+        isEvalSupported: false,
       }).promise;
 
       for (let n = 1; n <= doc.numPages; n += 1) {
@@ -356,18 +188,6 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
         canvas.height = Math.floor(viewport.height);
         const ctx = canvas.getContext('2d');
         if (ctx) await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-        pageCanvases.set(n, canvas);
-
-        try {
-          const content = await page.getTextContent();
-          const words = (content.items as Record<string, unknown>[]).flatMap((item) =>
-            wordsFromTextItem(item, viewport, api.Util.transform)
-          );
-          searchWords.set(n, words);
-        } catch {
-          // A page that cannot expose its text can still be searched with OCR.
-          searchWords.set(n, []);
-        }
 
         const marks = document.createElement('div');
         marks.className = 'page__marks';
@@ -378,7 +198,7 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
         page.cleanup();
       }
 
-      await doc.loadingTask.destroy();
+      await doc.destroy();
       status.textContent = '';
       refresh();
     }
@@ -434,143 +254,26 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
         // Ignore a stray click that marked nothing.
         if (box.width < 0.004 || box.height < 0.004) return;
 
-        addMark(box);
+        boxes.push(box);
+
+        const mark = document.createElement('div');
+        mark.className = 'mark';
+        Object.assign(mark.style, {
+          left: `${box.x * 100}%`,
+          top: `${box.y * 100}%`,
+          width: `${box.width * 100}%`,
+          height: `${box.height * 100}%`,
+        });
+        mark.title = 'Click to remove';
+        mark.addEventListener('click', () => {
+          boxes = boxes.filter((item) => item !== box);
+          mark.remove();
+          refresh();
+        });
+        marks.append(mark);
+        refresh();
       });
     }
-
-    const canvasBlob = (canvas: HTMLCanvasElement): Promise<Blob> =>
-      new Promise((resolve, reject) =>
-        canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('The page preview could not be read.')), 'image/png')
-      );
-
-    async function recogniseScannedPages(pages: number[]): Promise<void> {
-      if (pages.length === 0) return;
-      const { createWorker } = await import('tesseract.js');
-      const local = (path: string) =>
-        new URL(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/${path}`, location.href).href;
-      const recognizer = await createWorker('eng', 1, {
-        workerPath: local('tesseract/worker.min.js'),
-        corePath: local('tesseract/'),
-        langPath: local('tessdata/'),
-        gzip: true,
-      });
-
-      try {
-        for (const [index, page] of pages.entries()) {
-          const canvas = pageCanvases.get(page);
-          if (!canvas) continue;
-          searchStatus.textContent = `Reading scanned page ${page} (${index + 1} of ${pages.length}) on this device…`;
-          const result = await recognizer.recognize(await canvasBlob(canvas), {}, { blocks: true, text: true });
-          const words: SearchWord[] = [];
-          for (const block of (result.data.blocks ?? []) as Array<Record<string, unknown>>) {
-            for (const paragraph of (block.paragraphs ?? []) as Array<Record<string, unknown>>) {
-              for (const line of (paragraph.lines ?? []) as Array<Record<string, unknown>>) {
-                for (const word of (line.words ?? []) as Array<Record<string, unknown>>) {
-                  const text = typeof word.text === 'string' ? word.text : '';
-                  const bounds = word.bbox as { x0?: number; y0?: number; x1?: number; y1?: number } | undefined;
-                  if (!text.trim() || !bounds) continue;
-                  const x0 = Number(bounds.x0 ?? 0);
-                  const y0 = Number(bounds.y0 ?? 0);
-                  const x1 = Number(bounds.x1 ?? x0);
-                  const y1 = Number(bounds.y1 ?? y0);
-                  for (const match of tokenMatches(text)) {
-                    const start = match.index ?? 0;
-                    const fraction = Math.max(text.length, 1);
-                    words.push({
-                      text: match[0],
-                      key: keyOf(match[0]),
-                      x: (x0 + (x1 - x0) * (start / fraction)) / canvas.width,
-                      y: y0 / canvas.height,
-                      width: ((x1 - x0) * (match[0].length / fraction)) / canvas.width,
-                      height: (y1 - y0) / canvas.height,
-                    });
-                  }
-                }
-              }
-            }
-          }
-          searchWords.set(page, words);
-        }
-      } finally {
-        await recognizer.terminate();
-      }
-    }
-
-    /** Union words a line at a time so a wrapped phrase never blacks out the gap between lines. */
-    function boxesForMatch(page: number, words: SearchWord[]): RedactionBox[] {
-      const lines: SearchWord[][] = [];
-      for (const word of words) {
-        const current = lines.at(-1);
-        const centre = word.y + word.height / 2;
-        const currentCentre = current
-          ? current.reduce((sum, item) => sum + item.y + item.height / 2, 0) / current.length
-          : 0;
-        if (!current || Math.abs(centre - currentCentre) > Math.max(word.height, current[0].height) * 0.8) {
-          lines.push([word]);
-        } else {
-          current.push(word);
-        }
-      }
-
-      return lines.map((line) => {
-        const left = Math.max(0, Math.min(...line.map((word) => word.x)) - 0.003);
-        const top = Math.max(0, Math.min(...line.map((word) => word.y)) - 0.002);
-        const right = Math.min(1, Math.max(...line.map((word) => word.x + word.width)) + 0.003);
-        const bottom = Math.min(1, Math.max(...line.map((word) => word.y + word.height)) + 0.003);
-        return { page, x: left, y: top, width: right - left, height: bottom - top };
-      });
-    }
-
-    async function findAndMark(): Promise<void> {
-      const query = searchInput.value.trim();
-      const wanted = tokenMatches(query).map((match) => keyOf(match[0])).filter(Boolean);
-      if (wanted.length === 0) {
-        searchStatus.textContent = 'Enter a word or phrase to find.';
-        searchInput.focus();
-        return;
-      }
-
-      searchBtn.disabled = true;
-      errorEl.hidden = true;
-      try {
-        const scanned = [...pageCanvases.keys()].filter((page) => (searchWords.get(page)?.length ?? 0) === 0);
-        if (searchOcr.checked && scanned.length > 0) await recogniseScannedPages(scanned);
-
-        let matches = 0;
-        let marks = 0;
-        const pages = [...searchWords.keys()].sort((a, b) => a - b);
-        for (const page of pages) {
-          const words = searchWords.get(page) ?? [];
-          for (let index = 0; index <= words.length - wanted.length; index += 1) {
-            if (!wanted.every((key, offset) => words[index + offset]?.key === key)) continue;
-            matches += 1;
-            for (const box of boxesForMatch(page, words.slice(index, index + wanted.length))) {
-              if (addMark(box)) marks += 1;
-            }
-            index += wanted.length - 1;
-          }
-        }
-
-        if (matches > 0) {
-          searchStatus.textContent = `Found ${matches} match${matches === 1 ? '' : 'es'} and added ${marks} reviewable mark${marks === 1 ? '' : 's'}. Check every red box before saving.`;
-        } else if (!searchOcr.checked && scanned.length > 0) {
-          searchStatus.textContent = `No match was found in the text layer. ${scanned.length} scanned page${scanned.length === 1 ? ' has' : 's have'} no searchable text; turn on local OCR to include ${scanned.length === 1 ? 'it' : 'them'}.`;
-        } else {
-          searchStatus.textContent = 'No exact match was found. Try fewer words or check the spelling.';
-        }
-      } catch (error) {
-        searchStatus.textContent = `The scanned-page search could not finish: ${(error as Error).message}`;
-      } finally {
-        searchBtn.disabled = false;
-      }
-    }
-
-    searchBtn.addEventListener('click', () => void findAndMark());
-    searchInput.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter') return;
-      event.preventDefault();
-      void findAndMark();
-    });
 
     function onDone({ id, result: res }: WorkerResponse) {
       if (id !== jobId) return;
@@ -630,50 +333,11 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
 
       receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
       result.hidden = false;
-      offerChain(res);
-    }
-
-    function offerChain(res: { files: { name: string; bytes: Uint8Array; type?: string }[] }) {
-      const only = res.files.length === 1 ? res.files[0] : null;
-      if (!chain || !only) return;
-      chain.hidden = false;
-      for (const button of chain.querySelectorAll<HTMLButtonElement>('[data-chain-to]')) {
-        button.onclick = async () => {
-          button.disabled = true;
-          const { stash } = await import('../lib/handoff');
-          const key = await stash(new Blob([only.bytes as BlobPart], { type: 'application/pdf' }), only.name);
-          const slug = button.dataset.chainTo!;
-          const destination = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/${slug}/`;
-          const params = new URLSearchParams();
-          if (key) params.set('from', key);
-          if (activeRecipe && recipeProgress?.dataset.recipeNext === slug && Number.isFinite(activeRecipeStep)) {
-            params.set('recipe', activeRecipe);
-            params.set('step', String(activeRecipeStep + 1));
-          }
-          const query = params.toString();
-          location.href = query ? `${destination}?${query}` : destination;
-        };
-      }
     }
 
     input.addEventListener('change', () => {
       const chosen = input.files?.[0];
       if (chosen) void showPages(chosen);
-    });
-
-    sampleBtn?.addEventListener('click', async () => {
-      sampleBtn.disabled = true;
-      const label = sampleBtn.textContent;
-      sampleBtn.textContent = 'Building it…';
-      try {
-        const { sampleDocument } = await import('../lib/sample');
-        await showPages(await sampleDocument());
-      } catch {
-        fail('The sample could not be built here. Choosing a file still works.');
-      } finally {
-        sampleBtn.disabled = false;
-        sampleBtn.textContent = label;
-      }
     });
 
     for (const event of ['dragenter', 'dragover'] as const) {
@@ -692,22 +356,6 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
       const chosen = e.dataTransfer?.files?.[0];
       if (chosen) void showPages(chosen);
     });
-
-    async function acceptHandoff() {
-      const params = new URLSearchParams(location.search);
-      const key = params.get('from');
-      if (!key) return;
-      params.delete('from');
-      const rest = params.toString();
-      history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : '') + location.hash);
-      const { claim } = await import('../lib/handoff');
-      const carried = await claim(key);
-      if (!carried) return;
-      await showPages(carried);
-      status.textContent = 'Carried over from the last tool. Still on this device.';
-    }
-
-    void acceptHandoff();
 
     clearBtn.addEventListener('click', () => {
       if (file) void showPages(file);
@@ -760,31 +408,8 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
   .drop__title { font-size: var(--step-1); font-weight: 500; }
   .drop__meta { font-size: var(--step--2); color: var(--muted); }
 
-  .try { margin: -0.6rem 0 0; text-align: center; color: var(--muted); font-size: var(--step--1); }
-  .try button { appearance: none; border: 0; padding: 0; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
-  .try small { display: block; margin-top: 0.25rem; font-size: var(--step--2); }
-
   .stage { display: grid; gap: 1rem; }
   .stage__hint { margin: 0; font-size: var(--step--1); color: var(--muted); }
-
-  .redact-search {
-    display: grid; gap: 0.75rem; padding: 1rem;
-    border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
-    border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 6%, var(--paper));
-  }
-  .redact-search > div:first-child { display: grid; gap: 0.2rem; }
-  .redact-search small, .redact-search p { color: var(--muted); font-size: var(--step--2); }
-  .redact-search__row { display: flex; gap: 0.55rem; align-items: stretch; }
-  .redact-search__row label { flex: 1; }
-  .redact-search__row input {
-    width: 100%; min-height: 2.75rem; padding: 0.65rem 0.8rem;
-    border: 1px solid var(--line-strong); border-radius: calc(var(--radius) * 0.7);
-    background: var(--paper); color: var(--ink); font: inherit;
-  }
-  .redact-search__row input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .redact-search__ocr { display: flex; gap: 0.5rem; align-items: flex-start; font-size: var(--step--1); color: var(--ink-2); }
-  .redact-search__ocr input { margin-top: 0.2rem; accent-color: var(--accent); }
-  .redact-search p { min-height: 1.2em; margin: 0; }
 
   .pages { display: grid; gap: 1rem; max-height: 34rem; overflow-y: auto; padding: 0.75rem; background: var(--paper-sunk); border: 1px solid var(--line); border-radius: var(--radius); }
 
@@ -793,7 +418,7 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
   .page__marks { position: absolute; inset: 0; }
 
   .mark {
-    position: absolute; padding: 0; border: 0; background: #000;
+    position: absolute; background: #000;
     outline: 1.5px solid var(--seal); outline-offset: 1px; cursor: pointer;
   }
   .mark--drawing { background: rgb(0 0 0 / 0.55); pointer-events: none; }
@@ -814,25 +439,6 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
   .result__actions { display: flex; gap: 0.6rem; }
   .result__receipt { font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted); padding-top: 0.75rem; border-top: 1px solid var(--line); }
 
-  .chain { display: grid; gap: 0.8rem; padding-top: 1rem; border-top: 1px solid var(--line); }
-  .chain__title { margin: 0; font-weight: 700; }
-  .chain__row { display: flex; flex-wrap: wrap; gap: 0.55rem; }
-  .chain__item { display: grid; max-width: 15rem; gap: 0.2rem; padding: 0.75rem; text-align: left; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--paper-raised); color: inherit; cursor: pointer; }
-  .chain__item:hover:not(:disabled) { border-color: var(--accent); }
-  .chain__item:disabled { opacity: 0.5; }
-  .chain__item span, .chain__note { color: var(--muted); font-size: var(--step--2); }
-  .chain__note { margin: 0; }
-
-  .recipe-progress { margin: 1rem 0 1.5rem; padding: 1rem; border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line)); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--accent) 7%, var(--paper-raised)); }
-  .recipe-progress p { margin: 0 0 0.2rem; color: var(--accent); font-size: var(--step--2); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-  .recipe-progress ol { display: flex; flex-wrap: wrap; gap: 0.45rem; margin: 0.85rem 0 0; padding: 0; list-style: none; }
-  .recipe-progress li { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: var(--step--2); }
-  .recipe-progress li:not(:last-child)::after { content: '→'; margin-left: 0.15rem; color: var(--line-strong); }
-  .recipe-progress li span { display: grid; width: 1.45rem; height: 1.45rem; place-items: center; border: 1px solid var(--line-strong); border-radius: 999px; font-family: var(--font-mono); }
-  .recipe-progress li[data-state='current'] { color: var(--ink); font-weight: 700; }
-  .recipe-progress li[data-state='current'] span { border-color: var(--accent); background: var(--accent); color: white; }
-  .recipe-progress li[data-state='done'] span { border-color: var(--accent); color: var(--accent); }
-
   .error {
     margin: 0; padding: 0.9rem 1.1rem; border-radius: var(--radius);
     border: 1px solid var(--seal); color: var(--seal); font-size: var(--step--1);
@@ -841,11 +447,58 @@ const nextTools = ['metadata-pdf', 'protect-pdf', 'flatten-pdf']
   .explain h2 { font-size: var(--step-2); margin-bottom: 1rem; }
   .explain p { color: var(--ink-2); font-size: var(--step--1); margin-bottom: 0.9rem; max-width: var(--measure); }
 
-  @media (max-width: 42rem) {
-    .redact-search__row { display: grid; }
-    .redact-search__row .btn { width: 100%; }
-    .recipe-progress ol { display: grid; }
-    .recipe-progress li::after { display: none; }
-    .chain__item { max-width: none; width: 100%; }
+  @media (max-width: 40rem) {
+    .tool {
+      padding-block: 1rem 1.75rem;
+      gap: 1rem;
+    }
+
+    .tool__head h1 { font-size: var(--step-3); }
+
+    .drop__zone {
+      padding: 1.1rem 1rem;
+      gap: 0.4rem;
+    }
+
+    .drop__title { font-size: var(--step-0); }
+    .drop__meta { padding-inline: 0.35rem; }
+
+    .pages {
+      padding: 0.6rem;
+      gap: 0.75rem;
+      max-height: 54vh;
+      border-radius: 12px;
+    }
+
+    .stage__actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .stage__actions .btn {
+      width: 100%;
+      justify-content: center;
+      min-height: 2.75rem;
+    }
+
+    .page {
+      touch-action: none;
+    }
+
+    .mark,
+    .mark--drawing {
+      border-width: 2px;
+    }
+
+    .result,
+    .explain p,
+    .stage__hint {
+      min-width: 0;
+    }
+
+    .result__actions,
+    .status {
+      gap: 0.65rem;
+    }
   }
 </style>

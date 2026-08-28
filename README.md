@@ -15,6 +15,7 @@ Privacy-first PDF tools. Everything runs in the browser — files never reach a 
 | Hosting | Cloudflare |
 
 See [Docs/TECH_STACK.md](Docs/TECH_STACK.md) for the full reasoning.
+All interface changes follow the shared [design language](Docs/DESIGN_LANGUAGE.md).
 
 ## Layout
 

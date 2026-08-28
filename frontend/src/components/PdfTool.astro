@@ -2,15 +2,7 @@
 import PageGrid from './PageGrid.astro';
 import SaveDialog from './SaveDialog.astro';
 import Lens from './Lens.astro';
-import CropStage from './CropStage.astro';
-import LivePdfEditor from './LivePdfEditor.astro';
-import Breadcrumbs from './Breadcrumbs.astro';
-import ToolFooter from './ToolFooter.astro';
-import SplitStudio from './SplitStudio.astro';
-import { getCollection } from 'astro:content';
 import type { Operation } from '../lib/pdf/types';
-import { TOOLS } from '../config/site';
-import { RECIPES } from '../config/recipes';
 
 interface Props {
   mode: Operation;
@@ -19,11 +11,6 @@ interface Props {
   multiple?: boolean;
   /** Shown above the dropzone. */
   eyebrow?: string;
-  /**
-   * Set when the tool is not finished. It renders a notice and disables the
-   * controls, rather than presenting a form that quietly does nothing.
-   */
-  unavailable?: string;
 }
 
 const {
@@ -32,38 +19,9 @@ const {
   description,
   multiple = false,
   eyebrow = 'Runs entirely in your browser',
-  unavailable,
 } = Astro.props;
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-const pageSlug = Astro.url.pathname.split('/').filter(Boolean).at(-1) ?? '';
-const currentTool = TOOLS.find((tool) => tool.slug === pageSlug);
-const toolContentEntries = await getCollection('tools');
-const toolContentBySlug = new Map(toolContentEntries.map((entry) => [entry.id, entry]));
-const missingToolContent = TOOLS
-  .filter((tool) => tool.status === 'live' && !toolContentBySlug.has(tool.slug))
-  .map((tool) => tool.slug);
-
-if (missingToolContent.length > 0) {
-  throw new Error(`Live tools missing content entries: ${missingToolContent.join(', ')}`);
-}
-
-const currentToolContent = currentTool ? toolContentBySlug.get(currentTool.slug) : undefined;
-const siblingTools = currentTool
-  ? TOOLS.filter((tool) => tool.status === 'live' && tool.category === currentTool.category)
-  : [];
-const relatedTools = currentToolContent
-  ? currentToolContent.data.related
-      .map((slug) => TOOLS.find((tool) => tool.slug === slug && tool.status === 'live'))
-      .filter((tool): tool is (typeof TOOLS)[number] => Boolean(tool))
-  : [];
-const recipeAppearances = currentTool
-  ? RECIPES.flatMap((recipe) =>
-      recipe.steps.flatMap((step, index) =>
-        step.slug === currentTool.slug ? [{ recipe, index }] : []
-      )
-    )
-  : [];
 
 const ACTIONS: Record<Operation, string> = {
   compress: 'Compress',
@@ -75,7 +33,7 @@ const ACTIONS: Record<Operation, string> = {
   reorder: 'Reorder pages',
   extract: 'Extract pages',
   delete: 'Delete pages',
-  edit: 'Save edited PDF',
+  edit: 'Add the text',
   watermark: 'Add watermark',
   'page-numbers': 'Add numbers',
   compare: 'Compare',
@@ -83,30 +41,14 @@ const ACTIONS: Record<Operation, string> = {
   unlock: 'Unlock',
   'pdf-to-markdown': 'Convert to Markdown',
   forms: 'Fill the form',
-  sign: 'Save signed PDF',
+  sign: 'Place the signature',
   'pdf-a': 'Convert to PDF/A',
   repair: 'Repair',
   ocr: 'Read the text',
-  redact: 'Redact and save',
   'word-to-pdf': 'Convert to PDF',
   'url-to-pdf': 'Render the page',
   'excel-to-pdf': 'Convert to PDF',
   'powerpoint-to-pdf': 'Convert to PDF',
-  'pdf-to-word': 'Convert to Word',
-  'pdf-to-excel': 'Extract the tables',
-  crop: 'Crop the pages',
-  grayscale: 'Convert to greyscale',
-  'auto-crop': 'Trim the margins',
-  scan: 'Build the PDF',
-  flatten: 'Flatten the PDF',
-  impose: 'Create the layout',
-  'extract-images': 'Extract images',
-  overlay: 'Apply overlay',
-  'text-to-pdf': 'Create the PDF',
-  metadata: 'Save metadata',
-  'header-footer': 'Add headers and footers',
-  'split-by': 'Split the PDF',
-  compose: 'Save the changes',
 };
 
 /** Modes whose ranges field means "pages to act on", not "groups". */
@@ -129,73 +71,11 @@ const gridMode = GRID_MODES[mode];
 
 const action = ACTIONS[mode];
 
-/**
- * What people reach for next, per tool.
- *
- * Only tools whose result is a single PDF appear here: an images export or a
- * .docx has nothing a PDF tool can pick up. Protect is a dead end on purpose —
- * its output is encrypted, so handing it on would just fail at the next door.
- */
-const CHAIN: Partial<Record<Operation, string[]>> = {
-  compress: ['sign-pdf', 'protect-pdf', 'merge-pdf'],
-  merge: ['compress-pdf', 'page-numbers', 'protect-pdf'],
-  split: ['compress-pdf', 'merge-pdf'],
-  rotate: ['compress-pdf', 'merge-pdf'],
-  reorder: ['page-numbers', 'compress-pdf'],
-  extract: ['compress-pdf', 'protect-pdf'],
-  delete: ['compress-pdf', 'protect-pdf'],
-  watermark: ['compress-pdf', 'protect-pdf'],
-  'page-numbers': ['compress-pdf', 'protect-pdf'],
-  sign: ['protect-pdf', 'compress-pdf', 'flatten-pdf'],
-  edit: ['sign-pdf', 'compress-pdf', 'protect-pdf'],
-  crop: ['compress-pdf', 'page-numbers'],
-  'auto-crop': ['compress-pdf', 'page-numbers'],
-  grayscale: ['compress-pdf', 'protect-pdf'],
-  flatten: ['compress-pdf', 'protect-pdf'],
-  impose: ['compress-pdf'],
-  overlay: ['compress-pdf', 'protect-pdf'],
-  ocr: ['pdf-to-word', 'compress-pdf'],
-  unlock: ['redact-pdf', 'watermark-pdf', 'compress-pdf'],
-  repair: ['compress-pdf', 'protect-pdf'],
-  scan: ['ocr-pdf', 'compress-pdf', 'protect-pdf'],
-  'images-to-pdf': ['compress-pdf', 'page-numbers', 'protect-pdf'],
-  'word-to-pdf': ['sign-pdf', 'compress-pdf', 'protect-pdf'],
-  'excel-to-pdf': ['compress-pdf', 'protect-pdf'],
-  'powerpoint-to-pdf': ['compress-pdf', 'protect-pdf'],
-  'pdf-a': ['protect-pdf'],
-  forms: ['flatten-pdf', 'sign-pdf', 'protect-pdf'],
-  'text-to-pdf': ['sign-pdf', 'compress-pdf', 'protect-pdf'],
-  metadata: ['protect-pdf', 'compress-pdf'],
-  'header-footer': ['compress-pdf', 'protect-pdf'],
-  redact: ['metadata-pdf', 'protect-pdf', 'flatten-pdf'],
-};
-
-/** Recipe-only continuations still have to be rendered before client state is known. */
-for (const appearance of recipeAppearances) {
-  const nextStep = appearance.recipe.steps[appearance.index + 1];
-  if (nextStep && !(CHAIN[mode] ?? []).includes(nextStep.slug)) {
-    CHAIN[mode] = [...(CHAIN[mode] ?? []), nextStep.slug];
-  }
-}
-
-const nextTools = (CHAIN[mode] ?? [])
-  .map((slug) => TOOLS.find((tool) => tool.slug === slug && tool.status === 'live'))
-  .filter((tool): tool is (typeof TOOLS)[number] => Boolean(tool));
-
 /** The only tool whose input is not a PDF. */
 const takesImages = mode === 'images-to-pdf';
 const takesWord = mode === 'word-to-pdf';
 const takesExcel = mode === 'excel-to-pdf';
 const takesSlides = mode === 'powerpoint-to-pdf';
-const takesText = mode === 'text-to-pdf';
-const acceptsMany = multiple || mode === 'reorder';
-
-/**
- * The live editor belongs on Edit PDF, while Sign PDF gets a narrower signing
- * profile so it can still place signatures directly on the page.
- */
-const editorProfile = mode === 'edit' ? 'full' : mode === 'sign' ? 'sign' : null;
-const supportsLiveEditor = editorProfile !== null;
 
 const accept = takesImages
   ? 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
@@ -205,12 +85,7 @@ const accept = takesImages
       ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx'
       : takesSlides
         ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation,.pptx'
-        : takesText
-          ? 'text/plain,text/csv,text/markdown,.txt,.csv,.md,.markdown,.tsv,.log'
-          : 'application/pdf,.pdf';
-
-/* Every tool whose input is a PDF can be tried on the generated sample. */
-const takesPdf = !takesImages && !takesWord && !takesExcel && !takesSlides && !takesText && mode !== 'url-to-pdf';
+        : 'application/pdf,.pdf';
 
 const dropTitle = takesExcel
   ? 'Choose a spreadsheet, or drop one here'
@@ -220,59 +95,19 @@ const dropTitle = takesExcel
   ? 'Choose a Word document, or drop one here'
   : takesImages
   ? 'Choose images, or drop them here'
-  : acceptsMany
+  : multiple
     ? 'Choose PDFs, or drop them here'
     : 'Choose a PDF, or drop one here';
 ---
 
-<section class="tool wrap" data-pdf-tool data-mode={mode} data-stage="choose" data-unavailable={unavailable ? '' : undefined} data-live-workspace={supportsLiveEditor || undefined}>
-  {currentTool ? <Breadcrumbs tool={currentTool} siblings={siblingTools} /> : <a class="back" href={`${base}/#tools`}>← All tools</a>}
+<section class="tool wrap" data-pdf-tool data-mode={mode}>
+  <a class="back" href={`${base}/#tools`}>← All tools</a>
 
   <header class="tool__head">
     <p class="eyebrow"><span class="dot"></span>{eyebrow}</p>
     <h1>{title}</h1>
     <p class="lede">{description}</p>
   </header>
-
-  {
-    recipeAppearances.map(({ recipe, index }) => (
-      <aside
-        class="recipe-progress"
-        data-recipe-progress
-        data-recipe={recipe.slug}
-        data-recipe-step={index + 1}
-        data-recipe-next={recipe.steps[index + 1]?.slug}
-        hidden
-      >
-        <div>
-          <p class="recipe-progress__eyebrow">Guided recipe · step {index + 1} of {recipe.steps.length}</p>
-          <strong>{recipe.title}</strong>
-        </div>
-        <ol aria-label={`${recipe.title} steps`}>
-          {recipe.steps.map((step, at) => (
-            <li data-state={at < index ? 'done' : at === index ? 'current' : 'next'}>
-              <span>{at + 1}</span>{step.name}
-            </li>
-          ))}
-        </ol>
-      </aside>
-    ))
-  }
-
-  {
-    unavailable && (
-      <aside class="unavailable" role="status">
-        <strong>Not finished yet.</strong>
-        <span>{unavailable}</span>
-      </aside>
-    )
-  }
-
-  <ol class="flow" data-flow aria-label="Where you are">
-    <li data-step="choose"><span class="flow__n">1</span><span class="flow__label">Choose</span></li>
-    <li data-step="adjust"><span class="flow__n">2</span><span class="flow__label">Adjust</span></li>
-    <li data-step="save"><span class="flow__n">3</span><span class="flow__label">Save</span></li>
-  </ol>
 
   {
     mode === 'url-to-pdf' && (
@@ -305,7 +140,7 @@ const dropTitle = takesExcel
 
   <Lens variant="loupe" class="drop">
     <label class="drop__zone" data-drop>
-      <input class="sr-only" data-input type="file" accept={accept} multiple={acceptsMany} />
+      <input class="sr-only" data-input type="file" accept={accept} multiple={multiple} />
       <span class="drop__icon" aria-hidden="true">
         <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M8 3h11l6 6v20a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke-linejoin="round"></path>
@@ -318,16 +153,6 @@ const dropTitle = takesExcel
     </label>
   </Lens>
 
-  {
-    takesPdf && (
-      <p class="try">
-        No file to hand?
-        <button type="button" data-sample>Try it on a sample document</button>
-        <small>Five pages, built in this tab. Nothing is downloaded.</small>
-      </p>
-    )
-  }
-
   <div class="file-bar" data-file-bar hidden>
     <span class="file-bar__label" data-file-bar-label></span>
     <button class="btn btn--quiet" type="button" data-change-file>Change file</button>
@@ -336,58 +161,38 @@ const dropTitle = takesExcel
   <div class="workspace" data-workspace hidden>
     <ol class="files" data-files></ol>
 
+    {gridMode && <PageGrid mode={gridMode} />}
+
+    <section class="preview" data-preview hidden>
+      <div class="preview__head">
+        <p class="preview__note" data-preview-note hidden></p>
+        <div class="preview__sizes" data-preview-sizes role="group" aria-label="Preview size">
+          <button type="button" data-size="sm">S</button>
+          <button type="button" data-size="md">M</button>
+          <button type="button" data-size="lg">L</button>
+        </div>
+      </div>
+      <div class="preview__pages" data-preview-pages data-size="md"></div>
+    </section>
+
     {
-      mode === 'reorder' && (
-        <section class="organise-add" aria-labelledby="organise-add-title">
-          <div>
-            <strong id="organise-add-title">Add pages to this document</strong>
-            <small>New pages appear at the end. Drag them into place in the page grid.</small>
-          </div>
-          <div class="organise-add__actions">
-            <button type="button" class="btn btn--quiet" data-add-pdf>Add pages from another PDF</button>
-            <label class="organise-add__size">
-              <span>Blank page size</span>
-              <select data-blank-size>
-                <option value="letter">Letter</option>
-                <option value="a4">A4</option>
-                <option value="legal">Legal</option>
-              </select>
-            </label>
-            <button type="button" class="btn btn--quiet" data-add-blank>Add blank page</button>
-          </div>
-        </section>
+      mode === 'split' && (
+        <label class="field">
+          <span>Page groups</span>
+          <input data-ranges value="1" placeholder="1-3, 4-6, 9" />
+          <small>Each comma-separated group becomes its own PDF.</small>
+        </label>
       )
     }
 
-    {gridMode && <PageGrid mode={gridMode} />}
-
-    {supportsLiveEditor && <LivePdfEditor profile={editorProfile} />}
-
-    {mode === 'split' && <SplitStudio />}
-
     {
       mode === 'rotate' && (
-        <Fragment>
-          <fieldset class="field field--turns">
-            <legend>Turn</legend>
-            <label><input type="radio" name="turn" value="90" checked /> 90° right</label>
-            <label><input type="radio" name="turn" value="180" /> 180°</label>
-            <label><input type="radio" name="turn" value="270" /> 90° left</label>
-          </fieldset>
-          <label class="field">
-            <span>Turn several at once</span>
-            <span class="reveal">
-              <input data-rot-pages placeholder="odd, or 2-6, or last" />
-              <button type="button" data-rot-apply>Turn these</button>
-            </span>
-            <small>
-              A duplex scanner puts every other page upside down, and tapping ⟲ forty times is
-              nobody's afternoon. <code>odd</code>, <code>even</code>, <code>last</code> and open
-              ranges like <code>5-</code> all work. It turns them in the grid below, where you can
-              see the result and undo it.
-            </small>
-          </label>
-        </Fragment>
+        <fieldset class="field field--turns">
+          <legend>Turn</legend>
+          <label><input type="radio" name="turn" value="90" checked /> 90° right</label>
+          <label><input type="radio" name="turn" value="180" /> 180°</label>
+          <label><input type="radio" name="turn" value="270" /> 90° left</label>
+        </fieldset>
       )
     }
 
@@ -406,7 +211,20 @@ const dropTitle = takesExcel
     }
 
     {
-      mode === 'edit' && !supportsLiveEditor && (
+      mode === 'reorder' && (
+        <label class="field">
+          <span>New page order</span>
+          <input data-order placeholder="3, 1, 2" />
+          <small>
+            Every page number, once each, in the order you want them. Leave empty to keep the
+            current order.
+          </small>
+        </label>
+      )
+    }
+
+    {
+      mode === 'edit' && (
         <Fragment>
           <label class="field">
             <span>Text to add</span>
@@ -423,83 +241,11 @@ const dropTitle = takesExcel
 
     {
       mode === 'watermark' && (
-        <div class="wm">
-          <div class="wm__tabs" role="group" aria-label="What to stamp">
-            <button type="button" data-wm-kind="text" class="is-on" aria-pressed="true">Text</button>
-            <button type="button" data-wm-kind="image" aria-pressed="false">Image</button>
-          </div>
-
-          <div data-wm-panel="text">
-            <label class="field">
-              <span>Words to stamp</span>
-              <input data-text placeholder="DRAFT" />
-            </label>
-            <div class="wm__inline">
-              <label class="wm__swatch">
-                <span>Colour</span>
-                <input type="color" data-wm-color value="#b81f24" />
-              </label>
-              <label class="wm__check">
-                <input type="checkbox" data-wm-bold checked />
-                <span>Bold</span>
-              </label>
-            </div>
-          </div>
-
-          <div data-wm-panel="image" hidden>
-            <label class="field">
-              <span>Image to stamp</span>
-              <input type="file" accept="image/png,image/jpeg,.png,.jpg,.jpeg" data-wm-image />
-              <small>
-                A PNG keeps its transparency, which is what a logo usually wants. A JPG has no
-                transparent pixels, so it stamps a rectangle of background with it.
-              </small>
-            </label>
-          </div>
-
-          <fieldset class="field wm__place">
-            <legend>Where it goes</legend>
-            <div class="wm__grid" role="group" aria-label="Position on the page">
-              <button type="button" data-wm-pos="top-left" aria-label="Top left" aria-pressed="false">↖</button>
-              <button type="button" data-wm-pos="top" aria-label="Top" aria-pressed="false">↑</button>
-              <button type="button" data-wm-pos="top-right" aria-label="Top right" aria-pressed="false">↗</button>
-              <button type="button" data-wm-pos="left" aria-label="Left" aria-pressed="false">←</button>
-              <button type="button" data-wm-pos="center" aria-label="Centre" aria-pressed="true" class="is-on">◆</button>
-              <button type="button" data-wm-pos="right" aria-label="Right" aria-pressed="false">→</button>
-              <button type="button" data-wm-pos="bottom-left" aria-label="Bottom left" aria-pressed="false">↙</button>
-              <button type="button" data-wm-pos="bottom" aria-label="Bottom" aria-pressed="false">↓</button>
-              <button type="button" data-wm-pos="bottom-right" aria-label="Bottom right" aria-pressed="false">↘</button>
-            </div>
-            <label class="wm__check">
-              <input type="checkbox" data-wm-tile />
-              <span>Tile it across the whole page</span>
-            </label>
-          </fieldset>
-
-          <div class="wm__sliders">
-            <label class="field">
-              <span>Size <b data-wm-out="scale">60% of the page</b></span>
-              <input type="range" min="5" max="150" step="5" value="60" data-wm-scale />
-            </label>
-            <label class="field">
-              <span>Angle <b data-wm-out="rotation">35°</b></span>
-              <input type="range" min="-90" max="90" step="5" value="35" data-wm-rotation />
-            </label>
-            <label class="field">
-              <span>Opacity <b data-wm-out="opacity">22%</b></span>
-              <input type="range" min="5" max="100" step="1" value="22" data-wm-opacity />
-            </label>
-          </div>
-
-          <label class="field">
-            <span>Pages</span>
-            <input data-wm-pages placeholder="all, or 1-4, 9, odd" />
-            <small>
-              Empty means every page. <code>odd</code>, <code>even</code>, <code>last</code> and
-              open ranges like <code>5-</code> all work.
-            </small>
-          </label>
-        </div>
+        <label class="field">
+          <span>Watermark text</span>
+          <input data-text placeholder="DRAFT" />
+          <small>Drawn diagonally across every page at low opacity.</small>
+        </label>
       )
     }
 
@@ -507,57 +253,13 @@ const dropTitle = takesExcel
       mode === 'page-numbers' && (
         <Fragment>
           <label class="field">
-            <span>Look</span>
-            <select data-pn-format>
-              <option value="{page}" selected>1</option>
-              <option value="{page} of {pages}">1 of 10</option>
-              <option value="Page {page}">Page 1</option>
-              <option value="Page {page} of {pages}">Page 1 of 10</option>
-              <option value="— {page} —">— 1 —</option>
-              <option value="[{page}]">[1]</option>
-            </select>
-            <small>
-              Same tokens as the header and footer tool: <code>{'{page}'}</code> and
-              <code>{'{pages}'}</code>.
-            </small>
+            <span>Start at</span>
+            <input data-start-number type="number" min="1" value="1" />
           </label>
-
-          <fieldset class="field field--turns">
-            <legend>Corner</legend>
-            <label><input type="radio" name="pn-pos" value="bottom-left" /> Bottom left</label>
-            <label><input type="radio" name="pn-pos" value="bottom" /> Bottom centre</label>
-            <label><input type="radio" name="pn-pos" value="bottom-right" checked /> Bottom right</label>
-            <label><input type="radio" name="pn-pos" value="top-left" /> Top left</label>
-            <label><input type="radio" name="pn-pos" value="top" /> Top centre</label>
-            <label><input type="radio" name="pn-pos" value="top-right" /> Top right</label>
-          </fieldset>
-
-          <div class="pair">
-            <label class="field">
-              <span>Start at</span>
-              <input data-start-number type="number" min="1" value="1" />
-            </label>
-            <label class="field">
-              <span>Size</span>
-              <input data-pn-size type="number" min="6" max="48" step="1" value="11" />
-            </label>
-          </div>
-
           <label class="field">
-            <span>Which pages</span>
-            <input data-pn-pages placeholder="all, or 2-, odd" />
-            <small>Empty means every page.</small>
-          </label>
-
-          <label class="check">
-            <input type="checkbox" data-pn-skip-first />
-            <span>
-              Leave the first page bare
-              <small>
-                For a cover or title page. The count still starts at the number above, so
-                "1 of 10" stays true for the pages that carry a number.
-              </small>
-            </span>
+            <span>Prefix</span>
+            <input data-prefix placeholder="Page " />
+            <small>Optional. Numbers are drawn in the bottom-right corner.</small>
           </label>
         </Fragment>
       )
@@ -565,16 +267,7 @@ const dropTitle = takesExcel
 
     {
       mode === 'ocr' && (
-        <Fragment>
-          <label class="field">
-            <span>Which pages</span>
-            <input data-ocr-pages placeholder="all, or 1-5, 40" />
-            <small>
-              Recognition is the slowest thing here — around a second a page on a laptop, longer
-              on a phone. If you only need page 40 of a 300-page scan, say so and skip the wait.
-            </small>
-          </label>
-          <label class="check">
+        <label class="check">
           <input type="checkbox" data-searchable checked />
           <span>
             Also make a searchable PDF
@@ -584,6 +277,47 @@ const dropTitle = takesExcel
               this — from this site, not a CDN.
             </small>
           </span>
+        </label>
+      )
+    }
+
+    {
+      mode === 'sign' && (
+        <Fragment>
+          <div class="sign">
+            <div class="sign__tabs" role="group" aria-label="Signature style">
+              <button type="button" data-sign-tab="draw" class="is-on">Draw</button>
+              <button type="button" data-sign-tab="type">Type</button>
+            </div>
+
+            <div data-sign-panel="draw">
+              <canvas data-signature-canvas width="720" height="240"></canvas>
+              <div class="sign__row">
+                <button class="btn btn--quiet" type="button" data-sign-clear>Clear</button>
+                <span class="sign__hint">Draw with a mouse, trackpad or finger.</span>
+              </div>
+            </div>
+
+            <div data-sign-panel="type" hidden>
+              <input data-sign-text placeholder="Your name" />
+              <span class="sign__hint">Rendered in a handwriting-like italic.</span>
+            </div>
+          </div>
+
+          <label class="field">
+            <span>Page</span>
+            <input data-target-page type="number" min="1" placeholder="last page" />
+            <small>Leave empty to sign the last page.</small>
+          </label>
+
+          <label class="field">
+            <span>Position</span>
+            <select data-corner>
+              <option value="bottom-right">Bottom right</option>
+              <option value="bottom-left">Bottom left</option>
+              <option value="top-right">Top right</option>
+              <option value="top-left">Top left</option>
+            </select>
           </label>
         </Fragment>
       )
@@ -614,21 +348,9 @@ const dropTitle = takesExcel
         <Fragment>
           <label class="field">
             <span>Password to open the document</span>
-            <span class="reveal">
-              <input data-user-password type="password" autocomplete="new-password" />
-              <button type="button" data-reveal aria-pressed="false">Show</button>
-            </span>
+            <input data-user-password type="password" autocomplete="new-password" />
             <small data-strength>
               This is the one that encrypts. Leave it empty to set permissions only.
-            </small>
-          </label>
-
-          <label class="field">
-            <span>Type it again</span>
-            <input data-confirm-password type="password" autocomplete="new-password" />
-            <small data-confirm-note>
-              There is no reset link and no copy of this document anywhere else. A password
-              you mistyped once locks the file for good.
             </small>
           </label>
 
@@ -671,54 +393,17 @@ const dropTitle = takesExcel
             <option value="letter">Letter</option>
           </select>
           <small>
-            A JPG is embedded byte-for-byte — the original file ends up inside the PDF. A PNG
-            cannot be: PDF has no PNG filter, so it is decoded and re-compressed losslessly —
-            every pixel identical, but its own compression is not carried over. WebP has no PDF
-            equivalent either and is converted to JPEG at quality 0.92. On A4 or Letter the image
-            is centred and scaled to fit.
+            JPG and PNG are embedded byte-for-byte — not decoded, not re-encoded, nothing lost.
+            WebP has no PDF equivalent, so those images alone are converted to JPEG at quality
+            0.92. On A4 or Letter the image is centred and scaled to fit.
           </small>
         </label>
       )
     }
 
     {
-      mode === 'compress' && (
-        <fieldset class="field field--turns">
-          <legend>How hard to squeeze</legend>
-          <label>
-            <input type="radio" name="cx" value="lossless" checked /> Maximum quality
-          </label>
-          <label>
-            <input type="radio" name="cx" value="balanced" /> Recommended
-          </label>
-          <label>
-            <input type="radio" name="cx" value="smallest" /> Smallest file
-          </label>
-          <small>
-            <strong>Maximum quality</strong> changes nothing you can see: it rebuilds the file's
-            structure and fonts and leaves every picture exactly as it was. On a document that is
-            mostly photographs or a scan, that often means it barely shrinks — the bytes are in the
-            pictures, and this setting will not touch them.
-          </small>
-          <small>
-            The other two re-encode the pictures, which is lossy and cannot be undone. Keep the
-            original if you may need it again.
-          </small>
-        </fieldset>
-      )
-    }
-
-    {
       mode === 'pdf-to-images' && (
         <Fragment>
-          <label class="field">
-            <span>Which pages</span>
-            <input data-image-pages placeholder="all, or 1-5, 12" />
-            <small>
-              Empty means every page. Exported files keep their original page numbers, so page
-              12 is still <code>-12</code> even when it is the only one.
-            </small>
-          </label>
           <fieldset class="field field--turns">
             <legend>Format</legend>
             <label>
@@ -750,436 +435,28 @@ const dropTitle = takesExcel
       )
     }
 
-    {
-      mode === 'auto-crop' && (
-        <Fragment>
-          <label class="field">
-            <span>Crop</span>
-            <select data-ac-mode>
-              <option value="uniform" selected>Every page to the same box</option>
-              <option value="per-page">Each page to its own content</option>
-            </select>
-            <small>
-              The same box keeps a book steady as you page through it. Per-page trims tighter and
-              makes the page size jump around.
-            </small>
-          </label>
-          <label class="field">
-            <span>Leave a margin of</span>
-            <input data-ac-pad type="number" min="0" max="72" step="1" value="6" />
-            <small>Points. A little breathing room so the crop does not sit flush against the text.</small>
-          </label>
-        </Fragment>
-      )
-    }
-
-    {
-      mode === 'grayscale' && (
-        <fieldset class="field field--turns">
-          <legend>Where a photo has to be re-encoded</legend>
-          <label><input type="radio" name="gs-q" value="0.92" /> Keep the detail</label>
-          <label><input type="radio" name="gs-q" value="0.82" checked /> Balanced</label>
-          <label><input type="radio" name="gs-q" value="0.65" /> Smallest file</label>
-          <small>
-            Only photographs are re-encoded; everything else converts without a second lossy
-            pass. Greyscale usually shrinks a file because three channels become one — but on a
-            scan that was already packed hard it can come out larger, and you will be told which
-            happened rather than left to guess.
-          </small>
-        </fieldset>
-      )
-    }
-
-    {
-      mode === 'crop' && (
-        <Fragment>
-          <CropStage />
-
-          <label class="field">
-            <span>Or trim each edge exactly</span>
-            <span class="quad">
-              <input data-crop-top type="number" min="0" max="45" value="0" aria-label="Trim from the top, percent" placeholder="top %" />
-              <input data-crop-right type="number" min="0" max="45" value="0" aria-label="Trim from the right, percent" placeholder="right %" />
-              <input data-crop-bottom type="number" min="0" max="45" value="0" aria-label="Trim from the bottom, percent" placeholder="bottom %" />
-              <input data-crop-left type="number" min="0" max="45" value="0" aria-label="Trim from the left, percent" placeholder="left %" />
-            </span>
-            <small>
-              A percentage of the page as you see it, so it works the same on a rotated scan, and
-              it stays in step with the box above. Nothing is deleted: cropping moves the page
-              box, and the trimmed margins stay one edit away from coming back.
-            </small>
-          </label>
-
-          <label class="field">
-            <span>Pages</span>
-            <input data-crop-pages placeholder="all, or 1-4, 9, odd" />
-          </label>
-        </Fragment>
-      )
-    }
-
-    {
-      mode === 'flatten' && (
-        <fieldset class="field">
-          <legend>Make permanent</legend>
-          <label><input type="checkbox" data-flat-fields checked /> Form fields — keep how they look, stop them being edited</label>
-          <label><input type="checkbox" data-flat-annots checked /> Comments, highlights and stamps</label>
-          <label><input type="checkbox" data-flat-layers /> Layers — keep only what is visible now</label>
-          <label><input type="checkbox" data-flat-links checked /> Keep links clickable</label>
-          <small>Anything this cannot bake in is reported rather than dropped quietly.</small>
-        </fieldset>
-      )
-    }
-
-    {
-      mode === 'impose' && (
-        <Fragment>
-          <label class="field">
-            <span>Layout</span>
-            <select data-imp-kind>
-              <option value="n-up">Several pages per sheet</option>
-              <option value="booklet">Booklet — fold and staple</option>
-              <option value="poster">Poster — one page across many sheets</option>
-            </select>
-          </label>
-          <label class="field" data-imp-panel="n-up">
-            <span>Pages per sheet</span>
-            <select data-imp-per>
-              <option value="2" selected>2</option>
-              <option value="4">4</option>
-              <option value="6">6</option>
-              <option value="8">8</option>
-              <option value="9">9</option>
-              <option value="16">16</option>
-            </select>
-            <small>Ignored for a booklet, which is always two to a side.</small>
-          </label>
-          <div class="pair">
-            <label class="field" data-imp-panel="n-up">
-              <span>Page order</span>
-              <select data-imp-order>
-                <option value="row" selected>Across, then down</option>
-                <option value="column">Down, then across</option>
-                <option value="row-rtl">Across right-to-left</option>
-                <option value="column-rtl">Down right-to-left</option>
-              </select>
-            </label>
-            <label class="field" data-imp-orientation-field>
-              <span>Orientation</span>
-              <select data-imp-orientation>
-                <option value="auto" selected>Best fit automatically</option>
-                <option value="portrait">Portrait</option>
-                <option value="landscape">Landscape</option>
-              </select>
-            </label>
-          </div>
-          <label class="field">
-            <span>Sheet</span>
-            <select data-imp-sheet>
-              <option value="a4" selected>A4</option>
-              <option value="a3">A3</option>
-              <option value="a5">A5</option>
-              <option value="letter">Letter</option>
-              <option value="legal">Legal</option>
-              <option value="tabloid">Tabloid</option>
-              <option value="source">Match the source page</option>
-            </select>
-          </label>
-          <div class="pair">
-            <label class="field"><span>Outer margin (pt)</span><input data-imp-margin type="number" min="0" step="1" value="18" /></label>
-            <label class="field"><span>Space between pages (pt)</span><input data-imp-gutter type="number" min="0" step="1" value="0" /></label>
-          </div>
-          <label class="field"><input type="checkbox" data-imp-sep /> Draw guide lines between pages</label>
-          <div data-imp-panel="poster" hidden>
-            <div class="pair">
-              <label class="field"><span>Source page</span><input data-imp-poster-page type="number" min="1" value="1" /></label>
-              <label class="field"><span>Repeat overlap (pt)</span><input data-imp-overlap type="number" min="0" step="1" value="18" /></label>
-            </div>
-            <div class="pair">
-              <label class="field"><span>Sheets across</span><input data-imp-across type="number" min="1" max="10" value="2" /></label>
-              <label class="field"><span>Sheets down</span><input data-imp-down type="number" min="1" max="10" value="2" /></label>
-            </div>
-            <label class="field"><input type="checkbox" data-imp-marks checked /> Print trim and alignment guides</label>
-          </div>
-        </Fragment>
-      )
-    }
-
-    {
-      mode === 'extract-images' && (
-        <Fragment>
-          <label class="field">
-            <span>Ignore images smaller than</span>
-            <input data-ext-min type="number" min="0" value="64" />
-            <small>Pixels on the shorter side. Rules, bullets and spacers are images too; this leaves them out.</small>
-          </label>
-          <label class="field"><input type="checkbox" data-ext-masks checked /> Apply transparency masks</label>
-        </Fragment>
-      )
-    }
-
-    {
-      mode === 'overlay' && (
-        <Fragment>
-          <label class="field">
-            <span>Apply the second file</span>
-            <select data-ov-mode>
-              <option value="repeat" selected>Its first page, onto every page</option>
-              <option value="pairwise">Page for page</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Draw it</span>
-            <select data-ov-layer>
-              <option value="over" selected>Over the page</option>
-              <option value="under">Under the page — for letterhead</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Opacity</span>
-            <input data-ov-opacity type="number" min="0.05" max="1" step="0.05" value="1" />
-          </label>
-          <div class="pair">
-            <label class="field">
-              <span>Fit</span>
-              <select data-ov-fit>
-                <option value="actual" selected>Original size</option>
-                <option value="contain">Fit inside the page</option>
-                <option value="cover">Fill the page</option>
-                <option value="stretch">Stretch to page</option>
-              </select>
-            </label>
-            <label class="field"><span>Scale</span><input data-ov-scale type="number" min="0.05" max="10" step="0.05" value="1" /></label>
-          </div>
-          <label class="field">
-            <span>Position</span>
-            <select data-ov-anchor>
-              <option value="top-left">Top left</option>
-              <option value="top">Top centre</option>
-              <option value="top-right">Top right</option>
-              <option value="left">Middle left</option>
-              <option value="centre" selected>Centre</option>
-              <option value="right">Middle right</option>
-              <option value="bottom-left">Bottom left</option>
-              <option value="bottom">Bottom centre</option>
-              <option value="bottom-right">Bottom right</option>
-            </select>
-          </label>
-          <div class="pair">
-            <label class="field"><span>Move right (pt)</span><input data-ov-x type="number" step="1" value="0" /></label>
-            <label class="field"><span>Move down (pt)</span><input data-ov-y type="number" step="1" value="0" /></label>
-          </div>
-          <div class="pair">
-            <label class="field"><span>Stamp page</span><input data-ov-stamp-page type="number" min="1" value="1" /></label>
-            <label class="field"><span>Base pages</span><input data-ov-pages placeholder="all, or 1-4, odd" /></label>
-          </div>
-          <small>Drop the base document first, then the one to lay over it.</small>
-        </Fragment>
-      )
-    }
-
-    {
-      mode === 'text-to-pdf' && (
-        <Fragment>
-          <label class="field">
-            <span>Paper</span>
-            <select data-td-paper>
-              <option value="a4" selected>A4</option>
-              <option value="letter">Letter</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Text size</span>
-            <input data-td-size type="number" min="6" max="24" step="0.5" value="10.5" />
-          </label>
-          <small>Plain text, CSV and Markdown. The kind is read from the file, not guessed from the name.</small>
-        </Fragment>
-      )
-    }
-
-    {
-      mode === 'metadata' && (
-        <Fragment>
-          <div class="fields" data-meta-current />
-          <div class="preset">
-            <button class="btn btn--quiet" type="button" data-meta-clean>Privacy clean</button>
-            <small>
-              Clears the title, author, subject and keywords, and removes the XMP packet — the
-              part that usually still names the software, the original author and the machine
-              after everything visible has been emptied.
-            </small>
-          </div>
-          <label class="field"><span>Title</span><input data-meta-title /></label>
-          <label class="field"><span>Author</span><input data-meta-author /></label>
-          <label class="field"><span>Subject</span><input data-meta-subject /></label>
-          <label class="field"><span>Keywords</span><input data-meta-keywords /></label>
-          <label class="field"><input type="checkbox" data-meta-strip /> Remove everything instead, including the XMP packet</label>
-        </Fragment>
-      )
-    }
-
-    {
-      mode === 'header-footer' && (
-        <Fragment>
-          <label class="field">
-            <span>Header — left, centre, right</span>
-            <span class="triple">
-              <input data-hf-hl placeholder="left" />
-              <input data-hf-hc placeholder="centre" />
-              <input data-hf-hr placeholder="right" />
-            </span>
-          </label>
-          <label class="field">
-            <span>Footer — left, centre, right</span>
-            <span class="triple">
-              <input data-hf-fl placeholder="left" />
-              <input data-hf-fc placeholder="centre" />
-              <input data-hf-fr placeholder="right" value="{page} of {pages}" />
-            </span>
-            <small>Tokens: {'{page}'}, {'{pages}'}, {'{date}'}, {'{filename}'}.</small>
-          </label>
-          <div class="pair">
-            <label class="field"><span>Bates prefix</span><input data-hf-bates placeholder="ABC-" /></label>
-            <label class="field"><span>Bates suffix</span><input data-hf-bates-suffix placeholder="-CONF" /></label>
-          </div>
-          <div class="field">
-            <span>Bates numbering</span>
-            <small>
-              A fixed prefix and a padded number running across the whole document, for legal
-              and discovery work. Leave the prefix blank to turn Bates numbering off.
-            </small>
-          </div>
-          <div class="pair">
-            <label class="field"><span>Bates starts at</span><input data-hf-bates-start type="number" min="0" value="1" /></label>
-            <label class="field"><span>Bates digits</span><input data-hf-bates-padding type="number" min="1" max="20" value="6" /></label>
-          </div>
-          <div class="pair">
-            <label class="field"><span>Bates row</span><select data-hf-bates-place><option value="footer" selected>Footer</option><option value="header">Header</option></select></label>
-            <label class="field"><span>Bates position</span><select data-hf-bates-slot><option value="left">Left</option><option value="center">Centre</option><option value="right" selected>Right</option></select></label>
-          </div>
-          <div class="pair">
-            <label class="field"><span>Page number starts at</span><input data-hf-start type="number" min="1" value="1" /></label>
-            <label class="field"><span>Leave the first N pages bare</span><input data-hf-skip type="number" min="0" value="0" /></label>
-          </div>
-          <div class="pair">
-            <label class="field"><span>Text size</span><input data-hf-size type="number" min="6" max="48" value="9" /></label>
-            <label class="field"><span>Edge margin (pt)</span><input data-hf-margin type="number" min="0" value="36" /></label>
-          </div>
-          <div class="pair">
-            <label class="field"><span>Text colour</span><input data-hf-colour type="color" value="#333333" /></label>
-            <label class="field"><span>Date token</span><select data-hf-date><option value="locale" selected>Local format</option><option value="iso">YYYY-MM-DD</option></select></label>
-          </div>
-          <label class="field"><input type="checkbox" data-hf-bold /> Bold text</label>
-          <label class="field"><input type="checkbox" data-hf-mirror /> Mirror on odd and even pages</label>
-          <label class="field"><input type="checkbox" data-hf-shrink /> Shrink page content to keep headers and footers clear</label>
-        </Fragment>
-      )
-    }
-
-    {
-      mode === 'split-by' && (
-        <Fragment>
-          <label class="field">
-            <span>Split</span>
-            <select data-sb-mode>
-              <option value="every" selected>Every N pages</option>
-              <option value="parts">Into N files of equal length</option>
-              <option value="size">At a size limit</option>
-              <option value="bookmarks">At every top-level bookmark</option>
-            </select>
-          </label>
-          <label class="field"><span>N</span><input data-sb-n type="number" min="1" value="10" /></label>
-          <label class="field">
-            <span>Size limit (MB)</span>
-            <input data-sb-mb type="number" min="0.1" step="0.1" value="5" />
-            <small>Approximate: pages share fonts and images, so size is not proportional to page count.</small>
-          </label>
-        </Fragment>
-      )
-    }
-
-    <section class="preview" data-preview hidden>
-      <div class="preview__head">
-        <p class="preview__note" data-preview-note hidden></p>
-        <button class="preview__all" type="button" data-preview-expand aria-expanded="false">
-          Show all pages
-        </button>
-        <div class="preview__sizes" data-preview-sizes role="group" aria-label="Preview size">
-          <button type="button" data-size="sm">S</button>
-          <button type="button" data-size="md">M</button>
-          <button type="button" data-size="lg">L</button>
-        </div>
-      </div>
-      <div class="preview__pages" data-preview-pages data-size="md" data-view="strip"></div>
-    </section>
-
-    <div class="workspace__actions" data-actions>
+    <div class="workspace__actions">
       <button class="btn btn--primary" data-run type="button">{action}</button>
       <button class="btn btn--quiet" data-clear type="button">Clear</button>
-      <p class="workspace__summary" data-action-summary></p>
     </div>
 
-    <div class="running" data-running hidden>
-      <div class="running__head">
-        <span class="running__signal" aria-hidden="true"><i></i></span>
-        <div class="running__copy">
-          <span>Working on this device</span>
-          <p class="status" data-status role="status" aria-live="polite"></p>
-        </div>
-        <button class="btn btn--quiet running__stop" type="button" data-cancel>Stop</button>
-      </div>
-      <div class="running__track" data-progress-track hidden aria-hidden="true">
-        <span class="running__fill" data-progress-fill></span>
-      </div>
-    </div>
+    <p class="status" data-status role="status" aria-live="polite"></p>
   </div>
 
   <section class="result" data-result hidden aria-live="polite">
     <div class="result__headline">
-      <span class="result__success" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="m6.5 12.5 3.4 3.4 7.8-8" /></svg>
-      </span>
-      <div class="result__summary">
-        <span class="result__eyebrow">Ready to save</span>
-        <div><span class="result__pct" data-pct></span><span class="result__sizes" data-sizes></span></div>
-      </div>
+      <span class="result__pct" data-pct></span>
+      <span class="result__sizes" data-sizes></span>
     </div>
 
     <div class="result__bar" data-bar-wrap aria-hidden="true">
       <span class="result__bar-fill" data-bar></span>
     </div>
 
-    <div class="diff" data-diff hidden></div>
-
     <p class="result__why" data-why hidden></p>
     <ul class="result__notes" data-notes></ul>
 
     <div class="result__actions" data-downloads></div>
-
-    <div class="bundle" data-bundle hidden>
-      <button class="btn btn--quiet" type="button" data-zip>Save all as a ZIP</button>
-      <small data-zip-note></small>
-    </div>
-
-    {
-      nextTools.length > 0 && (
-        <div class="chain" data-chain hidden>
-          <p class="chain__title">Keep going with this result</p>
-          <div class="chain__row">
-            {nextTools.map((tool) => (
-              <button class="chain__item" type="button" data-chain-to={tool.slug}>
-                <strong>{tool.name}</strong>
-                <span>{tool.blurb}</span>
-              </button>
-            ))}
-          </div>
-          <p class="chain__note">
-            The file is handed straight to the next tool on this device — not uploaded — and
-            the handover is deleted the moment that tool picks it up.
-          </p>
-        </div>
-      )
-    }
 
     <p class="result__receipt" data-receipt></p>
   </section>
@@ -1192,16 +469,10 @@ const dropTitle = takesExcel
     <strong>Private by construction.</strong>
     <span>No upload starts when you choose a file. The work happens in this tab.</span>
   </aside>
-
-  {currentTool && currentToolContent && <ToolFooter tool={currentTool} content={currentToolContent.data} related={relatedTools} />}
 </section>
 
 <script>
-  import { PREVIEW_SIZE_KEY, readPreference, writePreference } from '../lib/browserPreferences';
-
   import type { WorkerRequest, WorkerResponse } from '../lib/pdf/types';
-  import type { EditMark } from '../lib/pdf/types';
-  import { parsePageSet } from '../lib/pdf/pageset';
 
   const root = document.querySelector<HTMLElement>('[data-pdf-tool]');
 
@@ -1229,92 +500,12 @@ const dropTitle = takesExcel
     const previewSection = q('[data-preview]');
     const previewNote = q('[data-preview-note]');
     const previewPages = q<HTMLElement>('[data-preview-pages]');
-    interface LiveEditorElement extends HTMLElement {
-      open(file: File): Promise<void>;
-      release(): Promise<void>;
-      getEdits(): EditMark[];
-      setToolPreview(guide: { kind: 'none' | 'watermark' | 'page-number'; text?: string; start?: number }): void;
-    }
-    const liveEditor = root.querySelector('live-pdf-editor') as LiveEditorElement | null;
     /* Lens is an Astro component: it forwards `class` but not arbitrary data
        attributes, so the dropzone can only be found by its class. */
     const fileUi = q<HTMLElement>('.drop');
     const fileBar = q<HTMLElement>('[data-file-bar]');
     const fileBarLabel = q('[data-file-bar-label]');
     const changeFileBtn = q<HTMLButtonElement>('[data-change-file]');
-    const actionSummary = root.querySelector<HTMLElement>('[data-action-summary]');
-    const running = root.querySelector<HTMLElement>('[data-running]');
-    const cancelBtn = root.querySelector<HTMLButtonElement>('[data-cancel]');
-    const progressTrack = root.querySelector<HTMLElement>('[data-progress-track]');
-    const progressFill = root.querySelector<HTMLElement>('[data-progress-fill]');
-
-    /** The job the Stop button would cancel, or -1 when nothing is running. */
-    let activeJob = -1;
-    let elapsedTimer = 0;
-    let startedAt = 0;
-
-    function beginRun(id: number, message: string) {
-      activeJob = id;
-      startedAt = performance.now();
-      status.textContent = message;
-      if (running) running.hidden = false;
-      if (progressTrack) progressTrack.hidden = true;
-      if (progressFill) progressFill.style.width = '0%';
-
-      // An elapsed count is the honest thing to show when an operation cannot
-      // say how far through it is. A bar that moves on a guess is a lie.
-      clearInterval(elapsedTimer);
-      elapsedTimer = window.setInterval(() => {
-        if (activeJob === -1) return;
-        const seconds = (performance.now() - startedAt) / 1000;
-        if (seconds < 1.5) return;
-        const shown = status.dataset.label ?? message;
-        status.textContent = `${shown} · ${seconds.toFixed(0)}s`;
-      }, 250);
-    }
-
-    function endRun() {
-      activeJob = -1;
-      clearInterval(elapsedTimer);
-      elapsedTimer = 0;
-      delete status.dataset.label;
-      if (running) running.hidden = true;
-      if (progressTrack) progressTrack.hidden = true;
-    }
-
-    function onProgress(progress: { done: number; total: number; label?: string }) {
-      if (progress.label) {
-        status.dataset.label = progress.label;
-        status.textContent = progress.label;
-      }
-      if (progress.total > 0 && progressTrack && progressFill) {
-        progressTrack.hidden = false;
-        progressFill.style.width = `${Math.round((progress.done / progress.total) * 100)}%`;
-      }
-    }
-
-    cancelBtn?.addEventListener('click', () => {
-      if (activeJob === -1) return;
-      // Each operation runs to completion inside the worker, so terminating it
-      // is the only way to stop one. The next run builds a fresh worker.
-      worker?.terminate();
-      worker = null;
-      endRun();
-      runBtn.disabled = false;
-      status.textContent = 'Stopped. Nothing was saved, and nothing left this device.';
-    });
-
-    const previewExpand = root.querySelector<HTMLButtonElement>('[data-preview-expand]');
-
-    /**
-     * Which of Choose / Adjust / Save the person is in. Drives the rail, and on a
-     * phone also collapses the marketing header — once a file is chosen the h1 and
-     * lede are pure scroll cost, and they were pushing every control off-screen.
-     * A crawler never picks a file, so it always sees the full `choose` markup.
-     */
-    function setStage(stage: 'choose' | 'adjust' | 'save') {
-      root.dataset.stage = stage;
-    }
 
     let files: File[] = [];
     let worker: Worker | null = null;
@@ -1341,33 +532,13 @@ const dropTitle = takesExcel
       getCuts(): number[];
       getRanges(): string;
       applyRanges(text: string): void;
-      turnPages(spec: string, by: number): number;
-      getState(): {
-        order: { file: number; page: number; rotate: number; removed: boolean }[];
-        cuts: number[];
-      };
-      restoreState(state: {
-        order: { file: number; page: number; rotate: number; removed: boolean }[];
-        cuts: number[];
-      }): void;
       readonly touched: boolean;
-      readonly totalPages: number;
     }
 
     const grid = root.querySelector('page-grid') as GridElement | null;
 
     /** Identifies the grid's open documents across messages, unlike a job id. */
     let gridSession = 0;
-
-    /** Must match SOURCE_COLOURS in PageGrid, or the two views disagree. */
-    const SOURCE_COLOURS = [
-      'oklch(62% 0.17 250)',
-      'oklch(66% 0.16 35)',
-      'oklch(68% 0.15 150)',
-      'oklch(64% 0.16 300)',
-      'oklch(72% 0.14 90)',
-      'oklch(60% 0.14 200)',
-    ];
 
     interface SaveDialogElement extends HTMLElement {
       ask(request: { name: string; siblings: string[]; index: number }): Promise<{
@@ -1396,7 +567,7 @@ const dropTitle = takesExcel
     });
 
     const takesImages = mode === 'images-to-pdf';
-    const takesMany = mode === 'merge' || mode === 'compare' || mode === 'overlay' || mode === 'reorder' || takesImages;
+    const takesMany = mode === 'merge' || mode === 'compare' || takesImages;
 
     const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
     const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : kb(n));
@@ -1414,6 +585,144 @@ const dropTitle = takesExcel
 
     const perm = (name: string): boolean =>
       root.querySelector<HTMLInputElement>(`[data-perm="${name}"]`)?.checked ?? false;
+
+    /**
+     * The signature pad.
+     *
+     * Drawn at 3x the placed size so the mark stays crisp when a reader zooms,
+     * and trimmed to its ink before embedding — a canvas-sized PNG would put a
+     * large transparent rectangle on the page and push the mark out of place.
+     */
+    function setupSignature() {
+      const canvas = root.querySelector<HTMLCanvasElement>('[data-signature-canvas]');
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#1a2340';
+
+      let drawing = false;
+
+      const at = (event: PointerEvent) => {
+        const box = canvas.getBoundingClientRect();
+        return {
+          x: ((event.clientX - box.left) / box.width) * canvas.width,
+          y: ((event.clientY - box.top) / box.height) * canvas.height,
+        };
+      };
+
+      canvas.addEventListener('pointerdown', (event) => {
+        drawing = true;
+        canvas.setPointerCapture(event.pointerId);
+        const { x, y } = at(event);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+      });
+
+      canvas.addEventListener('pointermove', (event) => {
+        if (!drawing) return;
+        event.preventDefault();
+        const { x, y } = at(event);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      });
+
+      for (const name of ['pointerup', 'pointercancel', 'pointerleave'] as const) {
+        canvas.addEventListener(name, () => {
+          drawing = false;
+        });
+      }
+
+      root.querySelector('[data-sign-clear]')?.addEventListener('click', () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      });
+
+      for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-sign-tab]')) {
+        tab.addEventListener('click', () => {
+          const wanted = tab.dataset.signTab;
+          for (const other of root.querySelectorAll<HTMLButtonElement>('[data-sign-tab]')) {
+            other.classList.toggle('is-on', other === tab);
+          }
+          for (const panel of root.querySelectorAll<HTMLElement>('[data-sign-panel]')) {
+            panel.hidden = panel.dataset.signPanel !== wanted;
+          }
+        });
+      }
+    }
+
+    /** Crops a canvas to its drawn pixels. */
+    function trimmed(source: HTMLCanvasElement): HTMLCanvasElement | null {
+      const ctx = source.getContext('2d');
+      if (!ctx) return null;
+
+      const { data } = ctx.getImageData(0, 0, source.width, source.height);
+      let minX = source.width;
+      let minY = source.height;
+      let maxX = -1;
+      let maxY = -1;
+
+      for (let y = 0; y < source.height; y += 1) {
+        for (let x = 0; x < source.width; x += 1) {
+          if (data[(y * source.width + x) * 4 + 3] < 8) continue;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+
+      if (maxX < 0) return null; // nothing drawn
+
+      const pad = 6;
+      minX = Math.max(0, minX - pad);
+      minY = Math.max(0, minY - pad);
+      maxX = Math.min(source.width - 1, maxX + pad);
+      maxY = Math.min(source.height - 1, maxY + pad);
+
+      const out = document.createElement('canvas');
+      out.width = maxX - minX + 1;
+      out.height = maxY - minY + 1;
+      out.getContext('2d')?.drawImage(source, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
+      return out;
+    }
+
+    function signatureBytes(): ArrayBuffer | undefined {
+      if (mode !== 'sign') return undefined;
+
+      const typed = root.querySelector<HTMLInputElement>('[data-sign-text]');
+      const typePanel = root.querySelector<HTMLElement>('[data-sign-panel="type"]');
+
+      if (typePanel && !typePanel.hidden && typed?.value.trim()) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 900;
+        canvas.height = 260;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return undefined;
+        ctx.fillStyle = '#1a2340';
+        ctx.font = 'italic 120px ui-serif, Georgia, serif';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(typed.value.trim(), 20, canvas.height / 2);
+        const cropped = trimmed(canvas);
+        return cropped ? dataToBytes(cropped) : undefined;
+      }
+
+      const pad = root.querySelector<HTMLCanvasElement>('[data-signature-canvas]');
+      if (!pad) return undefined;
+      const cropped = trimmed(pad);
+      return cropped ? dataToBytes(cropped) : undefined;
+    }
+
+    function dataToBytes(canvas: HTMLCanvasElement): ArrayBuffer {
+      const url = canvas.toDataURL('image/png');
+      const binary = atob(url.slice(url.indexOf(',') + 1));
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      return bytes.buffer;
+    }
 
     /**
      * Builds an input per field the document actually has. A form is different
@@ -1505,22 +814,8 @@ const dropTitle = takesExcel
     function ensureWorker(): Worker {
       if (!worker) {
         worker = new Worker(new URL('../lib/pdf/worker.ts', import.meta.url), { type: 'module' });
-        worker.onmessage = (e: MessageEvent<WorkerResponse | import('../lib/pdf/types').WorkerProgress>) => {
-          const message = e.data;
-          if ('progress' in message) {
-            if (message.id === activeJob) onProgress(message.progress);
-            return;
-          }
-          onDone(message);
-        };
-        // Say what went wrong. "The engine failed to start" with no reason is
-        // unactionable for the person reading it and for a bug report.
-        worker.onerror = (event) => {
-          const detail = typeof event === 'object' && event && 'message' in event
-            ? String((event as ErrorEvent).message)
-            : '';
-          fail(detail ? `The engine stopped: ${detail}` : 'The engine failed to start.');
-        };
+        worker.onmessage = (e: MessageEvent<WorkerResponse>) => onDone(e.data);
+        worker.onerror = () => fail('The engine failed to start.');
       }
       return worker;
     }
@@ -1531,7 +826,6 @@ const dropTitle = takesExcel
     }
 
     function fail(message: string) {
-      endRun();
       errorEl.textContent = message;
       errorEl.hidden = false;
       runBtn.disabled = false;
@@ -1545,9 +839,6 @@ const dropTitle = takesExcel
       if (mode === 'word-to-pdf') return /\.docx$/i.test(file.name);
       if (mode === 'excel-to-pdf') return /\.xlsx$/i.test(file.name);
       if (mode === 'powerpoint-to-pdf') return /\.pptx$/i.test(file.name);
-      // The kind is decided from the CONTENT inside the converter; the name
-      // only decides what the picker offers.
-      if (mode === 'text-to-pdf') return /\.(txt|csv|tsv|md|markdown|log)$/i.test(file.name);
       return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     };
 
@@ -1594,8 +885,8 @@ const dropTitle = takesExcel
     }
 
     /** Only modes whose input file is a PDF pdf.js can open. */
-    const NON_PDF_INPUT = new Set(['images-to-pdf', 'word-to-pdf', 'excel-to-pdf', 'powerpoint-to-pdf', 'text-to-pdf', 'url-to-pdf']);
-    const previewable = !NON_PDF_INPUT.has(mode) && !liveEditor;
+    const NON_PDF_INPUT = new Set(['images-to-pdf', 'word-to-pdf', 'excel-to-pdf', 'powerpoint-to-pdf', 'url-to-pdf']);
+    const previewable = !NON_PDF_INPUT.has(mode);
 
     async function preview(file: File) {
       previewId = ++jobId;
@@ -1666,24 +957,6 @@ const dropTitle = takesExcel
      * get the interactive grid instead and never reach this strip at all.
      */
     function updateLiveOverlay() {
-      if (liveEditor) {
-        if (mode === 'watermark') {
-          liveEditor.setToolPreview({
-            kind: 'watermark',
-            text: root.querySelector<HTMLInputElement>('[data-text]')?.value ?? '',
-          });
-        } else if (mode === 'page-numbers') {
-          const start = Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value || 1);
-          const format = root.querySelector<HTMLSelectElement>('[data-pn-format]')?.value ?? '{page}';
-          // The editor draws "<text><n>", so hand it whatever precedes the number.
-          const lead = format.slice(0, format.indexOf('{page}'));
-          liveEditor.setToolPreview({ kind: 'page-number', text: lead, start });
-        } else {
-          liveEditor.setToolPreview({ kind: 'none' });
-        }
-        return;
-      }
-
       const figures = [...previewPages.querySelectorAll<HTMLElement>('figure[data-page]')];
       if (!figures.length) return;
       for (const figure of figures) clearOverlay(figure);
@@ -1693,18 +966,8 @@ const dropTitle = takesExcel
         for (const figure of figures) addOverlay(figure, text, 'watermark');
       } else if (mode === 'page-numbers') {
         const start = Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value || 1);
-        const format = root.querySelector<HTMLSelectElement>('[data-pn-format]')?.value ?? '{page}';
-        const skipFirst = root.querySelector<HTMLInputElement>('[data-pn-skip-first]')?.checked ?? false;
-        const numbered = figures.filter((figure) => !(skipFirst && Number(figure.dataset.page) === 1));
-        numbered.forEach((figure, index) =>
-          addOverlay(
-            figure,
-            format
-              .replace(/\{page\}/g, String(start + index))
-              .replace(/\{pages\}/g, String(start + numbered.length - 1)),
-            'page-number'
-          )
-        );
+        const prefix = root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '';
+        figures.forEach((figure, index) => addOverlay(figure, `${prefix}${start + index}`, 'page-number'));
       } else if (mode === 'edit') {
         const text = root.querySelector<HTMLInputElement>('[data-text]')?.value ?? '';
         const targetPage = Number(root.querySelector<HTMLInputElement>('[data-target-page]')?.value || 1);
@@ -1713,117 +976,18 @@ const dropTitle = takesExcel
       }
     }
 
-    /**
-     * The chosen files, in the order they will be combined.
-     *
-     * A merge is an ordering decision before it is anything else, and the list
-     * was read-only — the only way to change the order was to clear everything
-     * and pick the files again in a different sequence. Each row can now be
-     * moved and removed, and where several files are involved each carries the
-     * colour its pages wear in the grid below, so the two views are obviously
-     * the same thing.
-     */
-    function renderFileList() {
-      const many = files.length > 1;
-      list.dataset.rich = String(many && takesMany);
+    function showFiles(next: File[]) {
+      const kept = next.filter(usable);
+
+      files = takesMany ? kept : kept.slice(0, 1);
 
       list.replaceChildren(
-        ...files.map((file, index) => {
+        ...files.map((file) => {
           const li = document.createElement('li');
-          li.className = 'file';
-
-          if (many && takesMany) {
-            const chip = document.createElement('span');
-            chip.className = 'file__chip';
-            chip.style.background = SOURCE_COLOURS[index % SOURCE_COLOURS.length];
-            chip.setAttribute('aria-hidden', 'true');
-            li.append(chip);
-          }
-
-          const name = document.createElement('span');
-          name.className = 'file__name';
-          name.textContent = file.name;
-
-          const meta = document.createElement('span');
-          meta.className = 'file__meta';
-          meta.textContent = size(file.size);
-          li.append(name, meta);
-
-          if (many && takesMany) {
-            const controls = document.createElement('span');
-            controls.className = 'file__controls';
-
-            const move = (to: number, glyph: string, label: string) => {
-              const button = document.createElement('button');
-              button.type = 'button';
-              button.className = 'file__btn';
-              button.textContent = glyph;
-              button.title = label;
-              button.setAttribute('aria-label', `${label}: ${file.name}`);
-              button.disabled = to < 0 || to >= files.length;
-              button.addEventListener('click', () => {
-                const [moved] = files.splice(index, 1);
-                files.splice(to, 0, moved);
-                renderFileList();
-                // The grid is built from the file order, so it has to be rebuilt
-                // — and rebuilding it drops any page edits, which is why the
-                // order is settled here first rather than page by page below.
-                if (grid) void openGrid();
-              });
-              return button;
-            };
-
-            if (mode !== 'reorder') {
-              controls.append(
-                move(index - 1, '\u2191', 'Move up'),
-                move(index + 1, '\u2193', 'Move down')
-              );
-            }
-
-            const drop = document.createElement('button');
-            drop.type = 'button';
-            drop.className = 'file__btn file__btn--drop';
-            drop.textContent = '\u2715';
-            drop.title = 'Remove this file';
-            drop.setAttribute('aria-label', `Remove ${file.name}`);
-            drop.addEventListener('click', () => {
-              files.splice(index, 1);
-              renderFileList();
-              workspace.hidden = files.length === 0;
-              if (grid) void openGrid();
-            });
-            controls.append(drop);
-            li.append(controls);
-          }
-
+          li.textContent = `${file.name} · ${size(file.size)}`;
           return li;
         })
       );
-    }
-
-    function showFiles(next: File[], append = false) {
-      const previousGridState =
-        mode === 'reorder' && append && grid && !grid.hidden ? grid.getState() : null;
-      const kept = next.filter(usable);
-
-      if (takesMany && append && files.length > 0) {
-        // Picking again on a tool that takes several files means "and these
-        // too". Replacing the lot was the old behaviour and it silently threw
-        // away an order somebody had just arranged. Same name and size twice
-        // is a double-click on the picker, not a deliberate duplicate.
-        if (mode === 'reorder') {
-          // Importing the same source twice is meaningful here: its pages may
-          // be needed in two different places in the assembled document.
-          files = files.concat(kept);
-        } else {
-          const seen = new Set(files.map((file) => `${file.name}:${file.size}`));
-          files = files.concat(kept.filter((file) => !seen.has(`${file.name}:${file.size}`)));
-        }
-      } else {
-        files = takesMany ? kept : kept.slice(0, 1);
-      }
-
-      renderFileList();
 
       workspace.hidden = files.length === 0;
       result.hidden = true;
@@ -1835,329 +999,27 @@ const dropTitle = takesExcel
       previewPages.replaceChildren();
       for (const url of previewUrls) URL.revokeObjectURL(url);
       previewUrls = [];
-      if (liveEditor) void liveEditor.release();
-      if (cropStage && files.length === 0) void cropStage.release();
 
       // The dropzone is only useful before a file is picked — once one is,
       // showing it alongside the file list and preview just eats space.
       const hasFiles = files.length > 0;
       fileUi.hidden = hasFiles;
       fileBar.hidden = !hasFiles;
-      setStage(hasFiles ? 'adjust' : 'choose');
-      if (actionSummary) {
-        actionSummary.textContent = hasFiles
-          ? `${files.length === 1 ? '1 file' : `${files.length} files`} · stays on this device`
-          : '';
-      }
       if (hasFiles) {
-        fileBarLabel.textContent = files.length === 1
-          ? files[0].name
-          : mode === 'reorder'
-            ? `${files.length} source files`
-            : `${files.length} files, in this order`;
-        if (changeFileBtn) {
-          changeFileBtn.textContent = mode === 'reorder' ? 'Add PDF pages' : takesMany ? 'Add more' : 'Change file';
-        }
+        fileBarLabel.textContent =
+          files.length === 1 ? files[0].name : `${files.length} files selected`;
       }
 
-      if ((mode === 'pdf-to-images' || mode === 'forms' || mode === 'metadata') && files[0]) {
-        void probe(files[0]);
-      }
+      if ((mode === 'pdf-to-images' || mode === 'forms') && files[0]) void probe(files[0]);
 
       // A tool with a grid gets the grid instead of the thumbnail strip: the
       // strip shows the first eight pages, the grid shows all of them and
       // lets you act on what you see.
-      if (grid) void openGrid(previousGridState);
-      else if (cropStage && files[0]) void cropStage.open(files[0]);
-      else if (liveEditor && files[0]) void liveEditor.open(files[0]).then(updateLiveOverlay);
+      if (grid) void openGrid();
       else if (previewable && files[0]) void preview(files[0]);
     }
 
     changeFileBtn.addEventListener('click', () => input.click());
-
-    const addPdfBtn = root.querySelector<HTMLButtonElement>('[data-add-pdf]');
-    const addBlankBtn = root.querySelector<HTMLButtonElement>('[data-add-blank]');
-    const blankSize = root.querySelector<HTMLSelectElement>('[data-blank-size]');
-    let blankPageNumber = 0;
-
-    addPdfBtn?.addEventListener('click', () => input.click());
-    addBlankBtn?.addEventListener('click', async () => {
-      addBlankBtn.disabled = true;
-      const original = addBlankBtn.textContent;
-      addBlankBtn.textContent = 'Adding…';
-      try {
-        const { PDFDocument } = await import('@cantoo/pdf-lib');
-        const dimensions: Record<string, [number, number]> = {
-          letter: [612, 792],
-          a4: [595.28, 841.89],
-          legal: [612, 1008],
-        };
-        const chosen = blankSize?.value ?? 'letter';
-        const doc = await PDFDocument.create();
-        doc.addPage(dimensions[chosen] ?? dimensions.letter);
-        doc.setTitle('Blank page');
-        const bytes = await doc.save({ useObjectStreams: true, addDefaultPage: false });
-        blankPageNumber += 1;
-        const blank = new File([bytes as BlobPart], `blank-page-${blankPageNumber}.pdf`, {
-          type: 'application/pdf',
-        });
-        showFiles([blank], true);
-      } catch {
-        fail('The blank page could not be created here. Your current arrangement is unchanged.');
-      } finally {
-        addBlankBtn.disabled = false;
-        addBlankBtn.textContent = original;
-      }
-    });
-
-    /* ── Watermark controls ────────────────────────────────────────────── */
-    let watermarkPosition = 'center';
-    let watermarkImage: { bytes: ArrayBuffer; type: string } | null = null;
-
-    if (mode === 'watermark') {
-      const setKind = (kind: string) => {
-        for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-wm-kind]')) {
-          const on = tab.dataset.wmKind === kind;
-          tab.classList.toggle('is-on', on);
-          tab.setAttribute('aria-pressed', String(on));
-        }
-        for (const panel of root.querySelectorAll<HTMLElement>('[data-wm-panel]')) {
-          panel.hidden = panel.dataset.wmPanel !== kind;
-        }
-        root.dataset.wmKind = kind;
-        updateLiveOverlay();
-      };
-      root.dataset.wmKind = 'text';
-      for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-wm-kind]')) {
-        tab.addEventListener('click', () => setKind(tab.dataset.wmKind ?? 'text'));
-      }
-
-      for (const spot of root.querySelectorAll<HTMLButtonElement>('[data-wm-pos]')) {
-        spot.addEventListener('click', () => {
-          watermarkPosition = spot.dataset.wmPos ?? 'center';
-          for (const other of root.querySelectorAll<HTMLButtonElement>('[data-wm-pos]')) {
-            const on = other === spot;
-            other.classList.toggle('is-on', on);
-            other.setAttribute('aria-pressed', String(on));
-          }
-          updateLiveOverlay();
-        });
-      }
-
-      // Tiling makes the nine-way position meaningless, so say so rather than
-      // leaving a control that silently stops doing anything.
-      const tile = root.querySelector<HTMLInputElement>('[data-wm-tile]');
-      const posGrid = root.querySelector<HTMLElement>('.wm__grid');
-      const syncTile = () => {
-        const tiled = tile?.checked ?? false;
-        posGrid?.toggleAttribute('data-off', tiled);
-        for (const spot of root.querySelectorAll<HTMLButtonElement>('[data-wm-pos]')) {
-          spot.disabled = tiled;
-        }
-      };
-      tile?.addEventListener('change', syncTile);
-      syncTile();
-
-      const readouts: Record<string, (value: number) => string> = {
-        scale: (value) => `${value}% of the page`,
-        rotation: (value) => `${value}°`,
-        opacity: (value) => `${value}%`,
-      };
-      for (const [name, format] of Object.entries(readouts)) {
-        const slider = root.querySelector<HTMLInputElement>(`[data-wm-${name}]`);
-        const output = root.querySelector<HTMLElement>(`[data-wm-out="${name}"]`);
-        const sync = () => {
-          if (output && slider) output.textContent = format(Number(slider.value));
-        };
-        slider?.addEventListener('input', sync);
-        sync();
-      }
-
-      const picker = root.querySelector<HTMLInputElement>('[data-wm-image]');
-      picker?.addEventListener('change', async () => {
-        const chosen = picker.files?.[0];
-        if (!chosen) {
-          watermarkImage = null;
-          return;
-        }
-        watermarkImage = { bytes: await chosen.arrayBuffer(), type: chosen.type };
-      });
-    }
-
-    /* Show a password back to the person who typed it. There is no reset link
-       for an encrypted PDF, so a typo is unrecoverable. */
-    const revealBtn = root.querySelector<HTMLButtonElement>('[data-reveal]');
-    revealBtn?.addEventListener('click', () => {
-      const field = root.querySelector<HTMLInputElement>('[data-user-password]');
-      if (!field) return;
-      const shown = field.type === 'text';
-      field.type = shown ? 'password' : 'text';
-      revealBtn.textContent = shown ? 'Show' : 'Hide';
-      revealBtn.setAttribute('aria-pressed', String(!shown));
-    });
-
-    const confirmField = root.querySelector<HTMLInputElement>('[data-confirm-password]');
-    const confirmNote = root.querySelector<HTMLElement>('[data-confirm-note]');
-    if (confirmField && confirmNote) {
-      const baseline = confirmNote.textContent ?? '';
-      const check = () => {
-        const chosen = root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '';
-        if (!confirmField.value) {
-          confirmNote.textContent = baseline;
-          confirmNote.removeAttribute('data-tone');
-          return;
-        }
-        const same = chosen === confirmField.value;
-        confirmNote.textContent = same ? 'These match.' : 'These do not match yet.';
-        confirmNote.dataset.tone = same ? 'ok' : 'warn';
-      };
-      confirmField.addEventListener('input', check);
-      root.querySelector('[data-user-password]')?.addEventListener('input', check);
-    }
-
-    /* Metadata: one button for the thing most people came to do. */
-    root.querySelector<HTMLButtonElement>('[data-meta-clean]')?.addEventListener('click', () => {
-      for (const name of ['title', 'author', 'subject', 'keywords']) {
-        const field = root.querySelector<HTMLInputElement>(`[data-meta-${name}]`);
-        if (field) field.value = '';
-      }
-      const strip = root.querySelector<HTMLInputElement>('[data-meta-strip]');
-      if (strip) strip.checked = true;
-      status.textContent = 'Set to remove everything, including the XMP packet. Save to apply it.';
-    });
-
-    /* Split by: a size limit means nothing when splitting at bookmarks, and an
-       N means nothing when splitting at a size. Only show what applies. */
-    const splitMode = root.querySelector<HTMLSelectElement>('[data-sb-mode]');
-    if (splitMode) {
-      const nField = root.querySelector<HTMLElement>('[data-sb-n]')?.closest('label');
-      const nLabel = nField?.querySelector('span');
-      const mbField = root.querySelector<HTMLElement>('[data-sb-mb]')?.closest('label');
-      const syncSplit = () => {
-        const how = splitMode.value;
-        if (nField) nField.hidden = how !== 'every' && how !== 'parts';
-        if (mbField) mbField.hidden = how !== 'size';
-        if (nLabel) {
-          nLabel.textContent = how === 'parts' ? 'How many files' : 'Pages per file';
-        }
-      };
-      splitMode.addEventListener('change', syncSplit);
-      syncSplit();
-    }
-
-    /* Imposition is three related layouts, but each has different controls.
-       Keep the sheet and spacing visible while hiding fields the chosen
-       layout would otherwise ignore. */
-    const imposeMode = root.querySelector<HTMLSelectElement>('[data-imp-kind]');
-    if (imposeMode) {
-      const syncImpose = () => {
-        for (const panel of root.querySelectorAll<HTMLElement>('[data-imp-panel]')) {
-          panel.hidden = panel.dataset.impPanel !== imposeMode.value;
-        }
-        const gutter = root.querySelector<HTMLInputElement>('[data-imp-gutter]')?.closest('label');
-        const separators = root.querySelector<HTMLInputElement>('[data-imp-sep]')?.closest('label');
-        const orientation = root.querySelector<HTMLElement>('[data-imp-orientation-field]');
-        if (gutter) gutter.hidden = imposeMode.value === 'poster';
-        if (separators) separators.hidden = imposeMode.value === 'poster';
-        if (orientation) orientation.hidden = imposeMode.value === 'booklet';
-      };
-      imposeMode.addEventListener('change', syncImpose);
-      syncImpose();
-    }
-
-    /* Rotate: the typed selection acts on the grid, which is what actually gets
-       exported — so what you see is what you save. */
-    const rotApply = root.querySelector<HTMLButtonElement>('[data-rot-apply]');
-    rotApply?.addEventListener('click', () => {
-      if (!grid || grid.hidden) {
-        status.textContent = 'Choose a PDF first.';
-        return;
-      }
-      const spec = root.querySelector<HTMLInputElement>('[data-rot-pages]')?.value ?? '';
-      const by = Number(root.querySelector<HTMLInputElement>('input[name="turn"]:checked')?.value ?? 90);
-      const turned = grid.turnPages(spec, by);
-      status.textContent = turned
-        ? `Turned ${turned} page${turned === 1 ? '' : 's'} by ${by}°. Undo is in the grid.`
-        : 'That selection matches no pages in this document.';
-    });
-
-    /* ── Crop ───────────────────────────────────────────────────────────
-       The dragged box and the four numbers are the same value; whichever you
-       touch, the other follows. */
-    interface CropStageElement extends HTMLElement {
-      open(file: File): Promise<void>;
-      release(): Promise<void>;
-      getBox(): { x: number; y: number; width: number; height: number };
-      setBox(box: { x: number; y: number; width: number; height: number }): void;
-    }
-    const cropStage = root.querySelector('crop-stage') as CropStageElement | null;
-
-    const edge = (name: string) => root.querySelector<HTMLInputElement>(`[data-crop-${name}]`);
-    const edgeValue = (name: string) =>
-      Math.min(Math.max(Number(edge(name)?.value ?? 0) || 0, 0), 45) / 100;
-
-    function boxFromEdges() {
-      const top = edgeValue('top');
-      const right = edgeValue('right');
-      const bottom = edgeValue('bottom');
-      const left = edgeValue('left');
-      return {
-        x: left,
-        y: top,
-        width: Math.max(1 - left - right, 0.05),
-        height: Math.max(1 - top - bottom, 0.05),
-      };
-    }
-
-    if (cropStage) {
-      const round = (value: number) => Math.round(value * 1000) / 10;
-      cropStage.addEventListener('cropchange', (event) => {
-        const box = (event as CustomEvent<{ x: number; y: number; width: number; height: number }>).detail;
-        const set = (name: string, value: number) => {
-          const field = edge(name);
-          if (field) field.value = String(round(value));
-        };
-        set('top', box.y);
-        set('left', box.x);
-        set('right', 1 - box.x - box.width);
-        set('bottom', 1 - box.y - box.height);
-      });
-
-      for (const name of ['top', 'right', 'bottom', 'left']) {
-        edge(name)?.addEventListener('input', () => cropStage.setBox(boxFromEdges()));
-      }
-    }
-
-    const sampleBtn = root.querySelector<HTMLButtonElement>('[data-sample]');
-    sampleBtn?.addEventListener('click', async () => {
-      sampleBtn.disabled = true;
-      const label = sampleBtn.textContent;
-      sampleBtn.textContent = 'Building it…';
-      try {
-        const { sampleDocument } = await import('../lib/sample');
-        const sample = await sampleDocument();
-        if (mode === 'merge' || mode === 'compare' || mode === 'overlay' || mode === 'reorder') {
-          const bytes = await sample.arrayBuffer();
-          const first = new File([bytes.slice(0)], 'sample-a.pdf', { type: 'application/pdf' });
-          const second = new File([bytes.slice(0)], 'sample-b.pdf', { type: 'application/pdf' });
-          showFiles([first, second]);
-        } else {
-          showFiles([sample]);
-        }
-      } catch {
-        fail('The sample could not be built here. Choosing a file still works.');
-      } finally {
-        sampleBtn.disabled = false;
-        sampleBtn.textContent = label;
-      }
-    });
-
-    previewExpand?.addEventListener('click', () => {
-      const expanded = previewPages.dataset.view === 'grid';
-      previewPages.dataset.view = expanded ? 'strip' : 'grid';
-      previewExpand.setAttribute('aria-expanded', String(!expanded));
-      previewExpand.textContent = expanded ? 'Show all pages' : 'Show fewer';
-    });
 
     // Purely visual — reruns on every keystroke or toggle so the preview
     // tracks whatever the tool's own fields currently say, with no worker
@@ -2165,78 +1027,23 @@ const dropTitle = takesExcel
     workspace.addEventListener('input', updateLiveOverlay);
     workspace.addEventListener('change', updateLiveOverlay);
 
+    const PREVIEW_SIZE_KEY = 'pdftool-preview-size';
     const sizeButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-preview-sizes] [data-size]')];
 
-    type PreviewSize = 'sm' | 'md' | 'lg';
-    const isPreviewSize = (value: unknown): value is PreviewSize =>
-      value === 'sm' || value === 'md' || value === 'lg';
-
-    function setPreviewSize(sizeValue: PreviewSize, persist = false) {
+    function setPreviewSize(sizeValue: string) {
       previewPages.dataset.size = sizeValue;
       for (const button of sizeButtons) {
         button.setAttribute('aria-pressed', String(button.dataset.size === sizeValue));
       }
-      if (persist) writePreference(PREVIEW_SIZE_KEY, sizeValue);
+      localStorage.setItem(PREVIEW_SIZE_KEY, sizeValue);
     }
 
     for (const button of sizeButtons) {
-      button.addEventListener('click', () => {
-        const size = button.dataset.size;
-        setPreviewSize(isPreviewSize(size) ? size : 'md', true);
-      });
+      button.addEventListener('click', () => setPreviewSize(button.dataset.size ?? 'md'));
     }
-    setPreviewSize(readPreference(PREVIEW_SIZE_KEY, isPreviewSize) ?? 'md');
-
-    /**
-     * Shows what the file is already carrying, and seeds the inputs with it.
-     *
-     * The point of this tool is the surprise: an author name that survived in
-     * the XMP packet long after the document properties were cleared is the
-     * kind of thing people want to know before they send a file out.
-     */
-    function showMetadata(report: {
-      title: string;
-      author: string;
-      subject: string;
-      keywords: string;
-      creator: string;
-      producer: string;
-      extraPackets: number;
-      custom: { key: string; value: string }[];
-      xmp: { present: boolean };
-    }) {
-      const set = (selector: string, value: string) => {
-        const input = root.querySelector<HTMLInputElement>(selector);
-        if (input && !input.value) input.value = value;
-      };
-      set('[data-meta-title]', report.title);
-      set('[data-meta-author]', report.author);
-      set('[data-meta-subject]', report.subject);
-      set('[data-meta-keywords]', report.keywords);
-
-      const current = root.querySelector('[data-meta-current]');
-      if (!current) return;
-
-      const rows: string[] = [];
-      if (report.creator) rows.push(`Made with ${report.creator}`);
-      if (report.producer && report.producer !== report.creator) {
-        rows.push(`Written by ${report.producer}`);
-      }
-      if (report.xmp.present) rows.push('Carries an XMP packet');
-      if (report.extraPackets > 0) {
-        rows.push(`${report.extraPackets} further XMP packet(s) on pages or images`);
-      }
-      for (const entry of report.custom.slice(0, 6)) rows.push(`${entry.key}: ${entry.value}`);
-
-      current.replaceChildren(
-        ...(rows.length === 0
-          ? [Object.assign(document.createElement('p'), { textContent: 'This file carries no metadata beyond the fields below.', className: 'hint' })]
-          : rows.map((row) => Object.assign(document.createElement('p'), { textContent: row, className: 'hint' })))
-      );
-    }
+    setPreviewSize(localStorage.getItem(PREVIEW_SIZE_KEY) ?? 'md');
 
     function onDone({ id, result: res }: WorkerResponse) {
-      if (id === activeJob) endRun();
       // Grid traffic is answered where it was asked from.
       const waiting = gridWaiting.get(id);
       if (waiting) {
@@ -2249,10 +1056,6 @@ const dropTitle = takesExcel
       // file turns out to be unreadable, the real run will say so properly.
       if (id === probeId) {
         probeId = -1;
-        if (res.ok && 'pages' in res && mode === 'metadata' && 'xmp' in res) {
-          showMetadata(res);
-          return;
-        }
         if (res.ok && 'probe' in res) {
           if (mode === 'forms') renderFields(res.fields ?? []);
           else limitDpi(res.maxDpi);
@@ -2319,7 +1122,6 @@ const dropTitle = takesExcel
 
       revoke();
       downloads.dataset.many = String(res.files.length > 6);
-      offerBundle(res.files);
 
       const produced = res.files.map((file) => file.name);
       // Names chosen in the dialog, so a second click on the same result does
@@ -2382,230 +1184,9 @@ const dropTitle = takesExcel
         });
       }
 
-      renderDiff('comparison' in res ? res.comparison : undefined);
-
       receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
       result.hidden = false;
-      setStage('save');
-      offerChain(res);
     }
-
-    /**
-     * One ZIP for a job that produced many files.
-     *
-     * Splitting a report into twelve documents and then clicking twelve links
-     * is the part people complain about, and it belongs here rather than in
-     * each engine: every multi-file tool gets it from one place.
-     */
-    const bundle = root.querySelector<HTMLElement>('[data-bundle]');
-    const zipBtn = root.querySelector<HTMLButtonElement>('[data-zip]');
-    const zipNote = root.querySelector<HTMLElement>('[data-zip-note]');
-    let produced: { name: string; bytes: Uint8Array; type?: string }[] = [];
-
-    function offerBundle(files: { name: string; bytes: Uint8Array; type?: string }[]) {
-      produced = files;
-      if (!bundle) return;
-      bundle.hidden = files.length < 2;
-      if (zipNote && files.length >= 2) {
-        const total = files.reduce((sum, file) => sum + file.bytes.length, 0);
-        zipNote.textContent = `${files.length} files · ${size(total)} before zipping`;
-      }
-    }
-
-    zipBtn?.addEventListener('click', async () => {
-      if (produced.length === 0) return;
-      zipBtn.disabled = true;
-      const label = zipBtn.textContent;
-      zipBtn.textContent = 'Packing…';
-      try {
-        const { zip } = await import('fflate');
-        // PDFs, PNGs and JPEGs are already compressed; deflating them again
-        // costs time for roughly nothing, so they go in stored.
-        const entries: Record<string, [Uint8Array, { level: 0 | 6 }]> = {};
-        const seen = new Map<string, number>();
-        for (const file of produced) {
-          // A ZIP with two identical names is a ZIP one of whose files is lost.
-          const count = seen.get(file.name) ?? 0;
-          seen.set(file.name, count + 1);
-          const name = count === 0 ? file.name : file.name.replace(/(\.[^.]+)?$/, `-${count + 1}$1`);
-          const packed = /\.(pdf|png|jpe?g|webp|gz|zip|docx|xlsx|pptx)$/i.test(name);
-          entries[name] = [file.bytes, { level: packed ? 0 : 6 }];
-        }
-
-        const blob: Blob = await new Promise((resolve, reject) => {
-          zip(entries, (error, data) => {
-            if (error) reject(error);
-            else resolve(new Blob([data as BlobPart], { type: 'application/zip' }));
-          });
-        });
-
-        const base = (files[0]?.name ?? 'files').replace(/\.[^.]+$/, '');
-        const answer = await saveAs({ name: `${base}.zip`, siblings: [], index: 0 });
-        if (!answer) return;
-
-        const url = URL.createObjectURL(blob);
-        urls.push(url);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = answer.name;
-        link.click();
-        if (zipNote) zipNote.textContent = `${produced.length} files · ${size(blob.size)} zipped`;
-      } catch {
-        if (zipNote) zipNote.textContent = 'The ZIP could not be built here. The individual links still work.';
-      } finally {
-        zipBtn.disabled = false;
-        zipBtn.textContent = label;
-      }
-    });
-
-    /**
-     * Shows the diff rather than counting it.
-     *
-     * Unchanged text is trimmed to a few words either side of each edit: a page
-     * printed in full is the document again, and the point is to find the four
-     * words that moved.
-     */
-    const diffHost = root.querySelector<HTMLElement>('[data-diff]');
-    const CONTEXT_WORDS = 8;
-
-    function renderDiff(pages?: import('../lib/pdf/compare').PageComparison[]) {
-      if (!diffHost) return;
-      if (!pages) {
-        diffHost.hidden = true;
-        diffHost.replaceChildren();
-        return;
-      }
-
-      const changed = pages.filter((page) => page.added || page.removed);
-      diffHost.hidden = false;
-
-      if (changed.length === 0) {
-        const note = document.createElement('p');
-        note.className = 'diff__none';
-        note.textContent = 'Every word matches.';
-        diffHost.replaceChildren(note);
-        return;
-      }
-
-      diffHost.replaceChildren(
-        ...changed.map((page) => {
-          const section = document.createElement('section');
-          section.className = 'diff__page';
-
-          const heading = document.createElement('h3');
-          heading.textContent =
-            page.before === null
-              ? `Page ${page.after} · added`
-              : page.after === null
-                ? `Page ${page.before} · removed`
-                : page.before === page.after
-                  ? `Page ${page.before}`
-                  : `Page ${page.before} → ${page.after}`;
-
-          const count = document.createElement('span');
-          count.className = 'diff__count';
-          count.textContent = `+${page.added} −${page.removed}`;
-          heading.append(count);
-
-          const body = document.createElement('p');
-          body.className = 'diff__text';
-
-          page.changes.forEach((change, index) => {
-            if (change.kind === 'same') {
-              const parts = change.text.split(' ');
-              const first = index === 0;
-              const last = index === page.changes.length - 1;
-              // Keep the ends nearest an edit; elide the middle.
-              const head = first ? [] : parts.slice(0, CONTEXT_WORDS);
-              const tail = last ? [] : parts.slice(-CONTEXT_WORDS);
-              const elided = parts.length > head.length + tail.length;
-              const span = document.createElement('span');
-              span.className = 'diff__same';
-              span.textContent = elided
-                ? `${head.join(' ')} … ${tail.join(' ')} `
-                : `${change.text} `;
-              body.append(span);
-              return;
-            }
-            const mark = document.createElement(change.kind === 'added' ? 'ins' : 'del');
-            mark.textContent = change.text;
-            body.append(mark, document.createTextNode(' '));
-          });
-
-          section.append(heading, body);
-          return section;
-        })
-      );
-    }
-
-    /**
-     * "Compress → Sign → Protect without picking the file again."
-     *
-     * Only a single PDF can be handed on: a ZIP of images or a .docx has nothing
-     * the next tool could open.
-     */
-    const chain = root.querySelector<HTMLElement>('[data-chain]');
-    const pageParams = new URLSearchParams(location.search);
-    const activeRecipe = pageParams.get('recipe');
-    const activeRecipeStep = Number.parseInt(pageParams.get('step') ?? '', 10);
-    const recipeProgress = activeRecipe
-      ? root.querySelector<HTMLElement>(`[data-recipe-progress][data-recipe="${CSS.escape(activeRecipe)}"]`)
-      : null;
-
-    if (recipeProgress && Number(recipeProgress.dataset.recipeStep) === activeRecipeStep) {
-      recipeProgress.hidden = false;
-    }
-
-    function offerChain(res: { files: { name: string; bytes: Uint8Array; type?: string }[] }) {
-      if (!chain) return;
-      const only = res.files.length === 1 ? res.files[0] : null;
-      const isPdf = Boolean(only) && (only!.type ?? 'application/pdf') === 'application/pdf';
-      chain.hidden = !isPdf;
-      if (!isPdf || !only) return;
-
-      for (const button of chain.querySelectorAll<HTMLButtonElement>('[data-chain-to]')) {
-        button.onclick = async () => {
-          button.disabled = true;
-          const { stash } = await import('../lib/handoff');
-          const key = await stash(
-            new Blob([only.bytes as BlobPart], { type: 'application/pdf' }),
-            only.name
-          );
-          const slug = button.dataset.chainTo!;
-          const root = import.meta.env.BASE_URL.replace(/\/$/, '');
-          const to = `${root}/${slug}/`;
-          // No key means IndexedDB is unavailable (private mode, or blocked).
-          // Still send them to the tool rather than dead-ending on the click.
-          const next = new URLSearchParams();
-          if (key) next.set('from', key);
-          const recipeNext = recipeProgress?.dataset.recipeNext;
-          if (activeRecipe && recipeNext === slug && Number.isFinite(activeRecipeStep)) {
-            next.set('recipe', activeRecipe);
-            next.set('step', String(activeRecipeStep + 1));
-          }
-          const query = next.toString();
-          location.href = query ? `${to}?${query}` : to;
-        };
-      }
-    }
-
-    /** A result handed over from the previous tool, if there is one. */
-    async function acceptHandoff() {
-      const params = new URLSearchParams(location.search);
-      const key = params.get('from');
-      if (!key) return;
-      // Drop the parameter first, so a refresh does not look like a failed claim.
-      params.delete('from');
-      const rest = params.toString();
-      history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : '') + location.hash);
-      const { claim } = await import('../lib/handoff');
-      const file = await claim(key);
-      if (!file) return;
-      showFiles([file]);
-      status.textContent = 'Carried over from the last tool. Still on this device.';
-    }
-
-    void acceptHandoff();
 
     // Real crypto makes the password the weak link, so say so as it is typed.
     const pw = root.querySelector<HTMLInputElement>('[data-user-password]');
@@ -2623,13 +1204,95 @@ const dropTitle = takesExcel
       });
     }
 
+    if (mode === 'sign') setupSignature();
 
     // The URL tool has no file to pick, so the dropzone and worker are unused.
     if (mode === 'url-to-pdf') {
       fileUi.hidden = true;
 
+      /**
+     * Hands the grid a way to talk to the worker.
+     *
+     * The file bytes are copied rather than transferred here: the grid keeps
+     * its documents open for the whole session, and the run afterwards needs
+     * the same bytes again. Transferring would detach them and the export
+     * would find an empty buffer.
+     */
+    async function openGrid(): Promise<void> {
+      if (!grid) return;
+
+      // Whatever was open belongs to the file that just went away. Releasing
+      // first matters: the worker holds a parsed document per session, and
+      // swapping files without closing would keep every one of them alive.
+      await grid.release();
+      if (files.length === 0) return;
+
+      gridSession += 1;
+
+      const payload = await Promise.all(
+        files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
+      );
+
+      // Until the grid has its pages, running would silently fall back to the
+      // typed box and give a different answer for the same click. Better to
+      // wait the moment it takes than to be non-deterministic.
+      runBtn.disabled = true;
+
+      grid.attach({
+        request(message) {
+          return new Promise<OpResult>((resolve) => {
+            const id = ++jobId;
+            gridWaiting.set(id, resolve);
+            ensureWorker().postMessage({
+              id,
+              op: mode,
+              sessionId: gridSession,
+              // Only opening needs the bytes; later messages name the session.
+              files: message.session === 'open' ? payload : [],
+              ...message,
+            });
+          });
+        },
+      });
+
+      const failure = await grid.load();
+      runBtn.disabled = false;
+
+      if (failure) {
+        // The grid failing is not the tool failing — the typed box still works.
+        grid.hidden = true;
+        return;
+      }
+
+      syncRangesFromGrid();
+    }
+
+    const rangesInput = q<HTMLInputElement>('[data-ranges]');
+    const orderInput = q<HTMLInputElement>('[data-order]');
+
+    /** Grid edited → mirror it into whichever text box this tool shows. */
+    function syncRangesFromGrid() {
+      if (!grid) return;
+      if (rangesInput) rangesInput.value = grid.getRanges();
+      if (orderInput) {
+        orderInput.value = grid
+          .getPlan()
+          .map((entry) => entry.page)
+          .join(', ');
+      }
+    }
+
+    if (grid) {
+      grid.addEventListener('gridchange', syncRangesFromGrid);
+
+      // Text box edited → mirror it into the grid. Both edit one plan, so
+      // neither can quietly disagree with the other.
+      rangesInput?.addEventListener('input', () => {
+        if (document.activeElement === rangesInput) grid.applyRanges(rangesInput.value);
+      });
+    }
+
     runBtn.addEventListener('click', async () => {
-        if (mode !== 'url-to-pdf') return;
         const url = root.querySelector<HTMLInputElement>('[data-url]')?.value?.trim() ?? '';
         if (!url) return fail('Enter a web address first.');
 
@@ -2697,13 +1360,7 @@ const dropTitle = takesExcel
       });
     }
 
-    input.addEventListener('change', () => {
-      const chosen = Array.from(input.files ?? []);
-      showFiles(chosen, takesMany && files.length > 0);
-      // Resetting guarantees that choosing the same file later still fires
-      // `change` in every browser.
-      input.value = '';
-    });
+    input.addEventListener('change', () => showFiles(Array.from(input.files ?? [])));
     clearBtn.addEventListener('click', () => {
       input.value = '';
       showFiles([]);
@@ -2721,9 +1378,7 @@ const dropTitle = takesExcel
         delete drop.dataset.over;
       });
     }
-    drop.addEventListener('drop', (e) =>
-      showFiles(Array.from(e.dataTransfer?.files ?? []), takesMany && files.length > 0)
-    );
+    drop.addEventListener('drop', (e) => showFiles(Array.from(e.dataTransfer?.files ?? [])));
 
     /**
      * Hands the grid a way to talk to the worker.
@@ -2733,7 +1388,7 @@ const dropTitle = takesExcel
      * the same bytes again. Transferring would detach them and the export
      * would find an empty buffer.
      */
-    async function openGrid(previousState: ReturnType<GridElement['getState']> | null = null): Promise<void> {
+    async function openGrid(): Promise<void> {
       if (!grid) return;
 
       // Whatever was open belongs to the file that just went away. Releasing
@@ -2779,8 +1434,6 @@ const dropTitle = takesExcel
         return;
       }
 
-      if (previousState) grid.restoreState(previousState);
-
       syncRangesFromGrid();
     }
 
@@ -2797,7 +1450,6 @@ const dropTitle = takesExcel
           .map((entry) => entry.page)
           .join(', ');
       }
-      refreshSplitStudio();
     }
 
     if (grid) {
@@ -2810,123 +1462,13 @@ const dropTitle = takesExcel
       });
     }
 
-    type SplitTab = 'ranges' | 'pages' | 'size' | 'smart';
-    const splitStudio = root.querySelector<HTMLElement>('[data-split-studio]');
-    let splitTab: SplitTab = 'ranges';
-
-    const splitRadio = (name: string, fallback: string) =>
-      root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value ?? fallback;
-
-    function splitPages(): number[] {
-      const count = grid?.totalPages ?? 0;
-      const pagesMode = splitRadio('split-pages-mode', 'all');
-      if (pagesMode === 'all') return Array.from({ length: count }, (_, index) => index + 1);
-      return parsePageSet(root.querySelector<HTMLInputElement>('[data-split-pages]')?.value, count).pages;
-    }
-
-    function refreshSplitStudio() {
-      if (!splitStudio) return;
-      const count = grid?.totalPages ?? 0;
-      const summary = root.querySelector<HTMLElement>('[data-split-plan-summary]');
-      const combineRanges = root.querySelector<HTMLInputElement>('[data-split-combine-ranges]')?.checked ?? false;
-      const combinePages = root.querySelector<HTMLInputElement>('[data-split-combine-pages]')?.checked ?? false;
-      const rangeMode = splitRadio('split-range-mode', 'custom');
-
-      root.querySelectorAll<HTMLElement>('[data-split-panel]').forEach((panel) => {
-        panel.hidden = panel.dataset.splitPanel !== splitTab;
-      });
-      root.querySelectorAll<HTMLButtonElement>('[data-split-tab]').forEach((button) => {
-        button.setAttribute('aria-selected', String(button.dataset.splitTab === splitTab));
-      });
-      root.querySelectorAll<HTMLElement>('[data-split-range-options]').forEach((panel) => {
-        panel.hidden = panel.dataset.splitRangeOptions !== rangeMode;
-      });
-
-      const pagesMode = splitRadio('split-pages-mode', 'all');
-      const selectedOptions = root.querySelector<HTMLElement>('[data-split-selected-options]');
-      if (selectedOptions) selectedOptions.hidden = pagesMode !== 'selected';
-
-      const smartMode = root.querySelector<HTMLSelectElement>('[data-split-smart-mode]')?.value ?? 'bookmarks';
-      root.querySelectorAll<HTMLElement>('[data-split-smart-options]').forEach((panel) => {
-        panel.hidden = panel.dataset.splitSmartOptions !== smartMode;
-      });
-
-      if (!summary) return;
-      if (splitTab === 'ranges') {
-        if (rangeMode === 'custom') {
-          const groups = (rangesInput?.value ?? '').split(',').filter((group) => group.trim()).length;
-          summary.textContent = combineRanges
-            ? `${groups || 'The selected'} page group${groups === 1 ? '' : 's'} will be combined into one PDF.`
-            : `${groups || 'Each'} page group${groups === 1 ? '' : 's'} will become a separate PDF.`;
-          runBtn.textContent = combineRanges ? 'Create combined PDF' : 'Split PDF';
-        } else if (rangeMode === 'fixed') {
-          const every = Math.max(1, Number(root.querySelector<HTMLInputElement>('[data-split-fixed]')?.value ?? 1));
-          const outputs = count > 0 ? Math.ceil(count / every) : 0;
-          const message = count > 0
-            ? `${outputs} PDF${outputs === 1 ? '' : 's'} will be created, with up to ${every} page${every === 1 ? '' : 's'} each.`
-            : `A new PDF will start every ${every} page${every === 1 ? '' : 's'}.`;
-          summary.textContent = message;
-          const fixedSummary = root.querySelector<HTMLElement>('[data-split-fixed-summary]');
-          if (fixedSummary) fixedSummary.textContent = message;
-          runBtn.textContent = 'Split into fixed ranges';
-        } else {
-          const parts = Math.max(2, Number(root.querySelector<HTMLInputElement>('[data-split-parts]')?.value ?? 2));
-          const message = count > 0
-            ? `${count} pages will be balanced across ${parts} output files.`
-            : `${parts} output files will be created with the most even page counts possible.`;
-          summary.textContent = message;
-          const partsSummary = root.querySelector<HTMLElement>('[data-split-parts-summary]');
-          if (partsSummary) partsSummary.textContent = message;
-          runBtn.textContent = 'Create equal parts';
-        }
-      } else if (splitTab === 'pages') {
-        const selected = splitPages();
-        summary.textContent = combinePages
-          ? `${selected.length || 'Selected'} page${selected.length === 1 ? '' : 's'} will be merged into one PDF.`
-          : `${selected.length || 'Selected'} page${selected.length === 1 ? '' : 's'} will become separate PDF files.`;
-        runBtn.textContent = combinePages ? 'Create extracted PDF' : 'Extract separate pages';
-      } else if (splitTab === 'size') {
-        const sizeInput = root.querySelector<HTMLInputElement>('[data-split-size]');
-        const unitValue = root.querySelector<HTMLSelectElement>('[data-split-size-unit]')?.value || 'kb';
-        if (sizeInput) sizeInput.min = unitValue === 'mb' ? '0.01' : '10';
-        const amount = sizeInput?.value || '500';
-        const unit = unitValue.toUpperCase();
-        summary.textContent = `Candidate files will be measured against a ${amount} ${unit} target.`;
-        runBtn.textContent = 'Split by file size';
-      } else {
-        const labels: Record<string, string> = {
-          bookmarks: 'Top-level bookmarks will start new files and supply their names.',
-          blank: 'Blank separator pages will be detected from rendered page pixels.',
-          text: 'A new file will begin where the chosen page-start words are found.',
-        };
-        summary.textContent = labels[smartMode] ?? labels.bookmarks;
-        runBtn.textContent = 'Detect and split';
-      }
-    }
-
-    if (splitStudio) {
-      root.querySelectorAll<HTMLButtonElement>('[data-split-tab]').forEach((button) => {
-        button.addEventListener('click', () => {
-          splitTab = (button.dataset.splitTab as SplitTab) || 'ranges';
-          refreshSplitStudio();
-        });
-      });
-      splitStudio.addEventListener('input', refreshSplitStudio);
-      splitStudio.addEventListener('change', refreshSplitStudio);
-      refreshSplitStudio();
-    }
-
     runBtn.addEventListener('click', async () => {
       if (!files.length) return;
-
-      if (mode === 'merge' && files.length < 2) {
-        fail('Add at least one more PDF. Merge needs two or more files.');
-        return;
-      }
 
       runBtn.disabled = true;
       errorEl.hidden = true;
       result.hidden = true;
+      status.textContent = 'Working on this device…';
 
       const payload = await Promise.all(
         files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
@@ -2935,25 +1477,6 @@ const dropTitle = takesExcel
       const picked = (name: string) =>
         root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
 
-      if (mode === 'protect') {
-        const chosen = root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '';
-        const again = root.querySelector<HTMLInputElement>('[data-confirm-password]')?.value ?? '';
-        if (chosen !== again) {
-          fail('The two passwords do not match. Nothing was encrypted.');
-          runBtn.disabled = false;
-          return;
-        }
-      }
-
-      const edits = liveEditor?.getEdits() ?? [];
-      const hasPlacedSignature = edits.some((mark) => mark.kind === 'signature' || mark.kind === 'signature-text');
-      if (mode === 'sign' && !hasPlacedSignature) {
-        fail('Draw, type or upload a signature in the panel above, then click the page to place it.');
-        runBtn.disabled = false;
-        status.textContent = '';
-        return;
-      }
-
       const request: WorkerRequest = {
         id: ++jobId,
         op: mode,
@@ -2961,10 +1484,13 @@ const dropTitle = takesExcel
         ranges: root.querySelector<HTMLInputElement>('[data-ranges]')?.value,
         pageOrder: readOrder(),
         text: root.querySelector<HTMLInputElement>('[data-text]')?.value,
-        edits,
         targetPage: readTargetPage(),
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
+        prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
         searchable: root.querySelector<HTMLInputElement>('[data-searchable]')?.checked ?? true,
+        signature: signatureBytes(),
+        corner: root.querySelector<HTMLSelectElement>('[data-corner]')?.value as WorkerRequest['corner'],
+        signatureWidth: 180,
         fieldValues: readFields(),
         flatten: root.querySelector<HTMLInputElement>('[data-flatten]')?.checked ?? false,
         userPassword: root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '',
@@ -2981,270 +1507,10 @@ const dropTitle = takesExcel
         dpi: Number(picked('dpi') ?? 150),
       };
 
-      const val = (sel: string) => root.querySelector<HTMLInputElement>(sel)?.value ?? '';
-      const on = (sel: string) => root.querySelector<HTMLInputElement>(sel)?.checked ?? false;
-      const num = (sel: string, fallback: number) => {
-        const raw = Number(val(sel));
-        return Number.isFinite(raw) ? raw : fallback;
-      };
-      const sel = (s2: string) => root.querySelector<HTMLSelectElement>(s2)?.value ?? '';
-      let useGridPlan = mode !== 'split';
-      let gridCutsOverride: number[] | null = null;
-      let allowNoGridCuts = false;
-
-      if (mode === 'split') {
-        if (splitTab === 'ranges') {
-          const rangeMode = splitRadio('split-range-mode', 'custom');
-          if (rangeMode === 'custom') {
-            useGridPlan = true;
-            // A single custom range is a useful extraction even though it has
-            // no cut marker. This matches the range workflow people expect:
-            // 4-8 should produce one five-page PDF, not an error.
-            allowNoGridCuts = true;
-            const typed = val('[data-ranges]').trim();
-            if (!typed) {
-              runBtn.disabled = false;
-              status.textContent = '';
-              fail('Enter at least one page group, such as 1-3, 4-6.');
-              return;
-            }
-            if (on('[data-split-combine-ranges]')) {
-              gridCutsOverride = [];
-            }
-          } else {
-            request.op = 'split-by';
-            request.splitByOptions = rangeMode === 'fixed'
-              ? { mode: 'every', every: num('[data-split-fixed]', 1) }
-              : { mode: 'parts', parts: num('[data-split-parts]', 2) };
-          }
-        } else if (splitTab === 'pages') {
-          const selected = splitPages();
-          if (selected.length === 0) {
-            runBtn.disabled = false;
-            status.textContent = '';
-            fail('Choose at least one page to extract.');
-            return;
-          }
-          const groups = selected.join(', ');
-          grid?.applyRanges(groups);
-          request.ranges = groups;
-          request.op = on('[data-split-combine-pages]') ? 'extract' : 'split';
-        } else if (splitTab === 'size') {
-          const amount = num('[data-split-size]', 500);
-          const multiplier = sel('[data-split-size-unit]') === 'mb' ? 1024 * 1024 : 1024;
-          request.op = 'split-by';
-          request.splitByOptions = {
-            mode: 'size',
-            targetBytes: Math.round(amount * multiplier),
-            optimize: on('[data-split-optimize]'),
-          };
-        } else {
-          const smartMode = sel('[data-split-smart-mode]') as 'bookmarks' | 'blank' | 'text';
-          request.op = 'split-by';
-          request.splitByOptions = smartMode === 'blank'
-            ? {
-                mode: 'blank',
-                blankSensitivity: sel('[data-split-blank-sensitivity]') as 'strict' | 'balanced' | 'loose',
-                blankHandling: sel('[data-split-blank-handling]') as 'drop' | 'previous' | 'next',
-              }
-            : smartMode === 'text'
-              ? {
-                  mode: 'text',
-                  keywords: val('[data-split-keywords]'),
-                  caseSensitive: on('[data-split-case-sensitive]'),
-                }
-              : { mode: 'bookmarks' };
-        }
-      } else if (mode === 'auto-crop') {
-        request.autoCropOptions = {
-          mode: sel('[data-ac-mode]') === 'per-page' ? 'per-page' : 'uniform',
-          padding: num('[data-ac-pad]', 6),
-        };
-      } else if (mode === 'grayscale') {
-        request.grayscaleOptions = { jpegQuality: Number(picked('gs-q') ?? 0.82) };
-      } else if (mode === 'compress') {
-        request.imagePreset = (picked('cx') ?? 'lossless') as import('../lib/pdf/compressimages').ImagePreset;
-      } else if (mode === 'pdf-to-images') {
-        request.imagePages = val('[data-image-pages]');
-      } else if (mode === 'ocr') {
-        request.ocrPages = val('[data-ocr-pages]');
-      } else if (mode === 'rotate') {
-        request.rotatePages = val('[data-rot-pages]');
-      } else if (mode === 'page-numbers') {
-        request.pageNumberOptions = {
-          start: num('[data-start-number]', 1),
-          format: sel('[data-pn-format]') || '{page}',
-          position: (picked('pn-pos') ?? 'bottom-right') as import('../lib/pdf/edit').PageNumberOptions['position'],
-          size: num('[data-pn-size]', 11),
-          pages: val('[data-pn-pages]'),
-          skipFirst: on('[data-pn-skip-first]'),
-        };
-      } else if (mode === 'watermark') {
-        const kind = root.dataset.wmKind === 'image' ? 'image' : 'text';
-        if (kind === 'image' && !watermarkImage) {
-          fail('Choose the image you want stamped across the pages.');
-          runBtn.disabled = false;
-          status.textContent = '';
-          return;
-        }
-        request.watermarkOptions = {
-          kind,
-          text: val('[data-text]'),
-          image: kind === 'image' ? watermarkImage ?? undefined : undefined,
-          opacity: num('[data-wm-opacity]', 22) / 100,
-          rotation: num('[data-wm-rotation]', 35),
-          scale: num('[data-wm-scale]', 60),
-          position: watermarkPosition as import('../lib/pdf/watermark').WatermarkPosition,
-          tile: on('[data-wm-tile]'),
-          pages: val('[data-wm-pages]'),
-          color: val('[data-wm-color]') || '#b81f24',
-          bold: on('[data-wm-bold]'),
-        };
-      } else if (mode === 'crop') {
-        request.cropBox = cropStage ? cropStage.getBox() : boxFromEdges();
-        const pages = val('[data-crop-pages]').trim();
-        if (pages && !/^all$/i.test(pages)) {
-          const { parsePageSet } = await import('../lib/pdf/pageset');
-          const wanted = parsePageSet(pages, 100000).pages;
-          if (wanted.length > 0) request.cropPages = wanted;
-        }
-      } else if (mode === 'flatten') {
-        request.flattenOptions = {
-          fields: on('[data-flat-fields]'),
-          annotations: on('[data-flat-annots]'),
-          layers: on('[data-flat-layers]'),
-          keepLinks: on('[data-flat-links]'),
-        };
-      } else if (mode === 'impose') {
-        const kind = sel('[data-imp-kind]');
-        const sheet = sel('[data-imp-sheet]') as import('../lib/pdf/impose').SheetSize;
-        const margin = num('[data-imp-margin]', 18);
-        const gutter = num('[data-imp-gutter]', 0);
-        const orientation = sel('[data-imp-orientation]') as import('../lib/pdf/impose').SheetOrientation;
-        request.imposeOptions =
-          kind === 'booklet'
-            ? { kind: 'booklet', sheet, margin, gutter, separators: on('[data-imp-sep]') }
-            : kind === 'poster'
-              ? {
-                  kind: 'poster',
-                  sheet,
-                  orientation,
-                  margin,
-                  page: num('[data-imp-poster-page]', 1),
-                  across: num('[data-imp-across]', 2),
-                  down: num('[data-imp-down]', 2),
-                  overlap: num('[data-imp-overlap]', 18),
-                  marks: on('[data-imp-marks]'),
-                }
-              : {
-                  kind: 'n-up',
-                  perSheet: num('[data-imp-per]', 2) as 2 | 4 | 6 | 8 | 9 | 16,
-                  sheet,
-                  orientation,
-                  margin,
-                  gutter,
-                  order: sel('[data-imp-order]') as import('../lib/pdf/impose').NUpOrder,
-                  separators: on('[data-imp-sep]'),
-                };
-      } else if (mode === 'extract-images') {
-        request.extractOptions = {
-          minSize: num('[data-ext-min]', 64),
-          includeMasks: on('[data-ext-masks]'),
-        };
-      } else if (mode === 'overlay') {
-        const pages = val('[data-ov-pages]').trim();
-        let selectedPages: number[] | undefined;
-        if (pages && !/^all$/i.test(pages)) {
-          const { parsePageSet } = await import('../lib/pdf/pageset');
-          selectedPages = parsePageSet(pages, 100000).pages;
-          if (selectedPages.length === 0) {
-            fail('Choose at least one valid base page, for example “1-4, odd”.');
-            runBtn.disabled = false;
-            status.textContent = '';
-            return;
-          }
-        }
-        request.overlayOptions = {
-          mode: sel('[data-ov-mode]') as 'repeat' | 'pairwise',
-          layer: sel('[data-ov-layer]') as 'over' | 'under',
-          fit: sel('[data-ov-fit]') as import('../lib/pdf/overlay').OverlayFit,
-          anchor: sel('[data-ov-anchor]') as import('../lib/pdf/overlay').OverlayAnchor,
-          scale: num('[data-ov-scale]', 1),
-          opacity: num('[data-ov-opacity]', 1),
-          offsetX: num('[data-ov-x]', 0),
-          offsetY: num('[data-ov-y]', 0),
-          stampPage: num('[data-ov-stamp-page]', 1),
-          pages: selectedPages,
-        };
-      } else if (mode === 'text-to-pdf') {
-        request.textDocOptions = {
-          paper: sel('[data-td-paper]') as 'a4' | 'letter',
-          fontSize: num('[data-td-size]', 10.5),
-        };
-      } else if (mode === 'metadata') {
-        // The inputs are pre-filled with what the file already says, so
-        // sending all four is right: untouched ones are a no-op, an edited one
-        // applies, and one someone emptied is a deliberate clear.
-        request.metadataChanges = on('[data-meta-strip]')
-          ? { strip: true }
-          : {
-              fields: {
-                title: val('[data-meta-title]'),
-                author: val('[data-meta-author]'),
-                subject: val('[data-meta-subject]'),
-                keywords: val('[data-meta-keywords]'),
-              },
-            };
-      } else if (mode === 'header-footer') {
-        const bates = val('[data-hf-bates]').trim();
-        request.headerFooterOptions = {
-          header: {
-            left: val('[data-hf-hl]'),
-            center: val('[data-hf-hc]'),
-            right: val('[data-hf-hr]'),
-          },
-          footer: {
-            left: val('[data-hf-fl]'),
-            center: val('[data-hf-fc]'),
-            right: val('[data-hf-fr]'),
-          },
-          ...(bates
-            ? {
-                bates: {
-                  prefix: bates,
-                  suffix: val('[data-hf-bates-suffix]'),
-                  start: num('[data-hf-bates-start]', 1),
-                  padding: num('[data-hf-bates-padding]', 6),
-                  place: sel('[data-hf-bates-place]') as 'header' | 'footer',
-                  slot: sel('[data-hf-bates-slot]') as 'left' | 'center' | 'right',
-                },
-              }
-            : {}),
-          startNumber: num('[data-hf-start]', 1),
-          skipPages: num('[data-hf-skip]', 0),
-          mirror: on('[data-hf-mirror]'),
-          margin: num('[data-hf-margin]', 36),
-          fontSize: num('[data-hf-size]', 9),
-          bold: on('[data-hf-bold]'),
-          colour: val('[data-hf-colour]') || '#333333',
-          shrink: on('[data-hf-shrink]'),
-          dateFormat: sel('[data-hf-date]') as 'locale' | 'iso',
-        };
-      } else if (mode === 'split-by') {
-        const how = sel('[data-sb-mode]') as 'every' | 'parts' | 'size' | 'bookmarks';
-        request.splitByOptions = {
-          mode: how,
-          every: num('[data-sb-n]', 10),
-          parts: num('[data-sb-n]', 2),
-          targetBytes: Math.round(num('[data-sb-mb]', 5) * 1024 * 1024),
-        };
-      }
-
       // A grid tool always exports what the grid holds. The typed box feeds
       // the same plan, so there is one path here rather than two that drift.
-      if (grid && !grid.hidden && useGridPlan) {
+      if (grid && !grid.hidden) {
         const plan = grid.getPlan();
-        const cuts = gridCutsOverride ?? grid.getCuts();
         if (plan.length === 0) {
           runBtn.disabled = false;
           status.textContent = '';
@@ -3255,27 +1521,14 @@ const dropTitle = takesExcel
           );
           return;
         }
-        if (mode === 'delete' && plan.length === grid.totalPages) {
-          runBtn.disabled = false;
-          status.textContent = '';
-          fail('Choose at least one page to delete. Your original remains untouched.');
-          return;
-        }
-        if (mode === 'split' && cuts.length === 0 && !allowNoGridCuts) {
-          runBtn.disabled = false;
-          status.textContent = '';
-          fail('Add at least one cut between pages so the result contains two or more files.');
-          return;
-        }
 
         request.op = 'compose';
         request.plan = plan;
-        request.cuts = cuts;
+        request.cuts = grid.getCuts();
         request.label = (files[0]?.name ?? 'pages').replace(/\.pdf$/i, '');
       }
 
       // Transfer, don't copy — a 50 MB file should not exist twice in memory.
-      beginRun(request.id, mode === 'ocr' ? 'Starting the recognition engine…' : 'Working on this device…');
       ensureWorker().postMessage(request, payload.map((f) => f.bytes));
     });
   }
@@ -3288,7 +1541,6 @@ const dropTitle = takesExcel
     gap: clamp(1.5rem, 1rem + 2vw, 2.5rem);
     max-width: 46rem;
   }
-  .tool[data-live-workspace] { max-width: 78rem; }
 
   .back {
     font-size: var(--step--1);
@@ -3336,58 +1588,6 @@ const dropTitle = takesExcel
   .files {
     margin: 0; padding-left: 1.2rem; display: grid; gap: 0.3rem;
     font-size: var(--step--1); color: var(--ink-2);
-  }
-
-  /* With one file the list is a caption and a bare line is right. With several
-     it is the running order, so it becomes a set of rows you can act on.
-     The rows are built by script and so carry no scope attribute, which is why
-     every selector reaching them is :global — the page grid hit this too. */
-  .files[data-rich='true'] {
-    padding-left: 0;
-    list-style: none;
-    gap: 0.35rem;
-  }
-
-  .files[data-rich='true'] :global(.file) {
-    display: grid;
-    grid-template-columns: auto 1fr auto auto;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.5rem 0.6rem;
-    border: 1px solid var(--line);
-    border-radius: calc(var(--radius) * 0.55);
-    background: var(--paper-raised, transparent);
-  }
-
-  .files[data-rich='true'] :global(.file:hover) { border-color: var(--line-strong); }
-
-  .files :global(.file__chip) {
-    width: 0.55rem; height: 1.5rem; border-radius: 999px;
-  }
-
-  .files :global(.file__name) {
-    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    color: var(--ink);
-  }
-
-  .files :global(.file__meta) { color: var(--muted); font-size: var(--step--2); font-variant-numeric: tabular-nums; }
-
-  .files :global(.file__controls) { display: inline-flex; gap: 0.2rem; }
-
-  .files :global(.file__btn) {
-    font: inherit; font-size: var(--step--2); line-height: 1;
-    width: 1.7rem; height: 1.7rem; display: grid; place-items: center;
-    border: 1px solid var(--line); border-radius: calc(var(--radius) * 0.4);
-    background: transparent; color: var(--ink); cursor: pointer;
-  }
-
-  .files :global(.file__btn:hover:not(:disabled)) { border-color: var(--accent); color: var(--accent); }
-  .files :global(.file__btn:disabled) { opacity: 0.35; cursor: default; }
-  .files :global(.file__btn--drop:hover) { border-color: var(--seal); color: var(--seal); }
-
-  @media (max-width: 30rem) {
-    .files[data-rich='true'] :global(.file) { grid-template-columns: auto 1fr auto; }
-    .files[data-rich='true'] :global(.file__meta) { display: none; }
   }
 
   .preview__head {
@@ -3454,29 +1654,6 @@ const dropTitle = takesExcel
   }
   .file-bar__label { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .organise-add {
-    display: grid;
-    gap: 0.85rem;
-    padding: 1rem;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: color-mix(in srgb, var(--paper) 94%, var(--accent));
-  }
-  .organise-add > div:first-child { display: grid; gap: 0.2rem; }
-  .organise-add small { color: var(--muted); }
-  .organise-add__actions { display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: end; }
-  .organise-add__size { display: grid; gap: 0.25rem; min-width: 8rem; }
-  .organise-add__size span { font-size: 0.72rem; color: var(--muted); }
-  .organise-add__size select {
-    min-height: 2.65rem;
-    padding: 0.55rem 2rem 0.55rem 0.7rem;
-    border: 1px solid var(--line);
-    border-radius: calc(var(--radius) * 0.65);
-    background: var(--paper);
-    color: var(--ink);
-    font: inherit;
-  }
-
   .field { display: grid; gap: 0.4rem; font-size: var(--step--1); }
   .field input[type='text'], .field input:not([type]) {
     padding: 0.6rem 0.75rem; border: 1px solid var(--line-strong);
@@ -3505,6 +1682,69 @@ const dropTitle = takesExcel
   .workspace__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
   .status { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); }
   .status:empty { display: none; }
+
+  .sign {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .sign__tabs {
+    display: inline-flex;
+    gap: 0.25rem;
+    padding: 0.2rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    justify-self: start;
+  }
+
+  .sign__tabs button {
+    padding: 0.35rem 0.9rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: var(--step--1);
+    cursor: pointer;
+  }
+
+  .sign__tabs button.is-on {
+    background: var(--accent);
+    color: var(--paper-raised);
+  }
+
+  .sign canvas {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 1;
+    border: 1.5px dashed var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--paper-raised);
+    touch-action: none;
+    cursor: crosshair;
+  }
+
+  .sign__row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  .sign__hint {
+    font-size: var(--step--2);
+    color: var(--muted);
+  }
+
+  .sign input[data-sign-text] {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    font: italic 1.5rem ui-serif, Georgia, serif;
+  }
 
   .field--url input {
     padding: 0.7rem 0.85rem;
@@ -3579,23 +1819,12 @@ const dropTitle = takesExcel
   }
 
   .result {
-    background: color-mix(in srgb, var(--ok) 4%, var(--paper-sunk));
-    border: 1px solid color-mix(in srgb, var(--ok) 24%, var(--line));
+    background: var(--paper-sunk); border: 1px solid var(--line);
     border-radius: var(--radius); padding: clamp(1.25rem, 1rem + 1vw, 1.75rem);
     display: grid; gap: 1rem;
   }
 
-  .result:not([hidden]) { animation: result-arrive 340ms cubic-bezier(.2,.75,.2,1) both; }
-  .result__headline { display: flex; align-items: center; gap: 0.85rem; }
-  .result__success {
-    display: grid; flex: 0 0 auto; width: 2.65rem; height: 2.65rem; place-items: center;
-    border-radius: 14px; background: color-mix(in srgb, var(--ok) 14%, var(--paper-raised));
-    color: var(--ok); box-shadow: 0 8px 20px -16px color-mix(in srgb, var(--ok) 72%, transparent);
-  }
-  .result__success svg { width: 1.35rem; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
-  .result__summary { display: grid; gap: 0.18rem; min-width: 0; }
-  .result__summary > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.35rem 0.8rem; }
-  .result__eyebrow { color: var(--muted); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .result__headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem; }
   .result__pct {
     font-size: var(--step-3); font-weight: 600;
     letter-spacing: -0.03em; color: var(--ok);
@@ -3636,11 +1865,6 @@ const dropTitle = takesExcel
     padding-top: 0.75rem; border-top: 1px solid var(--line);
   }
 
-  @keyframes result-arrive {
-    from { opacity: 0; transform: translateY(0.5rem); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
   .error {
     margin: 0; padding: 0.9rem 1.1rem; border-radius: var(--radius);
     border: 1px solid var(--seal); color: var(--seal); font-size: var(--step--1);
@@ -3652,499 +1876,102 @@ const dropTitle = takesExcel
   }
   .privacy strong { color: var(--ink); }
 
-  /* ── The three-step flow ──────────────────────────────────────────────
-     Choose → Adjust → Save. It is a status display, not navigation: the steps
-     are not links because you cannot skip to Save without a file. */
-  .flow {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    font-size: var(--step--2);
-    color: var(--muted);
-  }
-
-  .flow li {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.7rem 0.3rem 0.35rem;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    white-space: nowrap;
-  }
-
-  .flow__n {
-    display: grid;
-    place-items: center;
-    width: 1.2rem;
-    height: 1.2rem;
-    border-radius: 50%;
-    background: var(--line);
-    color: var(--ink-2);
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    line-height: 1;
-  }
-
-  /* A caret between steps, drawn rather than typed so it never wraps oddly. */
-  .flow li:not(:last-child)::after {
-    content: '';
-    width: 0.35rem;
-    height: 0.35rem;
-    margin-left: 0.15rem;
-    border-top: 1.5px solid var(--line-strong);
-    border-right: 1.5px solid var(--line-strong);
-    transform: rotate(45deg);
-  }
-
-  .tool[data-stage='choose'] .flow [data-step='choose'],
-  .tool[data-stage='adjust'] .flow [data-step='adjust'],
-  .tool[data-stage='save'] .flow [data-step='save'] {
-    border-color: var(--accent);
-    color: var(--ink);
-    font-weight: 600;
-  }
-
-  .tool[data-stage='choose'] .flow [data-step='choose'] .flow__n,
-  .tool[data-stage='adjust'] .flow [data-step='adjust'] .flow__n,
-  .tool[data-stage='save'] .flow [data-step='save'] .flow__n {
-    background: var(--accent);
-    color: #fff;
-  }
-
-  /* Steps already behind you read as done, not as pending. */
-  .tool[data-stage='adjust'] .flow [data-step='choose'] .flow__n,
-  .tool[data-stage='save'] .flow [data-step='choose'] .flow__n,
-  .tool[data-stage='save'] .flow [data-step='adjust'] .flow__n {
-    background: var(--ok);
-    color: #fff;
-  }
-
-  .workspace__summary {
-    margin: 0;
-    flex-basis: 100%;
-    font-size: var(--step--2);
-    color: var(--muted);
-  }
-  .workspace__summary:empty { display: none; }
-
-  .preview__all {
-    display: none;
-    padding: 0.3rem 0.7rem;
-    border: 1px solid var(--line-strong);
-    border-radius: 999px;
-    background: var(--paper-raised);
-    color: var(--ink-2);
-    font: inherit;
-    font-size: var(--step--2);
-    cursor: pointer;
-  }
-  .preview__all:hover { border-color: var(--accent); color: var(--accent); }
-
-  /* ── Phone ────────────────────────────────────────────────────────────
-     The desktop layout is a document you read top to bottom. A phone screen is
-     roughly one control tall, so the same markup buried the controls: a Watermark
-     job put its text box ~1500px down and Sign put Save at ~2800px. Three changes
-     fix that class of problem for every tool at once, rather than page by page. */
-  @media (max-width: 48em) {
-    .tool { gap: 1.25rem; padding-top: 1.5rem; }
-
-    .tool__head h1 {
-      overflow-wrap: anywhere;
-      text-wrap: balance;
+  @media (max-width: 40rem) {
+    .tool {
+      padding-block: 1rem 1.75rem;
+      gap: 1rem;
     }
 
-    .files :global(.file__btn) { width: 2.75rem; height: 2.75rem; }
-    .preview__sizes button { min-width: 2.75rem; min-height: 2.75rem; }
-    /* 1. The header has done its job the moment a file exists. */
-    .tool[data-stage='adjust'] .tool__head .lede,
-    .tool[data-stage='save'] .tool__head .lede,
-    .tool[data-stage='adjust'] .tool__head .eyebrow,
-    .tool[data-stage='save'] .tool__head .eyebrow {
-      display: none;
+    .tool__head h1 { font-size: var(--step-3); }
+    .tool :global(.drop) { --lens-radius: 16px; }
+
+    .drop__zone {
+      padding: 1.15rem 1rem;
+      gap: 0.45rem;
     }
 
-    .tool[data-stage='adjust'] .tool__head h1,
-    .tool[data-stage='save'] .tool__head h1 {
-      font-size: var(--step-1);
-      margin-block: 0 0;
+    .drop__title {
+      font-size: var(--step-0);
     }
 
-    /* 2. Save is always one thumb away. Sticky rather than a second fixed bar,
-          so there is exactly one Run button in the DOM and nothing to keep in
-          sync — it pins while the workspace is on screen and releases after. */
-    .workspace__actions[data-actions] {
-      position: sticky;
-      bottom: 0;
-      z-index: 15;
-      margin-inline: calc(var(--gutter) * -1);
-      padding: 0.7rem var(--gutter) calc(0.7rem + env(safe-area-inset-bottom));
-      border-top: 1px solid var(--line);
-      background: color-mix(in oklab, var(--paper) 92%, transparent);
-      backdrop-filter: blur(8px);
+    .drop__meta { padding-inline: 0.4rem; }
+
+    .preview__head {
+      gap: 0.45rem;
       align-items: center;
     }
 
-    .workspace__actions[data-actions] .btn { flex: 1 1 auto; justify-content: center; }
-    .workspace__actions[data-actions] .btn--quiet { flex: 0 0 auto; }
-
-    /* 3. Pages scroll sideways in one thumbnail of height instead of eight. */
-    .preview__all { display: inline-block; }
-
-    .preview__pages[data-view='strip'] {
-      display: flex;
-      gap: 0.6rem;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      padding-bottom: 0.4rem;
-      -webkit-overflow-scrolling: touch;
+    .preview__sizes {
+      width: 100%;
+      justify-content: stretch;
+      overflow: hidden;
     }
 
-    .preview__pages[data-view='strip'] :global(figure) {
-      flex: 0 0 7.5rem;
-      scroll-snap-align: start;
+    .preview__sizes button {
+      min-height: 2.5rem;
+      flex: 1 1 0;
+      padding: 0.4rem 0.4rem;
+      font-size: var(--step--1);
     }
 
-    .preview__pages[data-view='grid'] {
-      grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+    .workspace__actions .btn,
+    .file-bar .btn,
+    .result__actions .btn {
+      width: 100%;
+      justify-content: center;
+      min-height: 2.75rem;
     }
 
-    .flow { width: 100%; font-size: var(--step--2); }
-    .flow li { flex: 1 1 0; min-width: 0; min-height: 2.75rem; justify-content: center; padding: 0.3rem 0.45rem; }
-    .flow li:not(:last-child)::after { display: none; }
+    .file-bar,
+    .workspace,
+    .result,
+    .fields,
+    .status,
+    .privacy {
+      min-width: 0;
+    }
+
+    .field input[type='text'],
+    .field input:not([type]),
+    .field select,
+    .field input[type='number'],
+    .field input[type='url'],
+    .sign input[data-sign-text],
+    .field--url input {
+      min-height: 2.75rem;
+      padding: 0.65rem 0.8rem;
+      font-size: var(--step-0);
+    }
+
+    .sign__row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .field--turns {
+      gap: 0.55rem 0.75rem;
+    }
+
+    .workspace__actions,
+    .check,
+    .sign__row,
+    .result__actions {
+      gap: 0.65rem;
+    }
+
+    .sign__tabs {
+      width: 100%;
+    }
+
+    .sign__tabs button {
+      flex: 1;
+      justify-content: center;
+      min-height: 2.25rem;
+    }
+
+    .result__notes {
+      gap: 0.45rem;
+      padding-left: 0.9rem;
+    }
   }
-
-  @media (prefers-reduced-motion: reduce) {
-    .preview__pages[data-view='strip'] { scroll-snap-type: none; }
-  }
-
-  /* ── Continue with ────────────────────────────────────────────────────
-     The result of one tool is usually the input to the next. */
-  .chain {
-    display: grid;
-    gap: 0.6rem;
-    margin-top: 1.25rem;
-    padding-top: 1.25rem;
-    border-top: 1px solid var(--line);
-  }
-
-  .chain__title { margin: 0; font-size: var(--step--1); font-weight: 600; }
-
-  .chain__row { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-
-  .chain__item {
-    flex: 1 1 12rem;
-    display: grid;
-    gap: 0.1rem;
-    padding: 0.6rem 0.8rem;
-    border: 1px solid var(--line-strong);
-    border-radius: calc(var(--radius) * 0.6);
-    background: var(--paper-raised);
-    color: var(--ink);
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-  }
-
-  .chain__item:hover:not(:disabled) { border-color: var(--accent); }
-  .chain__item:disabled { opacity: 0.5; cursor: progress; }
-  .chain__item strong { font-size: var(--step--1); font-weight: 600; }
-  .chain__item span {
-    font-size: var(--step--2);
-    color: var(--muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .chain__note { margin: 0; font-size: var(--step--2); color: var(--muted); }
-
-  .recipe-progress {
-    margin: 1rem 0 1.5rem;
-    padding: 1rem;
-    border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--line));
-    border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--accent) 7%, var(--paper-raised));
-  }
-
-  .recipe-progress__eyebrow {
-    margin: 0 0 0.2rem;
-    color: var(--accent);
-    font-size: var(--step--2);
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
-
-  .recipe-progress strong { font-family: var(--font-display); }
-  .recipe-progress ol {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    margin: 0.85rem 0 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .recipe-progress li {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    color: var(--muted);
-    font-size: var(--step--2);
-  }
-
-  .recipe-progress li:not(:last-child)::after { content: '→'; margin-left: 0.15rem; color: var(--line-strong); }
-  .recipe-progress li span {
-    display: grid;
-    width: 1.45rem;
-    height: 1.45rem;
-    place-items: center;
-    border: 1px solid var(--line-strong);
-    border-radius: 999px;
-    font-family: var(--font-mono);
-  }
-
-  .recipe-progress li[data-state='current'] { color: var(--ink); font-weight: 700; }
-  .recipe-progress li[data-state='current'] span { border-color: var(--accent); background: var(--accent); color: white; }
-  .recipe-progress li[data-state='done'] span { border-color: var(--accent); color: var(--accent); }
-
-  @media (max-width: 42rem) {
-    .recipe-progress ol { display: grid; }
-    .recipe-progress li::after { display: none; }
-  }
-
-  /* The first-run barrier is "go and find a file". This removes it. */
-  .try {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.4rem;
-    margin: -0.5rem 0 0;
-    font-size: var(--step--1);
-    color: var(--muted);
-  }
-
-  .try button {
-    padding: 0;
-    border: 0;
-    background: none;
-    color: var(--accent);
-    font: inherit;
-    text-decoration: underline;
-    text-underline-offset: 3px;
-    cursor: pointer;
-  }
-
-  .try button:hover:not(:disabled) { color: var(--accent-bright); }
-  .try button:disabled { color: var(--muted); cursor: progress; text-decoration: none; }
-  .try small { flex-basis: 100%; font-size: var(--step--2); }
-
-  /* ── Watermark ────────────────────────────────────────────────────────── */
-  .wm { display: grid; gap: 1rem; }
-
-  .wm__tabs {
-    display: inline-flex; gap: 0.25rem; padding: 0.2rem;
-    border: 1px solid var(--line); border-radius: 999px; justify-self: start;
-  }
-  .wm__tabs button {
-    padding: 0.35rem 1rem; border: 0; border-radius: 999px;
-    background: transparent; color: var(--muted); font: inherit;
-    font-size: var(--step--1); cursor: pointer;
-  }
-  .wm__tabs button.is-on { background: var(--accent); color: #fff; }
-
-  .wm__inline { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-top: 0.6rem; }
-
-  .wm__swatch { display: inline-flex; align-items: center; gap: 0.5rem; font-size: var(--step--1); }
-  .wm__swatch input[type='color'] {
-    width: 2.4rem; height: 1.8rem; padding: 0; border: 1px solid var(--line-strong);
-    border-radius: 6px; background: none; cursor: pointer;
-  }
-
-  .wm__check { display: inline-flex; align-items: center; gap: 0.45rem; font-size: var(--step--1); }
-
-  .wm__place { display: grid; gap: 0.7rem; }
-
-  /* Nine cells shaped like the page they describe, so the control looks like
-     the thing it controls. */
-  .wm__grid {
-    display: grid; grid-template-columns: repeat(3, 1fr);
-    gap: 3px; width: 8.4rem; aspect-ratio: 1 / 1.414;
-    padding: 3px; border: 1px solid var(--line-strong);
-    border-radius: 6px; background: var(--paper-sunk);
-  }
-  .wm__grid[data-off] { opacity: 0.4; }
-
-  .wm__grid button {
-    display: grid; place-items: center; border: 0; border-radius: 3px;
-    background: var(--paper-raised); color: var(--muted);
-    font: inherit; font-size: var(--step--2); line-height: 1; cursor: pointer;
-  }
-  .wm__grid button:hover:not(:disabled) { color: var(--accent); }
-  .wm__grid button.is-on { background: var(--accent); color: #fff; }
-  .wm__grid button:disabled { cursor: not-allowed; }
-
-  .wm__sliders { display: grid; gap: 0.9rem; }
-  .wm__sliders .field span { display: flex; justify-content: space-between; gap: 1rem; }
-  .wm__sliders b { font-weight: 500; font-family: var(--font-mono); color: var(--muted); font-size: var(--step--2); }
-  .wm__sliders input[type='range'] { width: 100%; accent-color: var(--accent); }
-
-  .wm code {
-    padding: 0.05rem 0.3rem; border-radius: 4px;
-    background: var(--paper-sunk); font-family: var(--font-mono); font-size: 0.9em;
-  }
-
-  @media (min-width: 40em) {
-    .wm__place { grid-template-columns: auto 1fr; align-items: start; column-gap: 1.25rem; }
-    .wm__place legend { grid-column: 1 / -1; }
-  }
-
-  /* ── While a job runs ─────────────────────────────────────────────────
-     A bar that moves on a guess is a lie, so operations that cannot say how
-     far along they are get an elapsed count instead — and either way, a way
-     out. Each op runs to completion inside the worker, so Stop terminates it. */
-  .running {
-    display: grid; gap: 0.65rem; padding: 0.85rem 0.95rem;
-    border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
-    border-radius: 14px; background: color-mix(in srgb, var(--accent) 4%, var(--paper-sunk));
-  }
-
-  .running__head {
-    display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
-    gap: 0.75rem;
-  }
-
-  .running__signal {
-    position: relative; display: grid; width: 2rem; height: 2rem; place-items: center;
-    border-radius: 50%; background: color-mix(in srgb, var(--accent) 11%, var(--paper-raised));
-  }
-  .running__signal::before, .running__signal i { content: ''; position: absolute; border-radius: 50%; }
-  .running__signal::before { inset: 0.32rem; border: 2px solid color-mix(in srgb, var(--accent) 24%, transparent); border-top-color: var(--accent); animation: local-spin 850ms linear infinite; }
-  .running__signal i { width: 0.3rem; height: 0.3rem; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 9%, transparent); }
-  .running__copy { display: grid; gap: 0.08rem; min-width: 0; }
-  .running__copy > span { color: var(--ink); font-size: var(--step--1); font-weight: 700; }
-  .running__head .status { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .running__stop { flex: none; }
-
-  .running__track {
-    height: 4px; border-radius: 999px; overflow: hidden;
-    background: var(--line);
-  }
-
-  .running__fill {
-    display: block; height: 100%; width: 0;
-    background: var(--accent);
-    transition: width 240ms ease-out;
-  }
-
-  @keyframes local-spin { to { transform: rotate(360deg); } }
-
-  @media (prefers-reduced-motion: reduce) {
-    .running__fill { transition: none; }
-    .running__signal::before { animation: none; }
-    .result:not([hidden]) { animation: none; }
-  }
-
-  .pair { display: grid; gap: 1rem; }
-  @media (min-width: 30em) { .pair { grid-template-columns: 1fr 1fr; } }
-
-  .preset { display: grid; gap: 0.4rem; justify-items: start; }
-  .preset small { color: var(--muted); font-size: var(--step--2); }
-
-  .reveal { display: flex; gap: 0.4rem; }
-  .reveal input { flex: 1; min-width: 0; }
-  .reveal button {
-    flex: none; padding: 0.4rem 0.75rem; border: 1px solid var(--line-strong);
-    border-radius: 8px; background: var(--paper-raised); color: var(--ink-2);
-    font: inherit; font-size: var(--step--2); cursor: pointer;
-  }
-  .reveal button:hover { border-color: var(--accent); color: var(--accent); }
-
-  [data-tone='ok'] { color: var(--ok); }
-  [data-tone='warn'] { color: var(--disclose); }
-
-  /* A tool that cannot work yet says so, instead of presenting a form that
-     quietly does nothing when you press the button. */
-  .unavailable {
-    display: grid;
-    gap: 0.3rem;
-    padding: 0.9rem 1.1rem;
-    border: 1px solid color-mix(in oklab, var(--disclose) 45%, var(--line));
-    border-left-width: 4px;
-    border-radius: var(--radius);
-    background: color-mix(in oklab, var(--disclose) 7%, transparent);
-    font-size: var(--step--1);
-  }
-  .unavailable span { color: var(--ink-2); }
-
-  .tool[data-unavailable] .flow,
-  .tool[data-unavailable] :global(.drop),
-  .tool[data-unavailable] .workspace__actions,
-  .tool[data-unavailable] .field--url,
-  .tool[data-unavailable] .try {
-    opacity: 0.45;
-    pointer-events: none;
-  }
-
-  /* ── What changed ─────────────────────────────────────────────────────
-     Added and removed words in place, with the unchanged text between them
-     trimmed to context. Printing a page in full is the document again. */
-  .diff { display: grid; gap: 1rem; margin-top: 1rem; }
-
-  .diff__none { margin: 0; color: var(--ok); font-size: var(--step--1); }
-
-  .diff__page {
-    padding: 0.85rem 1rem;
-    border: 1px solid var(--line);
-    border-radius: calc(var(--radius) * 0.6);
-    background: var(--paper-raised);
-  }
-
-  .diff__page h3 {
-    display: flex; align-items: baseline; justify-content: space-between; gap: 1rem;
-    margin: 0 0 0.5rem;
-    font-size: var(--step--1);
-  }
-
-  .diff__count {
-    font-family: var(--font-mono);
-    font-size: var(--step--2);
-    color: var(--muted);
-  }
-
-  .diff__text {
-    margin: 0;
-    font-size: var(--step--1);
-    line-height: 1.6;
-    max-height: 18rem;
-    overflow-y: auto;
-  }
-
-  .diff__same { color: var(--muted); }
-
-  .diff__text ins {
-    background: color-mix(in oklab, var(--ok) 16%, transparent);
-    color: var(--ink);
-    text-decoration: none;
-    border-radius: 3px;
-    padding: 0.05em 0.2em;
-  }
-
-  .diff__text del {
-    background: color-mix(in oklab, var(--seal) 14%, transparent);
-    color: var(--ink-2);
-    border-radius: 3px;
-    padding: 0.05em 0.2em;
-  }
-
-  .bundle { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; margin-top: 0.75rem; }
-  .bundle small { color: var(--muted); font-size: var(--step--2); font-variant-numeric: tabular-nums; }
-
-  .quad { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
-  @media (min-width: 34em) { .quad { grid-template-columns: repeat(4, 1fr); } }
-  .quad input { min-width: 0; }
 </style>

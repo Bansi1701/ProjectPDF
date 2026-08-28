@@ -1,57 +1,133 @@
-# PDFCraft Design Language v1.4
+# ProjectPDF Design Language
 
-## Product direction
-PDFCraft is a private document studio: calm, precise, and visibly browser-side. It must not resemble a dense, generic file-conversion dashboard. Use white or deep-slate space, strong typography, restrained rose actions, document previews, and honest processing disclosures.
+This is the shared visual and interaction contract for ProjectPDF. Use it for every new page, component, tool, and marketing surface. If a feature needs to break a rule, document the reason in its pull request and update this file if the exception becomes a pattern.
 
-## Tokens
-- Canvas: #F8FAFC light / #0B0F17 dark
-- Surface: #FFFFFF light / #151D2A dark
-- Primary action: #E11D48 light / #FB7185 dark
-- Text: #0F172A light / #F1F5F9 dark
-- Muted: #64748B light / #94A3B8 dark
-- Border: #E2E8F0 light / #1E293B dark
-- Headings: Plus Jakarta Sans, 600-700. Interface: Inter, 400-600.
-- Spacing: 4, 8, 12, 16, 24, 32px. Cards: 16px. Buttons/badges: 12px. Tags: full pill.
+## 1. Product character
 
-## Signature: Fold & Flow
-A document is a living object moving through a precise, private workspace.
-- The folded-page mark is the only branded illustration style.
-- A thin curved fold line or cropped paper edge is a rare framing motif.
-- Page thumbnails sit on a neutral document stage with an inset border.
-- Rose marks action and active state only; never use a red navigation bar, red card wall, or large red upload hero.
-- Dark mode uses a deep working surface with bright paper previews.
+**Paper & Light** is our direction: a calm document workspace built from warm paper, legible ink, and carefully limited glass effects. It should feel precise and private, not like a generic file-conversion dashboard.
 
-## Do-not-copy boundaries
-Do not reproduce a competitor's tool-tile proportions, upload hero, copy, navigation grouping, icon treatment, or workflow. Build around PDFCraft's own sequence: document stage -> focused settings -> visible result -> save receipt.
+The product promise is visible in the interface:
 
-## Tool identity system
-Every live app has its own semantic Fold & Flow mark, rendered by `frontend/src/components/ToolIcon.astro`.
-- Foundation: one softly rounded square with the ProjectPDF diagonal fold in the upper-right corner, a short lower signal, and a bold white operation mark. Shape links the family to the brand; category colour distinguishes the job. Do not place a second page frame inside it.
-- Meaning: the foreground line drawing must communicate the actual operation. Do not use a generic letter when a merge, crop, lock, signature, table, or page relationship can be drawn.
-- Colour is categorical, not decorative: calm coral Organize, sage Optimize, mellow gold Convert to PDF, quiet blue Convert from PDF, plum Edit & Compose, soft violet Review & Data, teal Secure & Archive. Keep saturation moderate so a grid of icons remains comfortable to scan.
-- Icons are inline SVG so they stay sharp, inherit theme colours, and require no network request. They are decorative beside a visible tool name and therefore remain hidden from assistive technology.
-- Use 58-64px marks on tool cards and 28-32px marks in menus. At both sizes the white action mark must remain identifiable without reading the label.
-- New tools must add a unique semantic drawing to `ToolIcon.astro` and must be assigned to exactly one group in `frontend/src/config/navigation.ts` before they appear in discovery surfaces.
+- Files stay in the browser unless a tool explicitly says it needs a server.
+- A user should always know what will happen before they select a file.
+- Results should explain what changed and offer a clear next action.
+- Calm, useful feedback beats decorative motion.
 
-## Discovery controls
-- The masthead search is icon-sized at rest and expands on hover, focus, or the `/` shortcut. A click on the graphic must focus the field immediately.
-- Search results appear beside the field and must include the app icon, tool name, and category. Enter opens the first result; Escape clears and collapses the control.
-- Hero shortcuts represent the seven stable category headings, not a changing popularity list. Each button uses its category colour and jumps to the matching section.
+Do not imitate the dense red-card style common in PDF tools. One meaningful accent, generous whitespace, and document previews make the product recognisable.
 
-## Page and tool rules
-1. Header: mark and wordmark left; categories centred; persistent theme control and sign-in right.
-2. Home: search-first hero and responsive bento grid.
-3. Tool cards: category marker, simple icon, title, outcome-oriented description, restrained 4px hover lift.
-4. Tool workflow: explain -> choose files -> page thumbnails -> focused settings -> result preview -> save.
-5. Drag-and-drop must include a keyboard-accessible Select files action.
-6. Local tools finish with page count, duration, and 0 bytes sent. Server tools disclose transfer before file selection.
+## 2. Source of truth
 
-## Accessibility and quality
-- Use semantic CSS variables; no one-off colours or spacing in components.
-- Maintain AA contrast, visible focus, labels, semantic headings, and live status/error messages.
-- Persist explicit theme choice in localStorage; otherwise respect system preference.
-- Use 160-220ms ease-out motion and honour prefers-reduced-motion.
-- Test 320px mobile, keyboard flow, both themes, empty/loading/error/success states, and result preview before release.
+The live tokens and shared primitives are in [`frontend/src/styles/global.css`](../frontend/src/styles/global.css). Components must use its semantic CSS variables instead of hard-coded colours, shadows, spacing, or radii.
 
-## Governance
-Update this guide and shared tokens whenever a reusable visual or interaction decision changes. A repeated exception becomes a system rule. Review competitor pages only to identify patterns to avoid, never as a layout source.
+When a token is missing, add a semantic token to `global.css` first. Do not add a one-off hex value to a component.
+
+## 3. Core tokens
+
+| Purpose | Token | Use |
+|---|---|---|
+| Canvas | `--paper` | Main page background |
+| Raised surface | `--paper-raised` | Cards, forms, tool workspaces |
+| Recessed surface | `--paper-sunk` | Result areas and grouped controls |
+| Primary text | `--ink` | Headings and key labels |
+| Secondary text | `--ink-2` | Supporting body copy |
+| Quiet text | `--muted` | Metadata and captions only |
+| Primary action | `--accent` | Main actions and focus ring |
+| Status | `--ok` | Successful local processing only |
+| Warning/error | `--seal` | Errors and irreversible actions |
+| Server disclosure | `--disclose` | Any feature that sends data away |
+| Borders | `--line`, `--line-strong` | Surface separation and active fields |
+| Surface elevation | `--shadow-paper` | Paper cards only |
+| Card corner | `--radius` | Default cards and fields |
+
+Use `--accent` for one primary action per local area. Green is a status colour, never a second call-to-action. `--disclose` is reserved for transparent server warnings.
+
+## 4. Typography and content
+
+- Use `--font-sans` for all interface text and `--font-mono` for measurements, job receipts, and technical facts.
+- Use the fluid `--step-*` scale. Do not introduce arbitrary font sizes unless a component needs an icon-sized label.
+- Headings are short, direct, and sentence case: “Split PDF”, not “THE BEST PDF SPLITTER”.
+- Body copy explains the outcome first, then the mechanism: “Creates separate PDFs from your selected ranges. Processing stays in this tab.”
+- Avoid hype, unexplained claims, and faux security badges.
+
+## 5. Layout and spacing
+
+- Use `.wrap` for page-level content. Never invent a competing max-width.
+- Use the existing gutter and a simple 8px rhythm: 8, 16, 24, 32, 48, 64px.
+- Tool pages have three clear states: introduction, workspace, result. Keep them vertically ordered.
+- Desktop grids may expand; touch targets and fields must remain comfortable at mobile widths.
+- Mobile is not a reduced version of desktop: place the primary action before secondary controls, and keep file details readable without horizontal scrolling.
+
+## 6. Shared components
+
+### Header and navigation
+
+- Keep navigation quiet and let the current tool or primary task lead.
+- The logo mark is used at 28–32px in the header, 48–64px for app/browser contexts, and 512px for source export. Keep clear space equal to one-quarter of the mark width.
+- Pair the mark with the wordmark **ProjectPDF** until a formal product rename is approved.
+- Theme controls must respect the system preference by default and persist an explicit user choice.
+
+### Cards
+
+- Use `.sheet` for ordinary cards: paper texture, 1px border, and `--shadow-paper`.
+- A card has one clear job: navigation, an explanation, or a result. Do not make every card interactive.
+- Hover elevation is subtle: a 1–2px lift and a softer shadow. Never use bouncy or continuous card movement.
+- Labels such as “in your browser” are trust information, not decorative badges.
+
+### Buttons and fields
+
+- Use `.btn--primary` for the one action that moves the user forward and `.btn--quiet` for secondary actions.
+- Buttons must have text labels. Icons can support a label but cannot replace an unfamiliar action.
+- Inputs need visible labels, clear examples, helpful constraints, and error text beside the action that caused it.
+- Preserve the global `:focus-visible` treatment. Never remove keyboard focus.
+
+### Tool workspace
+
+Every PDF tool should follow this sequence:
+
+1. Explain the operation and where the file is processed.
+2. Provide a drag-and-drop zone and a keyboard-accessible file chooser.
+3. Show selected files, their page count when known, and a lightweight page preview.
+4. Ask only for the operation-specific choices, such as ranges, rotation, watermark text, or order.
+5. Show the processed preview before the download action whenever practical.
+6. Present a concise result receipt: pages, duration, and `0 bytes sent` for local tools.
+
+Use page thumbnails to make page-based choices understandable. Show at most 12 initial thumbnails, then clearly state when more pages exist.
+
+### Errors and empty states
+
+- Say what went wrong and how to recover: “Page 14 is outside this 12-page PDF. Choose a page from 1 to 12.”
+- Do not expose stack traces, internal library names, or raw exceptions.
+- Empty states must point to the next useful action, not just state that nothing exists.
+
+## 7. Motion and feedback
+
+- Motion is optional enhancement. Honour `prefers-reduced-motion`.
+- Use 160–220ms ease-out for hover and button feedback.
+- Use a short, visible processing state for file work. Never leave a disabled button without context.
+- Scroll reveals should improve hierarchy, never hide content or delay usability.
+
+## 8. Accessibility and privacy
+
+- Meet WCAG AA contrast for text, controls, and focus indicators.
+- Use semantic landmarks, heading order, labels, and live regions for asynchronous processing status.
+- Never rely on colour alone for warnings, selected state, or success.
+- State whether a tool runs locally or needs a server before file selection. Server tools must state what is sent and why.
+- Never display file contents, filenames, or document text in analytics or telemetry.
+
+## 9. Design review checklist
+
+Before merging a UI change, check all of the following:
+
+- [ ] Uses global semantic tokens; no one-off colour or spacing values.
+- [ ] Works at mobile, tablet, and desktop widths.
+- [ ] Has keyboard focus, labels, and useful status/error messages.
+- [ ] Preserves dark-mode compatibility.
+- [ ] Has a single obvious primary action.
+- [ ] Explains privacy behaviour before file selection.
+- [ ] Uses restrained motion and honours reduced-motion preferences.
+- [ ] For tool output, shows a result preview or clearly explains why a preview is not available.
+- [ ] Builds successfully with `npm run build`.
+
+## 10. Updating this language
+
+Treat this as a living system. A reusable decision belongs here and in `global.css`; a one-off exception belongs in the feature discussion. When changing a token or shared primitive, test one homepage card, one tool workspace, one result state, and both colour themes before release.
