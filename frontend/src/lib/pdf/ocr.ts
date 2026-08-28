@@ -64,10 +64,11 @@ export async function ocrPdf(
     loadPdfjs(),
   ]);
 
-  const source = await api.getDocument({
+  const loadingTask = api.getDocument({
     data: new Uint8Array(file.bytes),
     ...documentOptions(),
-  }).promise;
+  });
+  const source = await loadingTask.promise;
 
   // Everything served from our own origin. corePath and langPath are the two
   // that otherwise reach for a CDN.
@@ -91,7 +92,7 @@ export async function ocrPdf(
   const chosen = parsePageSet(pageSpec, source.numPages).pages;
   if (chosen.length === 0) {
     await worker.terminate();
-    await source.destroy();
+    await loadingTask.destroy();
     return { ok: false, error: `That page selection matches nothing. This document has ${source.numPages} pages.` };
   }
 
@@ -115,7 +116,7 @@ export async function ocrPdf(
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      await page.render({ canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport, canvas }).promise;
+      await page.render({ canvas: null, canvasContext: ctx as unknown as CanvasRenderingContext2D, viewport }).promise;
 
       const blob = await canvas.convertToBlob({ type: 'image/png' });
       const result = await worker.recognize(blob, {}, { blocks: true, text: true });
@@ -134,7 +135,7 @@ export async function ocrPdf(
         sheet.drawImage(image, { x: 0, y: 0, width: unit.width, height: unit.height });
 
         const words: Word[] = [];
-        for (const block of (result.data.blocks ?? []) as Array<Record<string, unknown>>) {
+        for (const block of (result.data.blocks ?? []) as unknown as Array<Record<string, unknown>>) {
           for (const para of (block.paragraphs ?? []) as Array<Record<string, unknown>>) {
             for (const line of (para.lines ?? []) as Array<Record<string, unknown>>) {
               for (const word of (line.words ?? []) as unknown as Word[]) {
@@ -163,7 +164,7 @@ export async function ocrPdf(
     }
   } catch (error) {
     await worker.terminate();
-    await source.loadingTask.destroy();
+    await loadingTask.destroy();
     return { ok: false, error: `OCR failed: ${(error as Error).message}` };
   }
 
@@ -172,7 +173,7 @@ export async function ocrPdf(
   reportProgress(chosen.length, chosen.length, 'Assembling the result…');
 
   await worker.terminate();
-  await source.loadingTask.destroy();
+  await loadingTask.destroy();
 
   const joined = text.join('\n\n').trim();
   if (!joined) {

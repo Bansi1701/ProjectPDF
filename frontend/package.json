@@ -5,16 +5,22 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/copy-wasm.mjs && astro dev",
-    "build": "node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs",
+    "build": "tsc --noEmit --pretty false && node scripts/audit-tools.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs",
     "preview": "astro preview",
     "assets": "node scripts/copy-wasm.mjs",
     "audit:icons": "node scripts/audit-icons.mjs",
     "audit:typography": "node scripts/audit-typography.mjs",
     "audit:actions": "node scripts/audit-actions.mjs",
+    "audit:tools": "node scripts/audit-tools.mjs",
+    "audit:dependencies": "node scripts/audit-dependencies.mjs",
+    "audit:browser": "node scripts/audit-browser.mjs",
+    "audit:browser-operations": "node scripts/audit-browser-operations.mjs",
+    "test:operations": "node scripts/run-operation-smoke.mjs",
     "audit:storage": "node scripts/audit-storage.mjs",
     "audit:bundles": "node scripts/audit-bundles.mjs",
     "audit:links": "node scripts/audit-links.mjs",
-    "check": "node scripts/audit-icons.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-links.mjs"
+    "typecheck": "tsc --noEmit --pretty false",
+    "check": "tsc --noEmit --pretty false && node scripts/audit-tools.mjs && node scripts/audit-icons.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/run-operation-smoke.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-links.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",
@@ -31,6 +37,7 @@
   "devDependencies": {
     "@emnapi/core": "1.11.3",
     "@emnapi/runtime": "1.11.3",
-    "playwright": "^1.62.1"
+    "playwright": "^1.62.1",
+    "typescript": "5.9.3"
   }
 }

@@ -1,5 +1,7 @@
 ---
 import PageGrid from './PageGrid.astro';
+import CropStage from './CropStage.astro';
+import LivePdfEditor from './LivePdfEditor.astro';
 import SaveDialog from './SaveDialog.astro';
 import Lens from './Lens.astro';
 import type { Operation } from '../lib/pdf/types';
@@ -92,6 +94,8 @@ const takesImages = mode === 'images-to-pdf';
 const takesWord = mode === 'word-to-pdf';
 const takesExcel = mode === 'excel-to-pdf';
 const takesSlides = mode === 'powerpoint-to-pdf';
+const takesText = mode === 'text-to-pdf';
+const allowsMultiple = multiple || mode === 'overlay' || mode === 'header-footer';
 
 const accept = takesImages
   ? 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
@@ -101,7 +105,9 @@ const accept = takesImages
       ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,.xlsx'
       : takesSlides
         ? 'application/vnd.openxmlformats-officedocument.presentationml.presentation,.pptx'
-        : 'application/pdf,.pdf';
+        : takesText
+          ? 'text/plain,text/csv,text/markdown,.txt,.text,.log,.csv,.tsv,.md,.markdown,.mdown,.mkd,.mkdn'
+          : 'application/pdf,.pdf';
 
 const dropTitle = takesExcel
   ? 'Choose a spreadsheet, or drop one here'
@@ -109,6 +115,8 @@ const dropTitle = takesExcel
   ? 'Choose a presentation, or drop one here'
   : takesWord
   ? 'Choose a Word document, or drop one here'
+  : takesText
+  ? 'Choose a text, CSV or Markdown file, or drop one here'
   : takesImages
   ? 'Choose images, or drop them here'
   : multiple
@@ -156,7 +164,7 @@ const dropTitle = takesExcel
 
   <Lens variant="loupe" class="drop">
     <label class="drop__zone" data-drop>
-      <input class="sr-only" data-input type="file" accept={accept} multiple={multiple} />
+      <input class="sr-only" data-input type="file" accept={accept} multiple={allowsMultiple} />
       <span class="drop__icon" aria-hidden="true">
         <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M8 3h11l6 6v20a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z" stroke-linejoin="round"></path>
@@ -178,6 +186,10 @@ const dropTitle = takesExcel
     <ol class="files" data-files></ol>
 
     {gridMode && <PageGrid mode={gridMode} />}
+
+    {(mode === 'edit' || mode === 'sign') && <LivePdfEditor profile={mode === 'sign' ? 'sign' : 'full'} />}
+
+    {mode === 'crop' && <CropStage />}
 
     <section class="preview" data-preview hidden>
       <div class="preview__head">
@@ -240,22 +252,6 @@ const dropTitle = takesExcel
     }
 
     {
-      mode === 'edit' && (
-        <Fragment>
-          <label class="field">
-            <span>Text to add</span>
-            <input data-text placeholder="Approved — 12 March" />
-          </label>
-          <label class="field">
-            <span>Page</span>
-            <input data-target-page type="number" min="1" value="1" />
-            <small>The text is placed near the bottom-left corner of that page.</small>
-          </label>
-        </Fragment>
-      )
-    }
-
-    {
       mode === 'watermark' && (
         <label class="field">
           <span>Watermark text</span>
@@ -294,48 +290,6 @@ const dropTitle = takesExcel
             </small>
           </span>
         </label>
-      )
-    }
-
-    {
-      mode === 'sign' && (
-        <Fragment>
-          <div class="sign">
-            <div class="sign__tabs" role="group" aria-label="Signature style">
-              <button type="button" data-sign-tab="draw" class="is-on">Draw</button>
-              <button type="button" data-sign-tab="type">Type</button>
-            </div>
-
-            <div data-sign-panel="draw">
-              <canvas data-signature-canvas width="720" height="240"></canvas>
-              <div class="sign__row">
-                <button class="btn btn--quiet" type="button" data-sign-clear>Clear</button>
-                <span class="sign__hint">Draw with a mouse, trackpad or finger.</span>
-              </div>
-            </div>
-
-            <div data-sign-panel="type" hidden>
-              <input data-sign-text placeholder="Your name" />
-              <span class="sign__hint">Rendered in a handwriting-like italic.</span>
-            </div>
-          </div>
-
-          <label class="field">
-            <span>Page</span>
-            <input data-target-page type="number" min="1" placeholder="last page" />
-            <small>Leave empty to sign the last page.</small>
-          </label>
-
-          <label class="field">
-            <span>Position</span>
-            <select data-corner>
-              <option value="bottom-right">Bottom right</option>
-              <option value="bottom-left">Bottom left</option>
-              <option value="top-right">Top right</option>
-              <option value="top-left">Top left</option>
-            </select>
-          </label>
-        </Fragment>
       )
     }
 
@@ -451,6 +405,116 @@ const dropTitle = takesExcel
       )
     }
 
+    {
+      mode === 'crop' && (
+        <label class="field">
+          <span>Pages to crop</span>
+          <input data-crop-pages placeholder="All pages" />
+          <small>Leave empty for every page, or enter a list such as 1-3, 7.</small>
+        </label>
+      )
+    }
+
+    {
+      mode === 'compress' && (
+        <fieldset class="field field--turns">
+          <legend>Compression</legend>
+          <label><input type="radio" name="image-preset" value="lossless" checked /> Lossless</label>
+          <label><input type="radio" name="image-preset" value="balanced" /> Balanced images</label>
+          <label><input type="radio" name="image-preset" value="small" /> Smallest practical file</label>
+        </fieldset>
+      )
+    }
+
+    {
+      mode === 'flatten' && (
+        <fieldset class="field field--turns">
+          <legend>Make permanent</legend>
+          <label><input type="checkbox" data-flatten-part="fields" checked /> Form values</label>
+          <label><input type="checkbox" data-flatten-part="annotations" checked /> Comments and annotations</label>
+          <label><input type="checkbox" data-flatten-part="layers" checked /> Visible layers</label>
+          <label><input type="checkbox" data-keep-links checked /> Keep working links</label>
+        </fieldset>
+      )
+    }
+
+    {
+      mode === 'impose' && (
+        <Fragment>
+          <label class="field">
+            <span>Layout</span>
+            <select data-impose-kind>
+              <option value="n-up">Several pages on each sheet</option>
+              <option value="booklet">Foldable booklet</option>
+              <option value="poster">Poster across several sheets</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Pages per sheet</span>
+            <select data-impose-count>
+              <option value="2">2</option><option value="4">4</option><option value="6">6</option>
+              <option value="8">8</option><option value="9">9</option><option value="16">16</option>
+            </select>
+            <small>For Poster, this becomes the number of sheets across; the same number is used down.</small>
+          </label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'overlay' && (
+        <Fragment>
+          <p class="field-note">Choose the base PDF first and the stamp, letterhead or overlay second.</p>
+          <fieldset class="field field--turns">
+            <legend>Layer</legend>
+            <label><input type="radio" name="overlay-layer" value="over" checked /> Over the document</label>
+            <label><input type="radio" name="overlay-layer" value="under" /> Under the document</label>
+          </fieldset>
+          <label class="field"><span>Fit</span><select data-overlay-fit><option value="actual">Actual size</option><option value="contain">Fit inside page</option><option value="cover">Cover page</option><option value="stretch">Stretch to page</option></select></label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'text-to-pdf' && (
+        <Fragment>
+          <label class="field"><span>Read as</span><select data-text-kind><option value="">Use the file extension</option><option value="text">Plain text</option><option value="csv">CSV or TSV</option><option value="markdown">Markdown</option></select></label>
+          <label class="field"><span>Paper</span><select data-text-paper><option value="a4">A4</option><option value="letter">Letter</option></select></label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'metadata' && (
+        <Fragment>
+          <section class="metadata-report" data-metadata-report aria-live="polite"><p>Reading the document metadata…</p></section>
+          <label class="field"><span>Title</span><input data-metadata-field="title" /></label>
+          <label class="field"><span>Author</span><input data-metadata-field="author" /></label>
+          <label class="field"><span>Subject</span><input data-metadata-field="subject" /></label>
+          <label class="check"><input type="checkbox" data-metadata-strip /><span>Remove all metadata<small>Removes document information, XMP packets, private authoring data and the file identifier.</small></span></label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'header-footer' && (
+        <Fragment>
+          <label class="field"><span>Header</span><input data-header placeholder="Project name · {page} of {pages}" /></label>
+          <label class="field"><span>Footer</span><input data-footer placeholder="Confidential" /></label>
+          <label class="field"><span>Bates prefix</span><input data-bates placeholder="CASE-" /><small>Leave empty unless you need continuous discovery numbering.</small></label>
+        </Fragment>
+      )
+    }
+
+    {
+      mode === 'split-by' && (
+        <Fragment>
+          <label class="field"><span>Split method</span><select data-split-by-mode><option value="every">Every N pages</option><option value="parts">Into N equal parts</option><option value="size">Around a file size</option><option value="bookmarks">At bookmarks</option><option value="blank">At blank pages</option><option value="text">At page-start text</option></select></label>
+          <label class="field"><span>Number, bytes or keywords</span><input data-split-by-value value="10" /><small>For size use bytes (for example 10485760 for 10 MB); for text use comma-separated phrases.</small></label>
+        </Fragment>
+      )
+    }
+
     <div class="workspace__actions">
       <button class="btn btn--primary" data-run type="button">{action}</button>
       <button class="btn btn--quiet" data-clear type="button">Clear</button>
@@ -554,6 +618,30 @@ const dropTitle = takesExcel
 
     const grid = root.querySelector('page-grid') as GridElement | null;
 
+    interface EditorElement extends HTMLElement {
+      open(file: File): Promise<void>;
+      release(): Promise<void>;
+      getEdits(): import('../lib/pdf/types').EditMark[];
+    }
+
+    interface CropElement extends HTMLElement {
+      open(file: File): Promise<void>;
+      release(): Promise<void>;
+      getBox(): { x: number; y: number; width: number; height: number };
+    }
+
+    const editor = root.querySelector('live-pdf-editor') as EditorElement | null;
+    const cropStage = root.querySelector('crop-stage') as CropElement | null;
+
+    // Exporting an untouched editor would either create a duplicate file or
+    // produce a confusing "nothing to sign" error. The editor announces each
+    // committed change, so its primary action becomes available only when the
+    // document actually contains an edit.
+    editor?.addEventListener('editorchange', (event) => {
+      const count = Number((event as CustomEvent<{ count?: number }>).detail?.count ?? 0);
+      runBtn.disabled = count === 0;
+    });
+
     /** Identifies the grid's open documents across messages, unlike a job id. */
     let gridSession = 0;
 
@@ -581,165 +669,19 @@ const dropTitle = takesExcel
     // Nothing should outlive the tab: a session holds a parsed PDF.
     window.addEventListener('pagehide', () => {
       if (grid) void grid.release();
+      if (editor) void editor.release();
+      if (cropStage) void cropStage.release();
     });
 
     const takesImages = mode === 'images-to-pdf';
-    const takesMany = mode === 'merge' || mode === 'compare' || takesImages;
+    const takesText = mode === 'text-to-pdf';
+    const takesMany = mode === 'merge' || mode === 'compare' || mode === 'overlay' || mode === 'header-footer' || takesImages;
 
     const kb = (n: number) => `${(n / 1024).toFixed(1)} KB`;
     const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(2)} MB` : kb(n));
 
-    /**
-     * An empty page box means "the default for this tool", not page zero.
-     * Number('') is 0, which reads as an out-of-range page and rejects the job.
-     */
-    function readTargetPage(): number {
-      const raw = root.querySelector<HTMLInputElement>('[data-target-page]')?.value?.trim() ?? '';
-      if (raw === '') return mode === 'sign' ? -1 : 1;
-      const value = Number(raw);
-      return Number.isFinite(value) && value > 0 ? value : 1;
-    }
-
     const perm = (name: string): boolean =>
       root.querySelector<HTMLInputElement>(`[data-perm="${name}"]`)?.checked ?? false;
-
-    /**
-     * The signature pad.
-     *
-     * Drawn at 3x the placed size so the mark stays crisp when a reader zooms,
-     * and trimmed to its ink before embedding — a canvas-sized PNG would put a
-     * large transparent rectangle on the page and push the mark out of place.
-     */
-    function setupSignature() {
-      const canvas = root.querySelector<HTMLCanvasElement>('[data-signature-canvas]');
-      if (!canvas) return;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.lineWidth = 3.5;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.strokeStyle = '#1a2340';
-
-      let drawing = false;
-
-      const at = (event: PointerEvent) => {
-        const box = canvas.getBoundingClientRect();
-        return {
-          x: ((event.clientX - box.left) / box.width) * canvas.width,
-          y: ((event.clientY - box.top) / box.height) * canvas.height,
-        };
-      };
-
-      canvas.addEventListener('pointerdown', (event) => {
-        drawing = true;
-        canvas.setPointerCapture(event.pointerId);
-        const { x, y } = at(event);
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-      });
-
-      canvas.addEventListener('pointermove', (event) => {
-        if (!drawing) return;
-        event.preventDefault();
-        const { x, y } = at(event);
-        ctx.lineTo(x, y);
-        ctx.stroke();
-      });
-
-      for (const name of ['pointerup', 'pointercancel', 'pointerleave'] as const) {
-        canvas.addEventListener(name, () => {
-          drawing = false;
-        });
-      }
-
-      root.querySelector('[data-sign-clear]')?.addEventListener('click', () => {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      });
-
-      for (const tab of root.querySelectorAll<HTMLButtonElement>('[data-sign-tab]')) {
-        tab.addEventListener('click', () => {
-          const wanted = tab.dataset.signTab;
-          for (const other of root.querySelectorAll<HTMLButtonElement>('[data-sign-tab]')) {
-            other.classList.toggle('is-on', other === tab);
-          }
-          for (const panel of root.querySelectorAll<HTMLElement>('[data-sign-panel]')) {
-            panel.hidden = panel.dataset.signPanel !== wanted;
-          }
-        });
-      }
-    }
-
-    /** Crops a canvas to its drawn pixels. */
-    function trimmed(source: HTMLCanvasElement): HTMLCanvasElement | null {
-      const ctx = source.getContext('2d');
-      if (!ctx) return null;
-
-      const { data } = ctx.getImageData(0, 0, source.width, source.height);
-      let minX = source.width;
-      let minY = source.height;
-      let maxX = -1;
-      let maxY = -1;
-
-      for (let y = 0; y < source.height; y += 1) {
-        for (let x = 0; x < source.width; x += 1) {
-          if (data[(y * source.width + x) * 4 + 3] < 8) continue;
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-
-      if (maxX < 0) return null; // nothing drawn
-
-      const pad = 6;
-      minX = Math.max(0, minX - pad);
-      minY = Math.max(0, minY - pad);
-      maxX = Math.min(source.width - 1, maxX + pad);
-      maxY = Math.min(source.height - 1, maxY + pad);
-
-      const out = document.createElement('canvas');
-      out.width = maxX - minX + 1;
-      out.height = maxY - minY + 1;
-      out.getContext('2d')?.drawImage(source, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
-      return out;
-    }
-
-    function signatureBytes(): ArrayBuffer | undefined {
-      if (mode !== 'sign') return undefined;
-
-      const typed = root.querySelector<HTMLInputElement>('[data-sign-text]');
-      const typePanel = root.querySelector<HTMLElement>('[data-sign-panel="type"]');
-
-      if (typePanel && !typePanel.hidden && typed?.value.trim()) {
-        const canvas = document.createElement('canvas');
-        canvas.width = 900;
-        canvas.height = 260;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return undefined;
-        ctx.fillStyle = '#1a2340';
-        ctx.font = 'italic 120px ui-serif, Georgia, serif';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(typed.value.trim(), 20, canvas.height / 2);
-        const cropped = trimmed(canvas);
-        return cropped ? dataToBytes(cropped) : undefined;
-      }
-
-      const pad = root.querySelector<HTMLCanvasElement>('[data-signature-canvas]');
-      if (!pad) return undefined;
-      const cropped = trimmed(pad);
-      return cropped ? dataToBytes(cropped) : undefined;
-    }
-
-    function dataToBytes(canvas: HTMLCanvasElement): ArrayBuffer {
-      const url = canvas.toDataURL('image/png');
-      const binary = atob(url.slice(url.indexOf(',') + 1));
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-      return bytes.buffer;
-    }
 
     /**
      * Builds an input per field the document actually has. A form is different
@@ -827,6 +769,22 @@ const dropTitle = takesExcel
         .map((n) => Number(n) - 1);
     }
 
+    /** Compact one-based page-list parser for controls that send explicit arrays. */
+    function readPageList(selector: string): number[] | null {
+      const raw = root.querySelector<HTMLInputElement>(selector)?.value?.trim() ?? '';
+      if (!raw) return [];
+      const pages = new Set<number>();
+      for (const token of raw.split(/[\s,]+/).filter(Boolean)) {
+        const match = /^(\d+)(?:-(\d+))?$/.exec(token);
+        if (!match) return null;
+        const start = Number(match[1]);
+        const end = Number(match[2] ?? match[1]);
+        if (start < 1 || end < start || end - start > 10_000) return null;
+        for (let page = start; page <= end; page += 1) pages.add(page);
+      }
+      return [...pages].sort((a, b) => a - b);
+    }
+
     /** Created on first use — a tool page costs no JS until someone acts. */
     function ensureWorker(): Worker {
       if (!worker) {
@@ -856,6 +814,7 @@ const dropTitle = takesExcel
       if (mode === 'word-to-pdf') return /\.docx$/i.test(file.name);
       if (mode === 'excel-to-pdf') return /\.xlsx$/i.test(file.name);
       if (mode === 'powerpoint-to-pdf') return /\.pptx$/i.test(file.name);
+      if (takesText) return /\.(txt|text|log|csv|tsv|md|markdown|mdown|mkd|mkdn)$/i.test(file.name);
       return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     };
 
@@ -902,8 +861,8 @@ const dropTitle = takesExcel
     }
 
     /** Only modes whose input file is a PDF pdf.js can open. */
-    const NON_PDF_INPUT = new Set(['images-to-pdf', 'word-to-pdf', 'excel-to-pdf', 'powerpoint-to-pdf', 'url-to-pdf']);
-    const previewable = !NON_PDF_INPUT.has(mode);
+    const NON_PDF_INPUT = new Set(['images-to-pdf', 'word-to-pdf', 'excel-to-pdf', 'powerpoint-to-pdf', 'text-to-pdf', 'url-to-pdf']);
+    const previewable = !NON_PDF_INPUT.has(mode) && !editor && !cropStage;
 
     async function preview(file: File) {
       previewId = ++jobId;
@@ -985,11 +944,6 @@ const dropTitle = takesExcel
         const start = Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value || 1);
         const prefix = root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '';
         figures.forEach((figure, index) => addOverlay(figure, `${prefix}${start + index}`, 'page-number'));
-      } else if (mode === 'edit') {
-        const text = root.querySelector<HTMLInputElement>('[data-text]')?.value ?? '';
-        const targetPage = Number(root.querySelector<HTMLInputElement>('[data-target-page]')?.value || 1);
-        const figure = figures.find((f) => Number(f.dataset.page) === targetPage);
-        if (figure) addOverlay(figure, text, 'edit');
       }
     }
 
@@ -1027,7 +981,17 @@ const dropTitle = takesExcel
           files.length === 1 ? files[0].name : `${files.length} files selected`;
       }
 
-      if ((mode === 'pdf-to-images' || mode === 'forms') && files[0]) void probe(files[0]);
+      if ((mode === 'pdf-to-images' || mode === 'forms' || mode === 'metadata') && files[0]) void probe(files[0]);
+
+      if (editor) {
+        runBtn.disabled = true;
+        if (files[0]) void editor.open(files[0]);
+        else void editor.release();
+      }
+      if (cropStage) {
+        if (files[0]) void cropStage.open(files[0]);
+        else void cropStage.release();
+      }
 
       // A tool with a grid gets the grid instead of the thumbnail strip: the
       // strip shows the first eight pages, the grid shows all of them and
@@ -1080,10 +1044,12 @@ const dropTitle = takesExcel
       // file turns out to be unreadable, the real run will say so properly.
       if (id === probeId) {
         probeId = -1;
-        if (res.ok && 'probe' in res) {
+        if (mode === 'metadata' && res.ok && !('files' in res)) {
+          renderMetadata(res as import('../lib/pdf/metadata').MetadataReport);
+        } else if (res.ok && 'probe' in res) {
           if (mode === 'forms') renderFields(res.fields ?? []);
           else limitDpi(res.maxDpi);
-        } else if (!res.ok && mode === 'forms') {
+        } else if (!res.ok && (mode === 'forms' || mode === 'metadata')) {
           fail(res.error);
         }
         return;
@@ -1212,6 +1178,31 @@ const dropTitle = takesExcel
       result.hidden = false;
     }
 
+    function renderMetadata(report: import('../lib/pdf/metadata').MetadataReport) {
+      const host = root.querySelector<HTMLElement>('[data-metadata-report]');
+      if (!host) return;
+      const facts = [
+        ['Title', report.title || 'Not set'],
+        ['Author', report.author || 'Not set'],
+        ['Creator', report.creator || 'Not set'],
+        ['Producer', report.producer || 'Not set'],
+        ['XMP', report.xmp.present ? `${report.xmp.fields.length} field${report.xmp.fields.length === 1 ? '' : 's'}` : 'None'],
+      ];
+      const list = document.createElement('dl');
+      for (const [label, value] of facts) {
+        const term = document.createElement('dt');
+        const detail = document.createElement('dd');
+        term.textContent = label;
+        detail.textContent = value;
+        list.append(term, detail);
+      }
+      host.replaceChildren(list);
+      for (const key of ['title', 'author', 'subject'] as const) {
+        const field = root.querySelector<HTMLInputElement>(`[data-metadata-field="${key}"]`);
+        if (field && !field.value) field.value = report[key];
+      }
+    }
+
     // Real crypto makes the password the weak link, so say so as it is typed.
     const pw = root.querySelector<HTMLInputElement>('[data-user-password]');
     const strength = root.querySelector<HTMLElement>('[data-strength]');
@@ -1227,8 +1218,6 @@ const dropTitle = takesExcel
         strength.textContent = `About ${bits} bits of entropy. ${describeStrength(bits)}`;
       });
     }
-
-    if (mode === 'sign') setupSignature();
 
     // The URL tool has no file to pick, so the dropzone and worker are unused.
     if (mode === 'url-to-pdf') {
@@ -1501,6 +1490,41 @@ const dropTitle = takesExcel
       const picked = (name: string) =>
         root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
 
+      const cropPages = readPageList('[data-crop-pages]');
+      if (cropPages === null) {
+        fail('Enter pages as numbers or ranges, for example 1-3, 7.');
+        return;
+      }
+
+      const imposeKind = root.querySelector<HTMLSelectElement>('[data-impose-kind]')?.value ?? 'n-up';
+      const imposeCount = Number(root.querySelector<HTMLSelectElement>('[data-impose-count]')?.value ?? 2);
+      const imposeOptions: WorkerRequest['imposeOptions'] = imposeKind === 'booklet'
+        ? { kind: 'booklet' }
+        : imposeKind === 'poster'
+          ? { kind: 'poster', across: imposeCount, down: imposeCount }
+          : { kind: 'n-up', perSheet: imposeCount as 2 | 4 | 6 | 8 | 9 | 16 };
+
+      const splitMode = root.querySelector<HTMLSelectElement>('[data-split-by-mode]')?.value ?? 'every';
+      const splitValue = root.querySelector<HTMLInputElement>('[data-split-by-value]')?.value?.trim() ?? '10';
+      const splitNumber = Number(splitValue);
+      const splitByOptions: WorkerRequest['splitByOptions'] = splitMode === 'parts'
+        ? { mode: 'parts', parts: splitNumber }
+        : splitMode === 'size'
+          ? { mode: 'size', targetBytes: splitNumber }
+          : splitMode === 'bookmarks'
+            ? { mode: 'bookmarks' }
+            : splitMode === 'blank'
+              ? { mode: 'blank', blankSensitivity: 'balanced', blankHandling: 'drop' }
+              : splitMode === 'text'
+                ? { mode: 'text', keywords: splitValue }
+                : { mode: 'every', every: splitNumber };
+
+      const metadataField = (name: string) =>
+        root.querySelector<HTMLInputElement>(`[data-metadata-field="${name}"]`)?.value ?? '';
+      const header = root.querySelector<HTMLInputElement>('[data-header]')?.value?.trim() ?? '';
+      const footer = root.querySelector<HTMLInputElement>('[data-footer]')?.value?.trim() ?? '';
+      const bates = root.querySelector<HTMLInputElement>('[data-bates]')?.value?.trim() ?? '';
+
       const request: WorkerRequest = {
         id: ++jobId,
         op: mode,
@@ -1508,13 +1532,9 @@ const dropTitle = takesExcel
         ranges: root.querySelector<HTMLInputElement>('[data-ranges]')?.value,
         pageOrder: readOrder(),
         text: root.querySelector<HTMLInputElement>('[data-text]')?.value,
-        targetPage: readTargetPage(),
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
         prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
         searchable: root.querySelector<HTMLInputElement>('[data-searchable]')?.checked ?? true,
-        signature: signatureBytes(),
-        corner: root.querySelector<HTMLSelectElement>('[data-corner]')?.value as WorkerRequest['corner'],
-        signatureWidth: 180,
         fieldValues: readFields(),
         flatten: root.querySelector<HTMLInputElement>('[data-flatten]')?.checked ?? false,
         userPassword: root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '',
@@ -1529,6 +1549,39 @@ const dropTitle = takesExcel
           ?.value as WorkerRequest['pageSize'],
         format: picked('format') as WorkerRequest['format'],
         dpi: Number(picked('dpi') ?? 150),
+        edits: editor?.getEdits() ?? [],
+        cropBox: cropStage?.getBox(),
+        cropPages,
+        imagePreset: (picked('image-preset') ?? 'lossless') as WorkerRequest['imagePreset'],
+        flattenOptions: {
+          fields: root.querySelector<HTMLInputElement>('[data-flatten-part="fields"]')?.checked ?? true,
+          annotations: root.querySelector<HTMLInputElement>('[data-flatten-part="annotations"]')?.checked ?? true,
+          layers: root.querySelector<HTMLInputElement>('[data-flatten-part="layers"]')?.checked ?? true,
+          keepLinks: root.querySelector<HTMLInputElement>('[data-keep-links]')?.checked ?? true,
+        },
+        imposeOptions,
+        overlayOptions: {
+          layer: (picked('overlay-layer') ?? 'over') as 'over' | 'under',
+          fit: (root.querySelector<HTMLSelectElement>('[data-overlay-fit]')?.value ?? 'actual') as 'actual' | 'contain' | 'cover' | 'stretch',
+        },
+        textDocOptions: {
+          kind: (root.querySelector<HTMLSelectElement>('[data-text-kind]')?.value || undefined) as 'text' | 'csv' | 'markdown' | undefined,
+          paper: (root.querySelector<HTMLSelectElement>('[data-text-paper]')?.value ?? 'a4') as 'a4' | 'letter',
+        },
+        metadataChanges: {
+          strip: root.querySelector<HTMLInputElement>('[data-metadata-strip]')?.checked ?? false,
+          fields: {
+            title: metadataField('title'),
+            author: metadataField('author'),
+            subject: metadataField('subject'),
+          },
+        },
+        headerFooterOptions: {
+          header: header ? { center: header } : undefined,
+          footer: footer ? { center: footer } : undefined,
+          bates: bates ? { prefix: bates } : undefined,
+        },
+        splitByOptions,
       };
 
       // A grid tool always exports what the grid holds. The typed box feeds
@@ -1685,6 +1738,16 @@ const dropTitle = takesExcel
     font-family: var(--font-mono); font-size: var(--step--1);
   }
   .field small { color: var(--muted); font-size: var(--step--2); }
+  .field-note { margin: 0; color: var(--muted); font-size: var(--step--1); }
+
+  .metadata-report {
+    padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--paper-sunk); font-size: var(--step--1);
+  }
+  .metadata-report p { margin: 0; color: var(--muted); }
+  .metadata-report :global(dl) { display: grid; grid-template-columns: minmax(5rem, auto) 1fr; gap: 0.35rem 1rem; margin: 0; }
+  .metadata-report :global(dt) { color: var(--muted); }
+  .metadata-report :global(dd) { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
 
   .field select {
     padding: 0.6rem 0.75rem; border: 1px solid var(--line-strong);
@@ -1706,69 +1769,6 @@ const dropTitle = takesExcel
   .workspace__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
   .status { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); }
   .status:empty { display: none; }
-
-  .sign {
-    display: grid;
-    gap: 0.75rem;
-  }
-
-  .sign__tabs {
-    display: inline-flex;
-    gap: 0.25rem;
-    padding: 0.2rem;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    justify-self: start;
-  }
-
-  .sign__tabs button {
-    padding: 0.35rem 0.9rem;
-    border: 0;
-    border-radius: 999px;
-    background: transparent;
-    color: var(--muted);
-    font: inherit;
-    font-size: var(--step--1);
-    cursor: pointer;
-  }
-
-  .sign__tabs button.is-on {
-    background: var(--accent);
-    color: var(--paper-raised);
-  }
-
-  .sign canvas {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 3 / 1;
-    border: 1.5px dashed var(--line-strong);
-    border-radius: var(--radius);
-    background: var(--paper-raised);
-    touch-action: none;
-    cursor: crosshair;
-  }
-
-  .sign__row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 0.5rem;
-  }
-
-  .sign__hint {
-    font-size: var(--step--2);
-    color: var(--muted);
-  }
-
-  .sign input[data-sign-text] {
-    width: 100%;
-    padding: 0.7rem 0.85rem;
-    border: 1px solid var(--line-strong);
-    border-radius: 8px;
-    background: var(--paper-raised);
-    color: var(--ink);
-    font: italic 1.5rem ui-serif, Georgia, serif;
-  }
 
   .field--url input {
     padding: 0.7rem 0.85rem;
@@ -1960,16 +1960,10 @@ const dropTitle = takesExcel
     .field select,
     .field input[type='number'],
     .field input[type='url'],
-    .sign input[data-sign-text],
     .field--url input {
       min-height: 2.75rem;
       padding: 0.65rem 0.8rem;
       font-size: var(--step-0);
-    }
-
-    .sign__row {
-      flex-direction: column;
-      align-items: stretch;
     }
 
     .field--turns {
@@ -1978,19 +1972,8 @@ const dropTitle = takesExcel
 
     .workspace__actions,
     .check,
-    .sign__row,
     .result__actions {
       gap: 0.65rem;
-    }
-
-    .sign__tabs {
-      width: 100%;
-    }
-
-    .sign__tabs button {
-      flex: 1;
-      justify-content: center;
-      min-height: 2.25rem;
     }
 
     .result__notes {

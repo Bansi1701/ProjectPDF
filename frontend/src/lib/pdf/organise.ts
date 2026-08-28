@@ -26,7 +26,7 @@ export async function merge(files: InputFile[]): Promise<OpResult> {
   }
 
   const started = performance.now();
-  const output = await PDFDocument.create();
+  const output = await PDFDocument.create({ updateMetadata: false });
   const sources: PDFDocument[] = [];
   let bytesIn = 0;
 
@@ -47,7 +47,7 @@ export async function merge(files: InputFile[]): Promise<OpResult> {
     )
   );
 
-  const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false, updateMetadata: false });
+  const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false });
   const out: OutputFile[] = [{ name: 'merged.pdf', bytes }];
 
   return {
@@ -112,7 +112,7 @@ export async function split(files: InputFile[], ranges: string): Promise<OpResul
   try {
     for (const [index, group] of groups.entries()) {
       const indices = parseGroup(group, pageCount);
-      const doc = await PDFDocument.create();
+      const doc = await PDFDocument.create({ updateMetadata: false });
       preserveDocumentMetadata(source, doc);
       const pages = await doc.copyPages(source, indices);
       for (const page of pages) doc.addPage(page);
@@ -124,7 +124,7 @@ export async function split(files: InputFile[], ranges: string): Promise<OpResul
 
       out.push({
         name: `${stem}-${index + 1}.pdf`,
-        bytes: await doc.save({ useObjectStreams: true, addDefaultPage: false, updateMetadata: false }),
+        bytes: await doc.save({ useObjectStreams: true, addDefaultPage: false }),
       });
     }
   } catch (error) {
@@ -198,7 +198,7 @@ export async function reorder(files: InputFile[], pageOrder: number[]): Promise<
   if (order.length !== expected || new Set(order).size !== expected || order.some((page) => page < 0 || page >= expected)) {
     return { ok: false, error: 'The page order is invalid. Try choosing the file again.' };
   }
-  const output = await PDFDocument.create();
+  const output = await PDFDocument.create({ updateMetadata: false });
   preserveDocumentMetadata(source, output);
   const pages = await output.copyPages(source, order);
   pages.forEach((page) => output.addPage(page));
@@ -207,7 +207,7 @@ export async function reorder(files: InputFile[], pageOrder: number[]): Promise<
     output,
     order.map((page) => ({ file: 0, page: page + 1, rotate: 0 }))
   );
-  const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false, updateMetadata: false });
+  const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false });
   return {
     ok: true, files: [{ name: `${baseName(file.name)}-reordered.pdf`, bytes }],
     bytesIn: file.bytes.byteLength, bytesOut: bytes.length, pages: expected,
@@ -221,7 +221,7 @@ export async function extract(files: InputFile[], ranges: string): Promise<OpRes
   const started = performance.now();
   const source = await load(file);
   try {
-    const output = await PDFDocument.create();
+    const output = await PDFDocument.create({ updateMetadata: false });
     preserveDocumentMetadata(source, output);
     const kept = parseGroup(ranges, source.getPageCount());
     const pages = await output.copyPages(source, kept);
@@ -231,7 +231,7 @@ export async function extract(files: InputFile[], ranges: string): Promise<OpRes
       output,
       kept.map((page) => ({ file: 0, page: page + 1, rotate: 0 }))
     );
-    const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false, updateMetadata: false });
+    const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false });
     return {
       ok: true, files: [{ name: `${baseName(file.name)}-extracted.pdf`, bytes }],
       bytesIn: file.bytes.byteLength, bytesOut: bytes.length, pages: pages.length,
@@ -251,7 +251,7 @@ export async function deletePages(files: InputFile[], ranges: string): Promise<O
     const removed = new Set(parseGroup(ranges, source.getPageCount()));
     const kept = source.getPageIndices().filter((page) => !removed.has(page));
     if (!kept.length) return { ok: false, error: 'Choose at least one page to keep.' };
-    const output = await PDFDocument.create();
+    const output = await PDFDocument.create({ updateMetadata: false });
     preserveDocumentMetadata(source, output);
     const pages = await output.copyPages(source, kept);
     pages.forEach((page) => output.addPage(page));
@@ -260,7 +260,7 @@ export async function deletePages(files: InputFile[], ranges: string): Promise<O
       output,
       kept.map((page) => ({ file: 0, page: page + 1, rotate: 0 }))
     );
-    const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false, updateMetadata: false });
+    const bytes = await output.save({ useObjectStreams: true, addDefaultPage: false });
     return {
       ok: true, files: [{ name: `${baseName(file.name)}-pages-deleted.pdf`, bytes }],
       bytesIn: file.bytes.byteLength, bytesOut: bytes.length, pages: kept.length,

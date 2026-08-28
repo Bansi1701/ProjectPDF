@@ -71,7 +71,7 @@ const nameOf = (value: unknown): string => String(value ?? '');
  * e, but got instance of K". Every lookup here is a guess about a file we did
  * not write, so every one of them has to be allowed to be wrong.
  */
-function look<T>(doc: PDFDocument, value: unknown, type: new (...args: never[]) => T): T | null {
+function look<T>(doc: PDFDocument, value: unknown, type: { prototype: T }): T | null {
   try {
     const found = doc.context.lookupMaybe(value as never, type as never);
     return (found as T | undefined) ?? null;

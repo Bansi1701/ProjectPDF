@@ -40,7 +40,8 @@ function words(text: string): string[] {
 
 async function pageTexts(bytes: ArrayBuffer): Promise<string[]> {
   const pdfjs = await loadPdfjs();
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(bytes), ...documentOptions() }).promise;
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(bytes), ...documentOptions() });
+  const doc = await loadingTask.promise;
   const out: string[] = [];
   try {
     for (let n = 1; n <= doc.numPages; n += 1) {
@@ -53,7 +54,7 @@ async function pageTexts(bytes: ArrayBuffer): Promise<string[]> {
       page.cleanup();
     }
   } finally {
-    await doc.destroy();
+    await loadingTask.destroy();
   }
   return out;
 }

@@ -108,9 +108,9 @@ export async function redact(files: InputFile[], boxes: RedactionBox[]): Promise
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       await page.render({
+        canvas: null,
         canvasContext: ctx as unknown as CanvasRenderingContext2D,
         viewport,
-        canvas,
       }).promise;
 
       // Paint over the pixels. After this the ink is gone from the bitmap,

@@ -165,10 +165,15 @@
     private label = this.querySelector<HTMLElement>('[data-crop-label]')!;
     private readout = this.querySelector<HTMLElement>('[data-crop-read]')!;
 
-    private doc: { numPages: number; getPage(n: number): Promise<any>; destroy(): Promise<void> } | null = null;
+    private doc: { numPages: number; getPage(n: number): Promise<any> } | null = null;
+    private loadingTask: {
+      promise: Promise<{ numPages: number; getPage(n: number): Promise<any> }>;
+      destroy(): Promise<void>;
+    } | null = null;
     private at = 1;
     private box: Box = { x: 0, y: 0, width: 1, height: 1 };
     private pageSize = { width: 0, height: 0 };
+    private readonly repaint = () => this.paint();
 
     connectedCallback(): void {
       this.querySelector('[data-crop-prev]')?.addEventListener('click', () => this.go(this.at - 1));
@@ -203,7 +208,12 @@
         this.announce();
       });
 
-      window.addEventListener('resize', () => this.paint());
+      window.addEventListener('resize', this.repaint);
+    }
+
+    disconnectedCallback(): void {
+      window.removeEventListener('resize', this.repaint);
+      void this.release();
     }
 
     /** Opens a document and shows its first page. */
@@ -217,12 +227,13 @@
       const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       const asset = (folder: string) => new URL(`${base}/pdfjs/${folder}/`, location.href).href;
 
-      this.doc = await api.getDocument({
+      this.loadingTask = api.getDocument({
         data: new Uint8Array(await file.arrayBuffer()),
         cMapUrl: asset('cmaps'),
         cMapPacked: true,
         standardFontDataUrl: asset('standard_fonts'),
-      }).promise;
+      });
+      this.doc = await this.loadingTask.promise;
 
       this.hidden = false;
       this.at = 1;
@@ -230,7 +241,8 @@
     }
 
     async release(): Promise<void> {
-      await this.doc?.destroy();
+      await this.loadingTask?.destroy();
+      this.loadingTask = null;
       this.doc = null;
       this.hidden = true;
     }

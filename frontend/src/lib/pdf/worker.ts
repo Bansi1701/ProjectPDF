@@ -197,7 +197,12 @@ async function run(request: WorkerRequest): Promise<OpResult> {
 
 import { setProgressSink } from './progress';
 
-const ctx = self as unknown as DedicatedWorkerGlobalScope;
+interface PdfWorkerScope {
+  onmessage: ((event: MessageEvent<WorkerRequest>) => void) | null;
+  postMessage(message: unknown, transfer?: Transferable[]): void;
+}
+
+const ctx = self as unknown as PdfWorkerScope;
 
 ctx.onmessage = async (event: MessageEvent<WorkerRequest>) => {
   // This worker is intentionally a closed, local-only boundary: it never

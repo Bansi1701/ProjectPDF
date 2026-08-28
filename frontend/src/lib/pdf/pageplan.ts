@@ -86,7 +86,7 @@ export async function compose(
   for (const [index, group] of groups.entries()) {
     if (group.length === 0) continue;
 
-    const out = await PDFDocument.create();
+    const out = await PDFDocument.create({ updateMetadata: false });
     // The first participating source owns the output document metadata. This
     // mirrors how merge tools conventionally treat the first file as the base.
     preserveDocumentMetadata(sources[group[0].file], out);
@@ -133,7 +133,7 @@ export async function compose(
     // to the page position the plan gave it in this particular output group.
     preserveDocumentOutlines(sources, out, group);
 
-    const bytes = await out.save({ useObjectStreams: true, addDefaultPage: false, updateMetadata: false });
+    const bytes = await out.save({ useObjectStreams: true, addDefaultPage: false });
     outputs.push({
       name: groups.length > 1 ? `${label}-${index + 1}.pdf` : `${label}.pdf`,
       bytes,

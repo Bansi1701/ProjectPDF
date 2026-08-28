@@ -146,9 +146,9 @@ async function blankPages(
       context.fillStyle = '#ffffff';
       context.fillRect(0, 0, canvas.width, canvas.height);
       await page.render({
+        canvas: null,
         canvasContext: context as unknown as CanvasRenderingContext2D,
         viewport,
-        canvas,
       }).promise;
 
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;

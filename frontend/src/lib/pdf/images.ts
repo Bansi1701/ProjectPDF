@@ -393,26 +393,28 @@ export async function pdfToImages(
   const bytesIn = file.bytes.byteLength;
   const api = await loadPdfjs();
 
-  const doc = await api.getDocument({
+  const loadingTask = api.getDocument({
     data: new Uint8Array(file.bytes),
     ...documentOptions(),
-  }).promise;
+  });
+  const doc = await loadingTask.promise;
+  const pageCount = doc.numPages;
 
   const out: OutputFile[] = [];
   const stem = baseName(file.name);
   const mime = format === 'png' ? 'image/png' : 'image/jpeg';
   const extension = format === 'png' ? 'png' : 'jpg';
-  const pad = String(doc.numPages).length;
+  const pad = String(pageCount).length;
 
   let clamped = 0;
   let lowest = dpi;
 
   // Exporting 300 pages to get the one with the chart on it is a lot of
   // rendering, and a lot of files to pick through afterwards.
-  const chosen = parsePageSet(pageSpec, doc.numPages).pages;
+  const chosen = parsePageSet(pageSpec, pageCount).pages;
   if (chosen.length === 0) {
-    await doc.destroy();
-    return { ok: false, error: `That page selection matches nothing. This document has ${doc.numPages} pages.` };
+    await loadingTask.destroy();
+    return { ok: false, error: `That page selection matches nothing. This document has ${pageCount} pages.` };
   }
 
   try {
@@ -474,12 +476,12 @@ export async function pdfToImages(
   } catch (error) {
     return { ok: false, error: `Rendering failed: ${(error as Error).message}` };
   } finally {
-    await doc.loadingTask.destroy();
+    await loadingTask.destroy();
   }
 
   const notes: string[] = [];
-  if (chosen.length < doc.numPages) {
-    notes.push(`${chosen.length} of ${doc.numPages} pages were exported, keeping their original page numbers in the filenames.`);
+  if (chosen.length < pageCount) {
+    notes.push(`${chosen.length} of ${pageCount} pages were exported, keeping their original page numbers in the filenames.`);
   }
   if (clamped > 0) {
     notes.push(
