@@ -1,0 +1,44 @@
+---
+import Logo from './Logo.astro';
+import { SITE } from '../config/site';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+
+<footer class="help-footer">
+  <div class="help-footer__brand">
+    <Logo size="2.4rem" />
+    <div><strong>{SITE.name}</strong><span>Private document help, written for real tasks.</span></div>
+  </div>
+  <nav aria-label="Help Center footer">
+    <a href={`${base}/help/`}>Help Center</a>
+    <a href={`${base}/#tools`}>All tools</a>
+    <a href={`${base}/how-to/`}>Workflows</a>
+    <a href={`${base}/privacy/`}>Privacy</a>
+    <a href={`${base}/about/`}>About</a>
+  </nav>
+</footer>
+
+<style>
+  .help-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    width: min(76rem, calc(100% - (var(--gutter) * 2)));
+    margin: 0 auto;
+    padding: 2rem 0 3rem;
+    border-top: 1px solid var(--line);
+  }
+  .help-footer__brand { display: flex; align-items: center; gap: 0.75rem; }
+  .help-footer__brand div { display: grid; gap: 0.12rem; }
+  .help-footer__brand strong { font-family: var(--font-brand); }
+  .help-footer__brand span { color: var(--muted); font-size: var(--step--2); }
+  nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.7rem 1rem; }
+  nav a { color: var(--ink-2); font-size: var(--step--1); font-weight: 600; text-decoration: none; }
+  nav a:hover { color: var(--accent); }
+  @media (max-width: 44rem) {
+    .help-footer { align-items: flex-start; flex-direction: column; }
+    nav { justify-content: flex-start; }
+  }
+</style>

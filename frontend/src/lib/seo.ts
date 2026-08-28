@@ -15,6 +15,14 @@ export interface BreadcrumbItem {
   url: string;
 }
 
+export interface ArticleItem {
+  headline: string;
+  description: string;
+  path: string;
+  keywords: string[];
+  about: string;
+}
+
 export const SITE_ORIGIN = 'https://bansi1701.github.io/ProjectPDF';
 
 export const canonical = (path = '/'): string => {
@@ -78,6 +86,50 @@ export const breadcrumbLd = (items: BreadcrumbItem[]) => ({
     name: item.name,
     item: canonical(item.url),
   })),
+});
+
+export const articleLd = (article: ArticleItem) => ({
+  '@context': 'https://schema.org',
+  '@type': 'TechArticle',
+  headline: article.headline,
+  description: article.description,
+  url: canonical(article.path),
+  mainEntityOfPage: canonical(article.path),
+  inLanguage: 'en',
+  isAccessibleForFree: true,
+  keywords: article.keywords.join(', '),
+  about: {
+    '@type': 'Thing',
+    name: article.about,
+  },
+  author: {
+    '@type': 'Organization',
+    name: SITE.name,
+    url: `${SITE_ORIGIN}/`,
+  },
+  publisher: {
+    '@type': 'Organization',
+    name: SITE.name,
+    url: `${SITE_ORIGIN}/`,
+  },
+});
+
+export const helpCollectionLd = (items: Array<{ name: string; path: string }>) => ({
+  '@context': 'https://schema.org',
+  '@type': 'CollectionPage',
+  name: 'ProjectPDF Help Center',
+  description: 'Step-by-step guides and answers for every ProjectPDF tool.',
+  url: canonical('/help/'),
+  mainEntity: {
+    '@type': 'ItemList',
+    numberOfItems: items.length,
+    itemListElement: items.map((item, index) => ({
+      '@type': 'ListItem',
+      position: index + 1,
+      name: item.name,
+      url: canonical(item.path),
+    })),
+  },
 });
 
 export const websiteLd = () => ({

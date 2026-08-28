@@ -7,9 +7,11 @@ interface Props {
   description: string;
   imageSlug?: string;
   noindex?: boolean;
+  keywords?: string[];
+  contentType?: 'website' | 'article';
 }
 
-const { title, description, imageSlug, noindex = false } = Astro.props;
+const { title, description, imageSlug, noindex = false, keywords = [], contentType = 'website' } = Astro.props;
 const pageSlug = Astro.url.pathname.split('/').filter(Boolean).at(-1) ?? '';
 const tool = TOOLS.find((item) => item.slug === pageSlug && item.status === 'live');
 const canonicalUrl = canonical(Astro.url.pathname);
@@ -21,12 +23,13 @@ const schema = home ? websiteLd() : null;
 
 <title>{title}</title>
 <meta name="description" content={description} />
+{keywords.length > 0 && <meta name="keywords" content={keywords.join(', ')} />}
 {noindex && <meta name="robots" content="noindex, nofollow" />}
 <link rel="canonical" href={canonicalUrl} />
 
 <meta property="og:title" content={title} />
 <meta property="og:description" content={description} />
-<meta property="og:type" content="website" />
+<meta property="og:type" content={contentType} />
 <meta property="og:url" content={canonicalUrl} />
 <meta property="og:site_name" content={SITE.name} />
 <meta property="og:locale" content="en_US" />

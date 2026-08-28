@@ -21,6 +21,7 @@ const appSchema = softwareAppLd(tool.searchName, content.intro, `/${tool.slug}/`
     <p class="tool-copy__eyebrow">About this tool</p>
     <h2 id="tool-copy-title">{tool.searchName}, without uploading your document</h2>
     <p class="tool-copy__intro">{content.intro}</p>
+    <a class="tool-copy__guide" href={`${base}/help/${tool.slug}/`}>Read the complete {tool.searchName} help guide <span aria-hidden="true">→</span></a>
   </header>
 
   <section class="tool-copy__how" aria-labelledby="tool-how-title">
@@ -71,6 +72,8 @@ const appSchema = softwareAppLd(tool.searchName, content.intro, `/${tool.slug}/`
   h4 { margin-bottom: 0.25rem; font-size: var(--step-0); }
   .tool-copy__intro, li p, details p { color: var(--ink-2); line-height: 1.7; }
   .tool-copy__intro { margin-bottom: 0; font-size: var(--step-1); }
+  .tool-copy__guide { display: inline-flex; gap: 0.45rem; margin-top: 0.9rem; color: var(--accent); font-size: var(--step--1); font-weight: 700; text-decoration: none; }
+  .tool-copy__guide:hover { text-decoration: underline; text-underline-offset: 0.2em; }
   .tool-copy__how ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
   .tool-copy__how li { display: grid; grid-template-columns: auto 1fr; gap: 0.75rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); }
   .tool-copy__how li > span { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent); color: white; font: 600 var(--step--2)/1 var(--font-mono); }

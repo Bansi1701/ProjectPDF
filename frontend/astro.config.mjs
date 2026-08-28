@@ -70,10 +70,17 @@ function pageLastModified(absoluteUrl) {
   const route = new URL(absoluteUrl).pathname
     .replace(/^\/ProjectPDF\/?/, '')
     .replace(/\/$/, '');
-  const pages = route
-    ? [`frontend/src/pages/${route}.astro`, `frontend/src/pages/${route}/index.astro`]
-    : ['frontend/src/pages/index.astro'];
-  const content = route && !route.includes('/') ? `frontend/src/content/tools/${route}.md` : null;
+  const helpSlug = route.startsWith('help/') ? route.slice('help/'.length) : null;
+  const pages = helpSlug
+    ? ['frontend/src/pages/help/[slug].astro']
+    : route
+      ? [`frontend/src/pages/${route}.astro`, `frontend/src/pages/${route}/index.astro`]
+      : ['frontend/src/pages/index.astro'];
+  const content = helpSlug
+    ? `frontend/src/content/tools/${helpSlug}.md`
+    : route && !route.includes('/')
+      ? `frontend/src/content/tools/${route}.md`
+      : null;
   const dates = [...pages.map(changedAt), content ? changedAt(content) : null].filter(Boolean).sort();
   return dates.at(-1);
 }

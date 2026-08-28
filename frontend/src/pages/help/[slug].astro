@@ -1,0 +1,291 @@
+---
+import { getCollection, type CollectionEntry } from 'astro:content';
+
+import HelpFooter from '../../components/HelpFooter.astro';
+import Masthead from '../../components/Masthead.astro';
+import ToolIcon from '../../components/ToolIcon.astro';
+import { TOOLS, type Tool } from '../../config/site';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import {
+  helpArticleDescription,
+  helpFaqs,
+  helpGroupFor,
+  helpKeywords,
+  helpLimitations,
+  helpProfileFor,
+  helpQuickAnswer,
+} from '../../lib/help';
+import { articleLd, breadcrumbLd, faqLd, howToLd, softwareAppLd } from '../../lib/seo';
+
+interface Props {
+  entry: CollectionEntry<'tools'>;
+  tool: Tool;
+}
+
+export async function getStaticPaths() {
+  const entries = await getCollection('tools');
+  const live = new Map(TOOLS.filter((tool) => tool.status === 'live').map((tool) => [tool.slug, tool]));
+  return entries.flatMap((entry) => {
+    const tool = live.get(entry.id);
+    return tool ? [{ params: { slug: tool.slug }, props: { entry, tool } }] : [];
+  });
+}
+
+const { entry, tool } = Astro.props;
+const content = entry.data;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const group = helpGroupFor(tool);
+const profile = helpProfileFor(tool);
+const keywords = helpKeywords(tool);
+const description = helpArticleDescription(tool);
+const allFaqs = helpFaqs(tool, content);
+const limitations = helpLimitations(tool);
+const related = content.related
+  .map((slug) => TOOLS.find((candidate) => candidate.slug === slug && candidate.status === 'live'))
+  .filter((candidate): candidate is Tool => Boolean(candidate));
+const toolUrl = `${base}/${tool.slug}/`;
+const helpUrl = `/help/${tool.slug}/`;
+const title = `${tool.searchName} guide: how to use it privately | ProjectPDF`;
+const heading = `How to use ${tool.searchName}`;
+
+const schemas = [
+  articleLd({ headline: heading, description, path: helpUrl, keywords, about: tool.searchName }),
+  howToLd(heading, content.howTo),
+  faqLd(allFaqs),
+  breadcrumbLd([
+    { name: 'Home', url: '/' },
+    { name: 'Help Center', url: '/help/' },
+    { name: `${tool.searchName} guide`, url: helpUrl },
+  ]),
+  softwareAppLd(tool.searchName, tool.blurb, `/${tool.slug}/`),
+];
+---
+
+<BaseLayout {title} {description} imageSlug={tool.slug} {keywords} contentType="article">
+  <Masthead />
+  <main id="main" class={`help-article help-article--${group.tone}`}>
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href={`${base}/`}>Home</a><span>/</span><a href={`${base}/help/`}>Help Center</a><span>/</span><strong>{tool.searchName}</strong>
+    </nav>
+
+    <header class="article-hero">
+      <div class="article-hero__icon"><ToolIcon slug={tool.slug} tone={group.tone} size="4.6rem" /></div>
+      <p class="eyebrow">{group.label} guide</p>
+      <h1>{heading}</h1>
+      <p class="standfirst">{description} Everything is explained for the browser-private ProjectPDF workflow.</p>
+      <div class="article-actions">
+        <a class="primary" href={toolUrl}>Open {tool.searchName}</a>
+        <a href={`${base}/help/`}>Browse all help</a>
+      </div>
+      <dl class="article-facts" aria-label={`${tool.searchName} facts`}>
+        <div><dt>Processing</dt><dd>On this device</dd></div>
+        <div><dt>Document upload</dt><dd>None</dd></div>
+        <div><dt>Account</dt><dd>Not required</dd></div>
+        <div><dt>Original file</dt><dd>Left unchanged</dd></div>
+      </dl>
+    </header>
+
+    <div class="article-layout">
+      <aside class="article-toc">
+        <p>In this guide</p>
+        <nav aria-label="On this page">
+          <a href="#quick-answer">Quick answer</a>
+          <a href="#what-it-does">What it does</a>
+          <a href="#before-you-start">Before you start</a>
+          <a href="#how-to-use">How to use it</a>
+          <a href="#tips">Tips</a>
+          <a href="#limitations">Limitations</a>
+          <a href="#questions">Questions and answers</a>
+        </nav>
+        <a class="article-toc__tool" href={toolUrl}>Use the tool →</a>
+      </aside>
+
+      <article class="article-body">
+        <section class="answer-card" id="quick-answer" aria-labelledby="quick-answer-title">
+          <p>Quick answer</p>
+          <h2 id="quick-answer-title">What is {tool.searchName} used for?</h2>
+          <div>{helpQuickAnswer(tool)}</div>
+        </section>
+
+        <section id="what-it-does">
+          <p class="section-kicker">Purpose</p>
+          <h2>What does {tool.searchName} do?</h2>
+          <p>{content.intro}</p>
+          <h3>Who normally uses it?</h3>
+          <p>This guide is useful for {profile.audience}. The working tool is focused on one outcome: {tool.blurb}</p>
+        </section>
+
+        <section id="before-you-start">
+          <p class="section-kicker">Prepare</p>
+          <h2>Before you start</h2>
+          <ul class="check-list">
+            {profile.before.map((item) => <li><span aria-hidden="true">✓</span>{item}</li>)}
+          </ul>
+        </section>
+
+        <section id="how-to-use">
+          <p class="section-kicker">Step by step</p>
+          <h2>How do I use {tool.searchName}?</h2>
+          <ol class="steps">
+            {content.howTo.map((step, index) => (
+              <li><span>{String(index + 1).padStart(2, '0')}</span><div><h3>{step.name}</h3><p>{step.text}</p></div></li>
+            ))}
+          </ol>
+          <a class="inline-cta" href={toolUrl}>Start {tool.searchName} in ProjectPDF <span aria-hidden="true">→</span></a>
+        </section>
+
+        <section id="tips">
+          <p class="section-kicker">Better results</p>
+          <h2>Practical tips for {tool.searchName}</h2>
+          <div class="tip-grid">
+            {profile.tips.map((tip, index) => <div><span>{index + 1}</span><p>{tip}</p></div>)}
+          </div>
+        </section>
+
+        <section id="limitations">
+          <p class="section-kicker">Honest expectations</p>
+          <h2>Limitations and important checks</h2>
+          <div class="notice">
+            {limitations.map((limitation) => <p>{limitation}</p>)}
+          </div>
+        </section>
+
+        <section id="questions" class="faq-section">
+          <p class="section-kicker">Questions and answers</p>
+          <h2>{tool.searchName} FAQ</h2>
+          <p class="faq-intro">Direct answers to the questions people commonly ask before using this tool.</p>
+          <div>
+            {allFaqs.map((faq, index) => (
+              <details open={index === 0}>
+                <summary>{faq.question}</summary>
+                <p>{faq.answer}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section class="privacy-answer">
+          <p class="section-kicker">Privacy</p>
+          <h2>Where does my document go?</h2>
+          <p>For this tool, the document stays in the browser tab. ProjectPDF can load same-origin support files such as its PDF engine, fonts, or OCR data, but the selected document bytes and filename are not sent with those requests.</p>
+        </section>
+
+        <section class="related-guides">
+          <p class="section-kicker">Keep working</p>
+          <h2>Related ProjectPDF guides</h2>
+          <div>
+            {related.map((item) => {
+              const relatedGroup = helpGroupFor(item);
+              return (
+                <a href={`${base}/help/${item.slug}/`}>
+                  <ToolIcon slug={item.slug} tone={relatedGroup.tone} size="2.6rem" />
+                  <span><strong>{item.searchName}</strong><small>{item.blurb}</small></span>
+                  <b aria-hidden="true">→</b>
+                </a>
+              );
+            })}
+          </div>
+        </section>
+      </article>
+    </div>
+
+    <section class="article-close">
+      <div><p>Ready to work?</p><h2>Use {tool.searchName} without uploading your document.</h2></div>
+      <a href={toolUrl}>Open {tool.searchName} <span aria-hidden="true">→</span></a>
+    </section>
+  </main>
+  <HelpFooter />
+  {schemas.map((schema) => <script type="application/ld+json" is:inline set:html={JSON.stringify(schema)}></script>)}
+</BaseLayout>
+
+<style>
+  .help-article { --group-color: #f97316; width: min(76rem, calc(100% - (var(--gutter) * 2))); margin: 0 auto; padding: 2.2rem 0 5rem; }
+  .help-article--optimize { --group-color: #65a30d; }
+  .help-article--to-pdf { --group-color: #eab308; }
+  .help-article--from-pdf { --group-color: #3b82f6; }
+  .help-article--compose { --group-color: #c026d3; }
+  .help-article--review { --group-color: #7c3aed; }
+  .help-article--secure { --group-color: #0f766e; }
+  .breadcrumbs { display: flex; flex-wrap: wrap; gap: 0.45rem; color: var(--muted); font-size: var(--step--2); }
+  .breadcrumbs a { color: inherit; text-decoration: none; }
+  .breadcrumbs a:hover { color: var(--accent); }
+  .article-hero { position: relative; max-width: 63rem; padding: clamp(3rem, 8vw, 7rem) 0 clamp(3.5rem, 7vw, 6rem); }
+  .article-hero__icon { position: absolute; top: clamp(3rem, 8vw, 7rem); right: 0; display: grid; width: 7.5rem; height: 7.5rem; place-items: center; border: 1px solid color-mix(in srgb, var(--group-color) 24%, var(--line)); border-radius: 30px; background: color-mix(in srgb, var(--group-color) 5%, var(--paper-raised)); transform: rotate(3deg); }
+  .eyebrow, .section-kicker { margin: 0 0 0.65rem; color: var(--group-color); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.11em; text-transform: uppercase; }
+  h1 { max-width: 13ch; margin: 0; font-size: clamp(3rem, 7vw, 6rem); line-height: 0.95; letter-spacing: -0.055em; }
+  .standfirst { max-width: 44rem; margin: 1.4rem 0 0; color: var(--ink-2); font-size: var(--step-1); line-height: 1.65; }
+  .article-actions { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.5rem; }
+  .article-actions a, .article-close a { display: inline-flex; align-items: center; justify-content: center; min-height: 3rem; padding: 0.65rem 1rem; border: 1px solid var(--line-strong); border-radius: 12px; color: var(--ink); font-weight: 700; text-decoration: none; }
+  .article-actions .primary, .article-close a { border-color: var(--accent); background: var(--accent); color: white; }
+  .article-actions a:hover { border-color: var(--accent); }
+  .article-actions .primary:hover, .article-close a:hover { background: var(--accent-bright); }
+  .article-facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 52rem; margin: 2.2rem 0 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .article-facts div { padding: 0.8rem 0.8rem 0.8rem 0; }
+  .article-facts div + div { padding-left: 0.8rem; border-left: 1px solid var(--line); }
+  .article-facts dt { color: var(--muted); font-size: var(--step--2); }
+  .article-facts dd { margin: 0.2rem 0 0; font-size: var(--step--1); font-weight: 700; }
+  .article-layout { display: grid; grid-template-columns: 13rem minmax(0, 1fr); align-items: start; gap: clamp(2rem, 6vw, 6rem); }
+  .article-toc { position: sticky; top: 6.5rem; padding: 1rem; border: 1px solid var(--line); border-radius: calc(var(--radius) * 1.15); background: var(--paper-raised); }
+  .article-toc > p { margin: 0 0 0.65rem; color: var(--muted); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .article-toc nav { display: grid; }
+  .article-toc nav a { padding: 0.42rem 0; border-bottom: 1px solid var(--line); color: var(--ink-2); font-size: var(--step--1); text-decoration: none; }
+  .article-toc nav a:hover { color: var(--accent); }
+  .article-toc__tool { display: block; margin-top: 0.8rem; color: var(--accent); font-size: var(--step--1); font-weight: 700; text-decoration: none; }
+  .article-body { min-width: 0; }
+  .article-body > section { padding: clamp(2.5rem, 6vw, 4.6rem) 0; border-top: 1px solid var(--line); scroll-margin-top: 7rem; }
+  .article-body > section:first-child { border-top: 0; }
+  .article-body h2 { max-width: 24ch; margin: 0 0 1rem; font-size: clamp(1.8rem, 4vw, 2.8rem); line-height: 1.05; }
+  .article-body h3 { margin: 1.5rem 0 0.4rem; font-size: var(--step-1); }
+  .article-body p, .article-body li { color: var(--ink-2); font-size: var(--step-0); line-height: 1.75; }
+  .answer-card { padding: clamp(1.3rem, 4vw, 2rem) !important; border: 1px solid color-mix(in srgb, var(--group-color) 30%, var(--line)) !important; border-radius: calc(var(--radius) * 1.15); background: color-mix(in srgb, var(--group-color) 5%, var(--paper-raised)); }
+  .answer-card > p { margin: 0 0 0.45rem; color: var(--group-color); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; }
+  .answer-card h2 { font-size: var(--step-2); }
+  .answer-card > div { color: var(--ink-2); font-size: var(--step-1); line-height: 1.65; }
+  .check-list { display: grid; gap: 0.7rem; margin: 0; padding: 0; list-style: none; }
+  .check-list li { display: grid; grid-template-columns: auto 1fr; gap: 0.65rem; padding: 0.8rem; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-raised); }
+  .check-list span { display: grid; width: 1.5rem; height: 1.5rem; place-items: center; border-radius: 50%; background: color-mix(in srgb, var(--ok) 12%, transparent); color: var(--ok); font-size: 0.72rem; font-weight: 800; }
+  .steps { display: grid; gap: 0.75rem; margin: 0; padding: 0; list-style: none; }
+  .steps li { display: grid; grid-template-columns: auto 1fr; gap: 0.9rem; padding: 1rem; border: 1px solid var(--line); border-radius: calc(var(--radius) * 1.15); background: var(--paper-raised); }
+  .steps li > span { display: grid; width: 2.3rem; height: 2.3rem; place-items: center; border-radius: 11px; background: var(--group-color); color: white; font: 700 var(--step--2)/1 var(--font-mono); }
+  .steps h3 { margin: 0 0 0.25rem; }
+  .steps p { margin: 0; }
+  .inline-cta { display: inline-flex; gap: 0.45rem; margin-top: 1rem; color: var(--accent); font-weight: 700; text-decoration: none; }
+  .tip-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem; }
+  .tip-grid > div { padding: 1rem; border: 1px solid var(--line); border-radius: calc(var(--radius) * 1.15); background: var(--paper-raised); }
+  .tip-grid span { display: grid; width: 1.8rem; height: 1.8rem; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--group-color) 11%, transparent); color: var(--group-color); font: 700 var(--step--2)/1 var(--font-mono); }
+  .tip-grid p { margin: 0.8rem 0 0; font-size: var(--step--1); line-height: 1.6; }
+  .notice { padding: 1rem 1.1rem; border-left: 4px solid var(--group-color); border-radius: 0 var(--radius) var(--radius) 0; background: color-mix(in srgb, var(--group-color) 5%, var(--paper-sunk)); }
+  .notice p { margin: 0; }
+  .notice p + p { margin-top: 0.75rem; }
+  .faq-intro { margin-top: -0.35rem; }
+  .faq-section > div { display: grid; gap: 0.55rem; }
+  .faq-section details { border: 1px solid var(--line); border-radius: 12px; background: var(--paper-raised); }
+  .faq-section summary { padding: 0.9rem 1rem; color: var(--ink); font-weight: 700; cursor: pointer; }
+  .faq-section details p { margin: 0; padding: 0 1rem 1rem; }
+  .related-guides > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
+  .related-guides a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.7rem; padding: 0.75rem; border: 1px solid var(--line); border-radius: calc(var(--radius) * 1.15); background: var(--paper-raised); color: var(--ink); text-decoration: none; }
+  .related-guides a:hover { border-color: var(--accent); }
+  .related-guides a span { display: grid; min-width: 0; }
+  .related-guides small { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+  .related-guides b { color: var(--accent); }
+  .article-close { display: flex; align-items: center; justify-content: space-between; gap: 2rem; margin-top: clamp(4rem, 9vw, 8rem); padding: clamp(1.4rem, 4vw, 2.5rem); border: 1px solid var(--line); border-radius: calc(var(--radius) * 1.3); background: var(--paper-sunk); }
+  .article-close p { margin: 0 0 0.35rem; color: var(--accent); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; }
+  .article-close h2 { max-width: 22ch; margin: 0; font-size: var(--step-2); }
+  .article-close a { flex: 0 0 auto; }
+  @media (max-width: 54rem) {
+    .article-layout { grid-template-columns: 1fr; }
+    .article-toc { position: static; }
+    .article-toc nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 1rem; }
+    .tip-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 42rem) {
+    .help-article { padding-top: 1.2rem; }
+    .article-hero__icon { position: static; width: 5.8rem; height: 5.8rem; margin-bottom: 1.2rem; border-radius: 22px; }
+    h1 { font-size: clamp(2.65rem, 13vw, 4rem); overflow-wrap: anywhere; }
+    .article-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .article-facts div:nth-child(3) { border-left: 0; border-top: 1px solid var(--line); }
+    .article-facts div:nth-child(4) { border-top: 1px solid var(--line); }
+    .related-guides > div { grid-template-columns: 1fr; }
+    .article-close { align-items: flex-start; flex-direction: column; }
+  }
+</style>
