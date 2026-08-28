@@ -4,7 +4,7 @@ This is the shared visual and interaction contract for ProjectPDF. Use it for ev
 
 ## 1. Product character
 
-**Paper & Light** is our direction: a calm document workspace built from warm paper, legible ink, and carefully limited glass effects. It should feel precise and private, not like a generic file-conversion dashboard.
+**Fold & Flow** is our direction: a calm document workspace built from clean slate surfaces, crisp typography, restrained rose actions, and carefully limited glass effects. It should feel precise and private, not like a generic file-conversion dashboard.
 
 The product promise is visible in the interface:
 
@@ -41,9 +41,20 @@ When a token is missing, add a semantic token to `global.css` first. Do not add 
 
 Use `--accent` for one primary action per local area. Green is a status colour, never a second call-to-action. `--disclose` is reserved for transparent server warnings.
 
+The approved palette is stable and must not be changed as part of typography or responsive-layout work:
+
+| Role | Light | Dark |
+|---|---|---|
+| Canvas | `#F8FAFC` | `#0B0F17` |
+| Raised surface | `#FFFFFF` | `#151D2A` |
+| Primary text | `#0F172A` | `#F1F5F9` |
+| Muted text | `#64748B` | `#94A3B8` |
+| Border | `#E2E8F0` | `#1E293B` |
+| Primary action | `#E11D48` | `#FB7185` |
+
 ## 4. Typography and content
 
-- Use `--font-sans` for all interface text and `--font-mono` for measurements, job receipts, and technical facts.
+- Use self-hosted Inter through `--font-sans` for all interface text, Plus Jakarta Sans through `--font-display` for headings, and `--font-mono` for measurements, job receipts, and technical facts.
 - Use the fluid `--step-*` scale. Do not introduce arbitrary font sizes unless a component needs an icon-sized label.
 - Headings are short, direct, and sentence case: “Split PDF”, not “THE BEST PDF SPLITTER”.
 - Body copy explains the outcome first, then the mechanism: “Creates separate PDFs from your selected ranges. Processing stays in this tab.”
