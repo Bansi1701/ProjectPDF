@@ -113,12 +113,23 @@ const ZIP_MTIME = new Date(Date.UTC(2001, 0, 1));
 const DECLARATION = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 
 /** Office packages contain no directory entries, so the keys must be flat paths. */
-const zipParts = (parts: Record<string, string>): Uint8Array =>
+/**
+ * Parts are XML unless they are bytes.
+ *
+ * Media parts have to skip both the XML declaration and the deflate: a PNG with
+ * `<?xml ...?>` in front of it is not a PNG, and re-compressing an already
+ * entropy-coded image costs time to make the file very slightly larger.
+ */
+const zipParts = (parts: Record<string, string | Uint8Array>): Uint8Array =>
   zipSync(
     Object.fromEntries(
-      Object.entries(parts).map(([path, xml]) => [path, strToU8(`${DECLARATION}${xml}`)])
+      Object.entries(parts).map(([path, part]) =>
+        typeof part === 'string'
+          ? [path, [strToU8(`${DECLARATION}${part}`), { level: 6 }] as const]
+          : [path, [part, { level: 0 }] as const]
+      )
     ),
-    { level: 6, mtime: ZIP_MTIME }
+    { mtime: ZIP_MTIME }
   );
 
 // ── the .docx model ─────────────────────────────────────────────────────
@@ -166,7 +177,31 @@ export interface DocxTable {
   columnWeights?: number[];
 }
 
-export type DocxBlock = DocxParagraph | DocxTable;
+/**
+ * A picture, sized in points and placed in the flow where it sat on the page.
+ *
+ * Inline rather than anchored: an anchored drawing needs its own wrap geometry
+ * and behaves differently in every reader, while an inline drawing in a
+ * paragraph of its own lands in reading order and survives editing. A PDF's
+ * exact float is not recoverable anyway — what is recoverable is that the
+ * picture came between these two paragraphs, and that is what this keeps.
+ */
+export interface DocxImage {
+  type: 'image';
+  bytes: Uint8Array;
+  mime: 'image/png' | 'image/jpeg';
+  /** Points, as the picture was drawn on the PDF page. */
+  width: number;
+  height: number;
+  align?: DocxAlign;
+  /** Read by a screen reader, and shown if the picture will not load. */
+  alt?: string;
+}
+
+export type DocxBlock = DocxParagraph | DocxTable | DocxImage;
+
+/** Points to English Metric Units, the unit DrawingML measures in. */
+export const ptToEmu = (points: number): number => Math.round(points * 12700);
 
 /** Page geometry in points, matching the shape `readGeometry` in docx.ts returns. */
 export interface DocxPage {
@@ -192,6 +227,13 @@ const DEFAULT_PAGE: DocxPage = {
 
 /** Matches the scale docx.ts renders headings at, so a round trip looks the same. */
 const HEADING_SIZE: readonly number[] = [22, 17, 14, 12.5, 11.5, 11];
+
+/* DrawingML namespaces. Declared on w:document rather than per element, so a
+   document with two hundred pictures does not repeat them two hundred times. */
+const R_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const WP_NS = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
+const A_NS = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+const PIC_NS = 'http://schemas.openxmlformats.org/drawingml/2006/picture';
 
 // ── .docx writing ───────────────────────────────────────────────────────
 
@@ -446,16 +488,52 @@ export function buildDocx(document: DocxDocument): Uint8Array {
 
   const usable = ptToTwips(page.width - page.margin.left - page.margin.right);
 
+  // Pictures become parts, so they are collected before the body is written.
+  const media: { name: string; bytes: Uint8Array; mime: string }[] = [];
+  const imageXml = (block: DocxImage): string => {
+    const id = media.length + 1;
+    const extension = block.mime === 'image/jpeg' ? 'jpeg' : 'png';
+    media.push({ name: `image${id}.${extension}`, bytes: block.bytes, mime: block.mime });
+    const relationship = `rIdImg${id}`;
+    // Never wider than the text column: a picture drawn edge to edge on an A4
+    // page is wider than A4 minus margins, and Word does not shrink it.
+    const maxWidth = page.width - page.margin.left - page.margin.right;
+    const scale = block.width > maxWidth ? maxWidth / block.width : 1;
+    const cx = ptToEmu(block.width * scale);
+    const cy = ptToEmu(block.height * scale);
+    const alt = escapeAttr(block.alt ?? 'Picture from the PDF');
+    return (
+      `<w:p>${block.align && block.align !== 'left' ? `<w:pPr><w:jc w:val="${JC[block.align]}"/></w:pPr>` : ''}<w:r><w:drawing>` +
+      `<wp:inline distT="0" distB="0" distL="0" distR="0">` +
+      `<wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>` +
+      `<wp:docPr id="${id}" name="Picture ${id}" descr="${alt}"/>` +
+      `<wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="${A_NS}" noChangeAspect="1"/></wp:cNvGraphicFramePr>` +
+      `<a:graphic xmlns:a="${A_NS}"><a:graphicData uri="${PIC_NS}">` +
+      `<pic:pic xmlns:pic="${PIC_NS}">` +
+      `<pic:nvPicPr><pic:cNvPr id="${id}" name="Picture ${id}" descr="${alt}"/><pic:cNvPicPr/></pic:nvPicPr>` +
+      `<pic:blipFill><a:blip r:embed="${relationship}"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>` +
+      `<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm>` +
+      `<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>` +
+      `</pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`
+    );
+  };
+
   let body = '';
   for (const block of document.blocks) {
-    body += block.type === 'table' ? tableXml(block, usable) : paragraphXml(block);
+    body +=
+      block.type === 'table'
+        ? tableXml(block, usable)
+        : block.type === 'image'
+          ? imageXml(block)
+          : paragraphXml(block);
   }
   // Word wants at least one block, and `w:sectPr` must be the last child of
   // `w:body` exactly once.
   if (!body) body = '<w:p/>';
 
   const documentXml =
-    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' +
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"' +
+    ` xmlns:r="${R_NS}" xmlns:wp="${WP_NS}" xmlns:a="${A_NS}" xmlns:pic="${PIC_NS}"><w:body>` +
     body +
     sectPrXml(page) +
     '</w:body></w:document>';
@@ -468,6 +546,10 @@ export function buildDocx(document: DocxDocument): Uint8Array {
       '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
       '<Default Extension="xml" ContentType="application/xml"/>' +
+      // A part in the ZIP with no matching content type is the OPC violation
+      // that triggers Word's repair dialog, so these track what was written.
+      (media.some((m) => m.name.endsWith('.png')) ? '<Default Extension="png" ContentType="image/png"/>' : '') +
+      (media.some((m) => m.name.endsWith('.jpeg')) ? '<Default Extension="jpeg" ContentType="image/jpeg"/>' : '') +
       '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
       '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
       '</Types>',
@@ -478,9 +560,16 @@ export function buildDocx(document: DocxDocument): Uint8Array {
     'word/_rels/document.xml.rels':
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+      media
+        .map(
+          (item, index) =>
+            `<Relationship Id="rIdImg${index + 1}" Type="${R_NS}/image" Target="media/${item.name}"/>`
+        )
+        .join('') +
       '</Relationships>',
     'word/document.xml': documentXml,
     'word/styles.xml': stylesXml(font, size),
+    ...Object.fromEntries(media.map((item) => [`word/media/${item.name}`, item.bytes])),
   });
 }
 

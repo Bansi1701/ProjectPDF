@@ -101,6 +101,26 @@ export interface TextLine {
   running: boolean;
 }
 
+/**
+ * A picture, and where it sits on the upright page.
+ *
+ * The placement is the whole point: a converter that knows an image exists but
+ * not where it goes can only append it, which is how a report ends up with its
+ * chart at the bottom and its caption three pages up.
+ */
+export interface PlacedImage {
+  /** Points from the left and top of the upright page. */
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  /** Encoded file bytes, ready to drop into a container. */
+  bytes: Uint8Array;
+  mime: 'image/png' | 'image/jpeg';
+  pixelWidth: number;
+  pixelHeight: number;
+}
+
 /** A vertical text column inside one horizontal band of the page. */
 export interface PageColumn {
   x: number;
@@ -236,6 +256,8 @@ export interface PageStructure {
   /** 0-1. 1 when the page is plainly single-column and nothing was guessed. */
   columnConfidence: number;
   rules: RuleLine[];
+  /** Pictures drawn on this page, with their placement. Empty when unread. */
+  images: PlacedImage[];
   /** Whether bold and italic could be read at all on this page. */
   emphasis: 'font-names' | 'unknown';
   /** Runs turned on their side; they are excluded from lines, not lost. */
@@ -517,6 +539,192 @@ interface PageRuns {
   sideways: number;
   fontsResolved: boolean;
   rules: RuleLine[];
+  images: PlacedImage[];
+}
+
+interface ImageObject {
+  width: number;
+  height: number;
+  data?: Uint8Array | Uint8ClampedArray | null;
+  bitmap?: ImageBitmap | null;
+}
+
+interface ObjectStore {
+  has(id: string): boolean;
+  get(id: string): unknown;
+  get(id: string, callback: (data: unknown) => void): null;
+}
+
+/**
+ * How long to wait for one picture's pixels after the operator list arrives.
+ *
+ * getOperatorList resolves without waiting for images — the render path waits
+ * on dependencies and this is not the render path. Checking `has()` alone found
+ * every PNG and no JPEG at all, because a JPEG is still in flight at that
+ * moment. In practice the pixels land immediately; this is the ceiling so one
+ * undecodable image costs a missing picture rather than a hung tab.
+ */
+const IMAGE_WAIT_MS = 10_000;
+
+const asImage = (value: unknown): ImageObject | null => {
+  if (typeof value !== 'object' || value === null) return null;
+  const candidate = value as Partial<ImageObject>;
+  if (typeof candidate.width !== 'number' || typeof candidate.height !== 'number') return null;
+  return candidate.width > 0 && candidate.height > 0 ? (candidate as ImageObject) : null;
+};
+
+/**
+ * Pictures and where they land, from the same operator list the rules come from.
+ *
+ * A PDF places an image by mapping the unit square through the current
+ * transform, so the placement *is* the CTM — which is why this walks the same
+ * graphics stack readRules does rather than guessing from the image's own
+ * pixel size. The four transformed corners are bounded, so a rotated or
+ * flipped placement still yields the box it actually occupies.
+ *
+ * Encoding goes through a canvas rather than reproducing the source bytes.
+ * Extract Images exists for people who want the original file; here the image
+ * is going into a Word document that will re-compress it anyway, and a canvas
+ * costs about a hundred lines less.
+ */
+async function readImages(
+  page: PdfPage,
+  operators: OperatorList,
+  toPoint: ViewportPoint
+): Promise<PlacedImage[]> {
+  if (typeof OffscreenCanvas === 'undefined') return [];
+  const { OPS } = await loadPdfjs();
+
+  const local = page.objs as unknown as ObjectStore;
+  const shared = page.commonObjs as unknown as ObjectStore;
+  const placed: PlacedImage[] = [];
+
+  let ctm = [1, 0, 0, 1, 0, 0];
+  const stack: number[][] = [];
+
+  for (let index = 0; index < operators.fnArray.length; index += 1) {
+    const op = operators.fnArray[index];
+    const args: unknown = operators.argsArray[index];
+
+    if (op === OPS.save) {
+      stack.push([...ctm]);
+      continue;
+    }
+    if (op === OPS.restore) {
+      ctm = stack.pop() ?? [1, 0, 0, 1, 0, 0];
+      continue;
+    }
+    if (op === OPS.transform) {
+      const matrix = numbers(args, 6);
+      if (matrix) ctm = matrixMultiply(ctm, matrix);
+      continue;
+    }
+    if (op === OPS.paintFormXObjectBegin) {
+      stack.push([...ctm]);
+      const matrix = Array.isArray(args) ? numbers(args[0], 6) : null;
+      if (matrix) ctm = matrixMultiply(ctm, matrix);
+      continue;
+    }
+    if (op === OPS.paintFormXObjectEnd) {
+      ctm = stack.pop() ?? [1, 0, 0, 1, 0, 0];
+      continue;
+    }
+    if (op !== OPS.paintImageXObject && op !== OPS.paintImageXObjectRepeat) continue;
+
+    const id = Array.isArray(args) && typeof args[0] === 'string' ? args[0] : null;
+    if (!id) continue;
+
+    // Objects exist only once the operator list has been built, and `get`
+    // throws for an id that has not resolved — so `has` is not optional. A
+    // globally cached image lands in the document's store, not the page's.
+    let object: ImageObject | null = null;
+    if (local.has(id)) object = asImage(local.get(id));
+    else if (shared.has(id)) object = asImage(shared.get(id));
+    else {
+      // Not resolved yet. A globally cached image — one repeated across pages —
+      // is sent to the document's store, so the id says which one to ask.
+      const store = id.startsWith('g_') ? shared : local;
+      object = asImage(
+        await new Promise<unknown>((resolve) => {
+          let settled = false;
+          const finish = (data: unknown) => {
+            if (settled) return;
+            settled = true;
+            resolve(data);
+          };
+          const timer = setTimeout(() => finish(null), IMAGE_WAIT_MS);
+          try {
+            store.get(id, (data: unknown) => {
+              clearTimeout(timer);
+              finish(data);
+            });
+          } catch {
+            clearTimeout(timer);
+            finish(null);
+          }
+        })
+      );
+    }
+    if (!object) continue;
+
+    const corners: [number, number][] = [
+      [0, 0],
+      [1, 0],
+      [1, 1],
+      [0, 1],
+    ].map(([x, y]) => toPoint(ctm[0] * x + ctm[2] * y + ctm[4], ctm[1] * x + ctm[3] * y + ctm[5]));
+    const xs = corners.map((c) => c[0]);
+    const ys = corners.map((c) => c[1]);
+    const x = Math.min(...xs);
+    const y = Math.min(...ys);
+    const width = Math.max(...xs) - x;
+    const height = Math.max(...ys) - y;
+    // A hairline placement is a rule drawn as an image, or a spacer.
+    if (width < 2 || height < 2) continue;
+
+    try {
+      const canvas = new OffscreenCanvas(object.width, object.height);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) continue;
+      if (object.bitmap) {
+        ctx.drawImage(object.bitmap, 0, 0);
+      } else if (object.data) {
+        const source = object.data;
+        const pixels = new Uint8ClampedArray(object.width * object.height * 4);
+        // pdf.js hands back RGBA when it has decoded to one; a three-channel
+        // buffer is widened rather than guessed at.
+        const channels = source.length / (object.width * object.height);
+        if (channels >= 4) pixels.set(source.subarray(0, pixels.length));
+        else if (channels >= 3) {
+          for (let i = 0, at = 0; at < pixels.length; i += 3, at += 4) {
+            pixels[at] = source[i];
+            pixels[at + 1] = source[i + 1];
+            pixels[at + 2] = source[i + 2];
+            pixels[at + 3] = 255;
+          }
+        } else continue;
+        ctx.putImageData(new ImageData(pixels, object.width, object.height), 0, 0);
+      } else continue;
+
+      const blob = await canvas.convertToBlob({ type: 'image/png' });
+      canvas.width = 0;
+      canvas.height = 0;
+      placed.push({
+        x,
+        y,
+        width,
+        height,
+        bytes: new Uint8Array(await blob.arrayBuffer()),
+        mime: 'image/png',
+        pixelWidth: object.width,
+        pixelHeight: object.height,
+      });
+    } catch {
+      // One unreadable picture is a missing picture, not a failed conversion.
+    }
+  }
+
+  return placed;
 }
 
 async function extractRuns(page: PdfPage, wantFonts: boolean): Promise<PageRuns> {
@@ -616,9 +824,10 @@ async function extractRuns(page: PdfPage, wantFonts: boolean): Promise<PageRuns>
   }
 
   const rules = operators ? await readRules(operators, toPoint) : [];
+  const images = operators ? await readImages(page, operators, toPoint) : [];
   const fontsResolved = [...facts.values()].some((font) => font.known);
 
-  return { runs, sideways, fontsResolved, rules };
+  return { runs, sideways, fontsResolved, rules, images };
 }
 
 // ── lines ───────────────────────────────────────────────────────────────
@@ -1765,6 +1974,8 @@ export interface PageScan {
    */
   lines: TextLine[];
   rules: RuleLine[];
+  /** Pictures with their placement. Empty when fonts were not resolved. */
+  images: PlacedImage[];
   sideways: number;
   fontsResolved: boolean;
 }
@@ -1776,7 +1987,7 @@ export async function scanPage(
   fonts: 'resolve' | 'skip' = 'resolve'
 ): Promise<PageScan> {
   const viewport = page.getViewport({ scale: 1 });
-  const { runs, sideways, fontsResolved, rules } = await extractRuns(page, fonts === 'resolve');
+  const { runs, sideways, fontsResolved, rules, images } = await extractRuns(page, fonts === 'resolve');
   return {
     page: pageNumber,
     width: viewport.width,
@@ -1785,6 +1996,7 @@ export async function scanPage(
     runs,
     lines: toLines(runs),
     rules,
+    images,
     sideways,
     fontsResolved,
   };
@@ -1859,6 +2071,7 @@ export function structurePage(scan: PageScan, context: PageContext = {}): PageSt
     columnCount: Math.max(1, ...bands.map((band) => band.columns.length)),
     columnConfidence: confidence,
     rules: scan.rules,
+    images: scan.images ?? [],
     emphasis: scan.fontsResolved ? 'font-names' : 'unknown',
     sidewaysRuns: scan.sideways,
     text,

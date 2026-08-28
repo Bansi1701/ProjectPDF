@@ -508,6 +508,8 @@ interface Tally {
   dehyphenated: number;
   /** Blank pages after the last page with anything on it. */
   trailingBlank: number;
+  /** Pictures carried across, with their place in the flow. */
+  images: number;
 }
 
 function assemble(structure: DocumentStructure, body: number): { blocks: DocxBlock[]; tally: Tally } {
@@ -521,6 +523,7 @@ function assemble(structure: DocumentStructure, body: number): { blocks: DocxBlo
     running: 0,
     dehyphenated: 0,
     trailingBlank: 0,
+    images: 0,
   };
 
   // Page breaks are counted rather than flagged, because a PDF page that
@@ -550,7 +553,39 @@ function assemble(structure: DocumentStructure, body: number): { blocks: DocxBlo
     if (!first) pending += 1;
     first = false;
 
+    /*
+     * Pictures go back into the flow where they sat on the page.
+     *
+     * A PDF has no reading order for an image any more than it has paragraphs,
+     * but it does record exactly where the picture was drawn — so the honest
+     * reconstruction is the one that puts it between the blocks it sat between.
+     * Appending them at the end, which is the usual shortcut, lands a chart
+     * three pages after its caption.
+     */
+    const pictures = [...page.images].sort((a, b) => a.y - b.y);
+    let nextPicture = 0;
+    const emitPicturesAbove = (limit: number): void => {
+      while (nextPicture < pictures.length && pictures[nextPicture].y < limit) {
+        const picture = pictures[nextPicture];
+        nextPicture += 1;
+        // A full-bleed picture is the page: centring it reads as deliberate,
+        // and anything narrower keeps the column's own left edge.
+        const full = picture.width > (page.width - 40);
+        emit({
+          type: 'image',
+          bytes: picture.bytes,
+          mime: picture.mime,
+          width: picture.width,
+          height: picture.height,
+          align: full ? 'center' : 'left',
+          alt: `Picture from page ${page.page}`,
+        });
+        tally.images += 1;
+      }
+    };
+
     for (const block of page.blocks) {
+      emitPicturesAbove(block.top);
       if (block.kind === 'table') {
         // Below the floor this is a guess, and a wrong table is far harder to
         // undo in Word than a run of tab-separated lines is to turn into one.
@@ -620,6 +655,10 @@ function assemble(structure: DocumentStructure, body: number): { blocks: DocxBlo
         align: paragraph.align,
       });
     }
+
+    // Anything below the last block on the page — a figure at the foot, or a
+    // page that is one picture and nothing else.
+    emitPicturesAbove(Number.POSITIVE_INFINITY);
   }
 
   tally.trailingBlank = pending;
@@ -709,6 +748,7 @@ export async function pdfToWord(files: InputFile[]): Promise<OpResult> {
   );
 
   const carried = [plural(tally.headings, 'heading'), plural(tally.paragraphs, 'paragraph')];
+  if (tally.images > 0) carried.push(plural(tally.images, 'picture'));
   if (tally.listItems > 0) carried.push(plural(tally.listItems, 'list item'));
   if (tally.tables > 0) carried.push(plural(tally.tables, 'table'));
   notes.push(
@@ -759,7 +799,11 @@ export async function pdfToWord(files: InputFile[]): Promise<OpResult> {
   );
 
   notes.push(
-    'Not carried over: images, drawn lines and shapes, background colour, text colour, underline and strikethrough, links, form fields, footnote links, and anything printed sideways. This reads the text layer, not the appearance of the page.'
+    `Not carried over: drawn lines and shapes, background colour, text colour, underline and strikethrough, links, form fields, footnote links, and anything printed sideways.${
+      tally.images > 0
+        ? ' Pictures come across at the size and place they were drawn, in the flow — a PDF has no float to recover, so what is kept is which blocks they sat between.'
+        : ''
+    }`
   );
 
   if (tally.trailingBlank > 0) {
