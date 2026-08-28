@@ -665,12 +665,136 @@ function assemble(structure: DocumentStructure, body: number): { blocks: DocxBlo
   return { blocks, tally };
 }
 
+/* ── faithful layout ─────────────────────────────────────────────────────
+ *
+ * The other mode reads a PDF and guesses what it meant: where paragraphs begin,
+ * which lines are headings, where the columns are. Those guesses are what break
+ * on real documents — a two-column paper comes out interleaved, dense prose
+ * collapses into one paragraph per page or explodes into one per line.
+ *
+ * This mode guesses nothing. Every line goes back at the coordinates it was
+ * drawn at, in a frame, at its own size and weight. It cannot get the structure
+ * wrong because it never infers any; what it gives up is reflowing — edit a
+ * sentence and the line does not rewrap into its neighbours, because they are
+ * separate frames. That is the honest trade, and it is the one worth offering
+ * to somebody who wants the document to look like the document.
+ */
+
+/** Word has no Helvetica; these are the metric-compatible substitutes. */
+const FONT_SUBSTITUTES: [RegExp, string][] = [
+  [/helvetica|arial|liberation ?sans|nimbus ?sans/i, 'Arial'],
+  [/times|liberation ?serif|nimbus ?roman/i, 'Times New Roman'],
+  [/courier|mono/i, 'Courier New'],
+  [/georgia/i, 'Georgia'],
+  [/garamond/i, 'Garamond'],
+  [/calibri/i, 'Calibri'],
+  [/cambria/i, 'Cambria'],
+  [/verdana/i, 'Verdana'],
+  [/tahoma/i, 'Tahoma'],
+];
+
+function wordFont(name: string, serif: boolean, monospace: boolean): string {
+  for (const [pattern, family] of FONT_SUBSTITUTES) {
+    if (pattern.test(name)) return family;
+  }
+  // Nothing matched, so fall back on what the glyphs themselves looked like.
+  return monospace ? 'Courier New' : serif ? 'Times New Roman' : 'Arial';
+}
+
+/**
+ * How much wider than measured a frame is made.
+ *
+ * The substituted font is never metrically identical to the original, so a line
+ * set in Arial can run a little wider than the Helvetica it replaces. A frame
+ * that is too narrow wraps, and a wrapped line has moved — which is the one
+ * thing this mode exists to prevent. Slack costs nothing: the frame has no
+ * border and no fill, so an over-wide one is invisible.
+ */
+const FRAME_SLACK = 1.18;
+
+function assembleExact(
+  structure: DocumentStructure
+): { blocks: DocxBlock[]; tally: Tally; pagesWithOtherSizes: number } {
+  const blocks: DocxBlock[] = [];
+  const tally: Tally = {
+    headings: 0,
+    paragraphs: 0,
+    listItems: 0,
+    tables: 0,
+    demoted: 0,
+    running: 0,
+    dehyphenated: 0,
+    trailingBlank: 0,
+    images: 0,
+  };
+
+  const first = structure.pages[0];
+  let pagesWithOtherSizes = 0;
+
+  structure.pages.forEach((page, index) => {
+    if (first && (Math.abs(page.width - first.width) > 1 || Math.abs(page.height - first.height) > 1)) {
+      pagesWithOtherSizes += 1;
+    }
+
+    // The anchor paragraph. Frames are positioned against the page they are
+    // anchored on, so each PDF page needs one ordinary paragraph in the flow to
+    // carry them — without it every frame in the document piles onto page one.
+    blocks.push({
+      type: 'paragraph',
+      runs: [],
+      pageBreakBefore: index > 0,
+    });
+
+    for (const line of page.lines) {
+      const runs: DocxRun[] = line.runs
+        .filter((run) => run.text.length > 0)
+        .map((run) => ({
+          text: run.text,
+          bold: run.bold || undefined,
+          italic: run.italic || undefined,
+          size: Math.round(run.fontSize * 2) / 2,
+          font: wordFont(run.fontName, run.serif, run.monospace),
+        }));
+      if (runs.length === 0 || runs.every((run) => !run.text.trim())) continue;
+
+      const width = Math.max(line.right - line.x, line.fontSize) * FRAME_SLACK;
+      blocks.push({
+        type: 'paragraph',
+        runs,
+        frame: { x: line.x, y: line.top, width },
+        lineHeight: Math.max(line.fontSize * 1.02, 1),
+      });
+      tally.paragraphs += 1;
+    }
+
+    for (const picture of page.images) {
+      blocks.push({
+        type: 'image',
+        bytes: picture.bytes,
+        mime: picture.mime,
+        width: picture.width,
+        height: picture.height,
+        frame: { x: picture.x, y: picture.y, width: picture.width, height: picture.height },
+        alt: `Picture from page ${page.page}`,
+      });
+      tally.images += 1;
+    }
+  });
+
+  return { blocks, tally, pagesWithOtherSizes };
+}
+
 // ── the operation ───────────────────────────────────────────────────────
 
 const plural = (count: number, one: string, many = `${one}s`): string =>
   `${count} ${count === 1 ? one : many}`;
 
-export async function pdfToWord(files: InputFile[]): Promise<OpResult> {
+export type WordLayout = 'exact' | 'flow';
+
+export async function pdfToWord(
+  files: InputFile[],
+  layout: WordLayout = 'exact'
+): Promise<OpResult> {
   const file = files[0];
   if (!file) return { ok: false, error: 'Choose a PDF to convert.' };
 
@@ -689,7 +813,11 @@ export async function pdfToWord(files: InputFile[]): Promise<OpResult> {
   // a page number — where converting would produce a document that looks
   // complete and has lost most of its content.
   const blank = structure.pages.filter((page) => page.empty).length;
-  if (structure.pages.length >= 3 && blank / structure.pages.length >= 0.6) {
+  // Faithful layout still has something to give a mostly-scanned document: the
+  // page images come across where they were drawn, so a contract bundle with a
+  // typed cover arrives looking like itself. It is the re-flowing mode that has
+  // nothing to work with, because there are no words to re-flow.
+  if (layout === 'flow' && structure.pages.length >= 3 && blank / structure.pages.length >= 0.6) {
     return {
       ok: false,
       error:
@@ -701,7 +829,23 @@ export async function pdfToWord(files: InputFile[]): Promise<OpResult> {
   const font = pickFont(structure.pages);
   const geometry = pageGeometry(structure.pages);
   const body = Math.round(structure.bodyFontSize * 2) / 2;
-  const { blocks, tally } = assemble(structure, body);
+
+  const exact = layout === 'exact';
+  const built: { blocks: DocxBlock[]; tally: Tally; pagesWithOtherSizes?: number } = exact
+    ? assembleExact(structure)
+    : assemble(structure, body);
+  const { blocks, tally } = built;
+  const otherSizes = built.pagesWithOtherSizes ?? 0;
+
+  // Frames are measured from the page edge, so an exact layout wants the page
+  // itself and no margin of its own to fight with.
+  const page = exact
+    ? {
+        width: structure.pages[0]?.width ?? geometry.page.width,
+        height: structure.pages[0]?.height ?? geometry.page.height,
+        margin: { top: 0, right: 0, bottom: 0, left: 0 },
+      }
+    : geometry.page;
 
   if (blocks.length === 0) {
     return { ok: false, error: 'Nothing in this PDF came through as text worth converting.' };
@@ -709,7 +853,7 @@ export async function pdfToWord(files: InputFile[]): Promise<OpResult> {
 
   let bytes: Uint8Array;
   try {
-    bytes = buildDocx({ blocks, page: geometry.page, font: font.name, size: body });
+    bytes = buildDocx({ blocks, page, font: font.name, size: body });
   } catch (error) {
     return { ok: false, error: `This document could not be written: ${(error as Error).message}` };
   }
@@ -723,6 +867,51 @@ export async function pdfToWord(files: InputFile[]): Promise<OpResult> {
     'Converted here, in this tab. The PDF was never uploaded.',
     'Read from the file: the words, their font size, bold and italic, the page size, and where the text sits on each page.',
   ];
+
+  /** Both modes end the same way; only the account of what happened differs. */
+  const finish = (summary?: string): OpResult => {
+    // pagetext's own caveats last: unreadable pages, columns, sideways text and
+    // the bad-OCR warning are all things it is better placed to judge.
+    notes.push(...structure.notes);
+    return {
+      ok: true,
+      files: [{ name: `${baseName(file.name)}.docx`, bytes, type: DOCX_MIME }],
+      bytesIn: structure.bytesIn,
+      bytesOut: bytes.length,
+      pages: structure.pageCount,
+      durationMs: performance.now() - started,
+      summary:
+        summary ??
+        `${plural(tally.paragraphs, 'line')} placed as drawn over ${plural(structure.pages.length, 'page')}`,
+      notes,
+    };
+  };
+
+  if (exact) {
+    notes.push(
+      'Faithful layout: every line is placed in a frame at the coordinates it was drawn at, so the page looks like the page. Nothing about the structure was inferred — no paragraphs, no headings, no columns were guessed, which is why a two-column page or a form cannot come out reordered.'
+    );
+    notes.push(
+      'The trade: lines are separate frames, so editing one does not reflow the ones around it. Choose "Editable text" instead if you are going to rewrite the document rather than amend it.'
+    );
+    if (otherSizes > 0) {
+      notes.push(
+        `${plural(otherSizes, 'page')} in this PDF ${otherSizes === 1 ? 'is' : 'are'} a different size from the first. Word applies one page size to the whole document, so ${otherSizes === 1 ? 'that page is' : 'those pages are'} laid out on the first page's size.`
+      );
+    }
+    notes.push(
+      `Carried across: ${plural(tally.paragraphs, 'line')}${tally.images > 0 ? ` and ${plural(tally.images, 'picture')}` : ''} over ${plural(structure.pages.length, 'page')}, each at its own position, size and weight.`
+    );
+    notes.push(
+      'Not carried over: drawn lines and shapes, background colour, table borders, links and form fields. Text colour is not in the text layer a PDF exposes, so it is not recovered either.'
+    );
+    if (blank > 0) {
+      notes.push(
+        `${plural(blank, 'page')} ${blank === 1 ? 'is' : 'are'} an image with no text layer — ${blank === 1 ? 'its picture is' : 'their pictures are'} placed here as ${blank === 1 ? 'it was' : 'they were'} drawn, but there are no words on ${blank === 1 ? 'it' : 'them'} to select or search. Run the original through OCR first if you need the text.`
+      );
+    }
+    return finish();
+  }
 
   const inferred: string[] = [
     'where each paragraph begins and ends',
@@ -812,24 +1001,10 @@ export async function pdfToWord(files: InputFile[]): Promise<OpResult> {
     );
   }
 
-  // pagetext's own caveats last: unreadable pages, columns, sideways text and
-  // the bad-OCR warning are all things it is better placed to judge than this
-  // file is, and it already writes them as user-facing prose.
-  notes.push(...structure.notes);
-
   const summary =
     tally.tables > 0
       ? `${plural(tally.paragraphs + tally.headings + tally.listItems, 'paragraph')} and ${plural(tally.tables, 'table')} from ${plural(structure.pages.length, 'page')}`
       : `${plural(tally.paragraphs + tally.headings + tally.listItems, 'paragraph')} from ${plural(structure.pages.length, 'page')}`;
 
-  return {
-    ok: true,
-    files: [{ name: `${baseName(file.name)}.docx`, bytes, type: DOCX_MIME }],
-    bytesIn: structure.bytesIn,
-    bytesOut: bytes.length,
-    pages: structure.pageCount,
-    durationMs: performance.now() - started,
-    summary,
-    notes,
-  };
+  return finish(summary);
 }

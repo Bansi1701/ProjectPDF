@@ -416,6 +416,31 @@ const dropTitle = takesExcel
     }
 
     {
+      mode === 'pdf-to-word' && (
+        <fieldset class="field field--turns">
+          <legend>How it should come out</legend>
+          <label>
+            <input type="radio" name="wl" value="exact" checked /> Looks like the PDF
+          </label>
+          <label>
+            <input type="radio" name="wl" value="flow" /> Editable text
+          </label>
+          <small>
+            <strong>Looks like the PDF</strong> puts every line back at the exact position it was
+            drawn at, with its own size, weight and font, and the pictures where they were. Nothing
+            is guessed — so a two-column page, a form or an invoice cannot come out reordered. The
+            cost is that lines do not reflow when you edit them.
+          </small>
+          <small>
+            <strong>Editable text</strong> rebuilds paragraphs, headings, lists and tables so the
+            document reads and edits like a Word document. It has to infer all of that from where
+            the glyphs sit, and on a complicated page it can infer wrongly.
+          </small>
+        </fieldset>
+      )
+    }
+
+    {
       mode === 'compress' && (
         <fieldset class="field field--turns">
           <legend>Compression</legend>

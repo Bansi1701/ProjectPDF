@@ -469,6 +469,8 @@ export interface WorkerRequest {
   autoCropOptions?: AutoCropOptions;
   /** Reorder only: zero-based page indexes in their new order. */
   pageOrder?: number[];
+  /** PDF → Word only: reproduce the page, or re-flow it as editable text. */
+  wordLayout?: import('./pdftoword').WordLayout;
   /** Text tools only. */
   text?: string;
   /** Shared live-workspace edits, applied before the tool's own operation. */

@@ -166,7 +166,7 @@ async function run(request: WorkerRequest): Promise<OpResult> {
     case 'split-by':
       return (await import('./splitby')).splitBy(request.files, request.splitByOptions ?? { mode: 'every', every: 10 });
     case 'pdf-to-word':
-      return (await import('./pdftoword')).pdfToWord(request.files);
+      return (await import('./pdftoword')).pdfToWord(request.files, request.wordLayout ?? 'exact');
     case 'pdf-to-excel':
       return (await import('./pdftoexcel')).pdfToExcel(request.files);
     case 'crop':

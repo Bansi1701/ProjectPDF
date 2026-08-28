@@ -141,9 +141,41 @@ export interface DocxRun {
   italic?: boolean;
   /** Points. Omit to inherit the document default. */
   size?: number;
+  /** Six hex digits, no hash. Omit to inherit. */
+  color?: string;
+  /** Overrides the document font for this run alone. */
+  font?: string;
 }
 
 export type DocxAlign = 'left' | 'center' | 'right' | 'justify';
+
+/**
+ * Where a block sits on the page, in points from the page's top-left.
+ *
+ * This is `w:framePr`, not a drawing. A DrawingML text box needs its own wrap
+ * geometry, an mc:AlternateContent fallback and two more namespaces, and
+ * renders differently in every reader; a frame is plain WordprocessingML that
+ * Word and LibreOffice have both honoured for twenty years. `wrap: none` is
+ * what takes the block out of the flow — without it the frames push each other
+ * down the page and the layout is lost again.
+ */
+export interface DocxFrame {
+  x: number;
+  y: number;
+  width: number;
+  /** Omit to let the frame size itself to its content. */
+  height?: number;
+}
+
+function frameXml(frame: DocxFrame): string {
+  return (
+    '<w:framePr w:hAnchor="page" w:vAnchor="page" w:wrap="none" w:hRule="auto"' +
+    ` w:x="${ptToTwips(frame.x)}" w:y="${ptToTwips(frame.y)}"` +
+    ` w:w="${ptToTwips(Math.max(frame.width, 1))}"` +
+    (frame.height ? ` w:h="${ptToTwips(frame.height)}"` : '') +
+    '/>'
+  );
+}
 
 export interface DocxParagraph {
   type: 'paragraph';
@@ -155,6 +187,10 @@ export interface DocxParagraph {
    */
   heading?: number;
   align?: DocxAlign;
+  /** Place this paragraph absolutely instead of letting it flow. */
+  frame?: DocxFrame;
+  /** Points of leading. Only meaningful inside a frame. */
+  lineHeight?: number;
   /** Start this paragraph at the top of a fresh page. */
   pageBreakBefore?: boolean;
 }
@@ -190,6 +226,8 @@ export interface DocxImage {
   type: 'image';
   bytes: Uint8Array;
   mime: 'image/png' | 'image/jpeg';
+  /** Place the picture absolutely instead of letting it flow. */
+  frame?: DocxFrame;
   /** Points, as the picture was drawn on the PDF page. */
   width: number;
   height: number;
@@ -283,6 +321,11 @@ function runXml(run: DocxRun): string {
     const half = ptToHalfPoints(run.size);
     props += `<w:sz w:val="${half}"/><w:szCs w:val="${half}"/>`;
   }
+  if (run.font) {
+    const name = escapeAttr(run.font);
+    props += `<w:rFonts w:ascii="${name}" w:hAnsi="${name}" w:cs="${name}"/>`;
+  }
+  if (/^[0-9a-fA-F]{6}$/.test(run.color ?? '')) props += `<w:color w:val="${run.color!.toUpperCase()}"/>`;
 
   return `<w:r>${props ? `<w:rPr>${props}</w:rPr>` : ''}${content}</w:r>`;
 }
@@ -307,6 +350,16 @@ function paragraphXml(para: DocxParagraph, extra = ''): string {
   const heading = Math.round(para.heading ?? 0);
   if (heading >= 1 && heading <= 6) props += `<w:pStyle w:val="Heading${heading}"/>`;
   if (para.pageBreakBefore) props += '<w:pageBreakBefore/>';
+  if (para.frame) {
+    props += frameXml(para.frame);
+    // A framed line is one line: Word's default spacing before and after would
+    // push the text off the position it was placed at.
+    props += '<w:spacing w:before="0" w:after="0"';
+    props += para.lineHeight
+      ? ` w:line="${ptToTwips(para.lineHeight)}" w:lineRule="exact"/>`
+      : ' w:line="240" w:lineRule="auto"/>';
+    props += '<w:contextualSpacing/>';
+  }
   props += extra;
   if (para.align && para.align !== 'left') props += `<w:jc w:val="${JC[para.align]}"/>`;
 
@@ -498,12 +551,18 @@ export function buildDocx(document: DocxDocument): Uint8Array {
     // Never wider than the text column: a picture drawn edge to edge on an A4
     // page is wider than A4 minus margins, and Word does not shrink it.
     const maxWidth = page.width - page.margin.left - page.margin.right;
-    const scale = block.width > maxWidth ? maxWidth / block.width : 1;
+    const scale = block.frame || block.width <= maxWidth ? 1 : maxWidth / block.width;
     const cx = ptToEmu(block.width * scale);
     const cy = ptToEmu(block.height * scale);
     const alt = escapeAttr(block.alt ?? 'Picture from the PDF');
+    let props = '';
+    if (block.frame) {
+      props += frameXml(block.frame);
+      props += '<w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/>';
+    }
+    if (block.align && block.align !== 'left') props += `<w:jc w:val="${JC[block.align]}"/>`;
     return (
-      `<w:p>${block.align && block.align !== 'left' ? `<w:pPr><w:jc w:val="${JC[block.align]}"/></w:pPr>` : ''}<w:r><w:drawing>` +
+      `<w:p>${props ? `<w:pPr>${props}</w:pPr>` : ''}<w:r><w:drawing>` +
       `<wp:inline distT="0" distB="0" distL="0" distR="0">` +
       `<wp:extent cx="${cx}" cy="${cy}"/><wp:effectExtent l="0" t="0" r="0" b="0"/>` +
       `<wp:docPr id="${id}" name="Picture ${id}" descr="${alt}"/>` +
