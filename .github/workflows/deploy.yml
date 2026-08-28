@@ -36,7 +36,10 @@ jobs:
       - run: npm ci
       - name: npm audit (advisories report only)
         run: npm audit --audit-level=high || echo "⚠️ npm audit reported high-severity findings. Continuing for deployment."
-      - run: npm run build
+      - name: Build site (clean + script-compatible)
+        run: |
+          rm -rf dist
+          npm run built --if-present || npm run build
 
       - uses: actions/configure-pages@v5
 
