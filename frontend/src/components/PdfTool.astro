@@ -45,10 +45,26 @@ const ACTIONS: Record<Operation, string> = {
   'pdf-a': 'Convert to PDF/A',
   repair: 'Repair',
   ocr: 'Read the text',
+  redact: 'Redact and save',
   'word-to-pdf': 'Convert to PDF',
   'url-to-pdf': 'Render the page',
   'excel-to-pdf': 'Convert to PDF',
   'powerpoint-to-pdf': 'Convert to PDF',
+  compose: 'Save the changes',
+  'pdf-to-word': 'Convert to Word',
+  'pdf-to-excel': 'Extract the tables',
+  crop: 'Crop the pages',
+  scan: 'Build the PDF',
+  flatten: 'Flatten the PDF',
+  impose: 'Create the layout',
+  'extract-images': 'Extract images',
+  overlay: 'Apply overlay',
+  'text-to-pdf': 'Create the PDF',
+  metadata: 'Save metadata',
+  'header-footer': 'Add headers and footers',
+  'split-by': 'Split the PDF',
+  grayscale: 'Convert to greyscale',
+  'auto-crop': 'Trim the margins',
 };
 
 /** Modes whose ranges field means "pages to act on", not "groups". */
@@ -473,6 +489,7 @@ const dropTitle = takesExcel
 
 <script>
   import type { WorkerRequest, WorkerResponse } from '../lib/pdf/types';
+  import { PREVIEW_SIZE_KEY, readPreference, writePreference } from '../lib/browserPreferences';
 
   const root = document.querySelector<HTMLElement>('[data-pdf-tool]');
 
@@ -1027,21 +1044,28 @@ const dropTitle = takesExcel
     workspace.addEventListener('input', updateLiveOverlay);
     workspace.addEventListener('change', updateLiveOverlay);
 
-    const PREVIEW_SIZE_KEY = 'pdftool-preview-size';
+    type PreviewSize = 'sm' | 'md' | 'lg';
     const sizeButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-preview-sizes] [data-size]')];
 
-    function setPreviewSize(sizeValue: string) {
+    function isPreviewSize(value: unknown): value is PreviewSize {
+      return value === 'sm' || value === 'md' || value === 'lg';
+    }
+
+    function setPreviewSize(sizeValue: PreviewSize, persist = false) {
       previewPages.dataset.size = sizeValue;
       for (const button of sizeButtons) {
         button.setAttribute('aria-pressed', String(button.dataset.size === sizeValue));
       }
-      localStorage.setItem(PREVIEW_SIZE_KEY, sizeValue);
+      if (persist) writePreference(PREVIEW_SIZE_KEY, sizeValue);
     }
 
     for (const button of sizeButtons) {
-      button.addEventListener('click', () => setPreviewSize(button.dataset.size ?? 'md'));
+      button.addEventListener('click', () => {
+        const size = button.dataset.size;
+        if (isPreviewSize(size)) setPreviewSize(size, true);
+      });
     }
-    setPreviewSize(localStorage.getItem(PREVIEW_SIZE_KEY) ?? 'md');
+    setPreviewSize(readPreference(PREVIEW_SIZE_KEY, isPreviewSize) ?? 'md');
 
     function onDone({ id, result: res }: WorkerResponse) {
       // Grid traffic is answered where it was asked from.

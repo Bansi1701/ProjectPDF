@@ -36,17 +36,25 @@ jobs:
       - run: npm ci
       - name: npm audit (advisories report only)
         run: npm audit --audit-level=high || echo "⚠️ npm audit reported high-severity findings. Continuing for deployment."
-      - name: Build site (clean + script-compatible)
-        run: |
-          rm -rf dist
-          npm run built --if-present || npm run build
+      - name: Build production site
+        run: npm run build
 
-      - uses: actions/configure-pages@v5
+      # Build the Pages payload explicitly. This is the same artifact shape
+      # used by the last successful deployment and keeps every action on the
+      # current Node runtime.
+      - name: Package Pages artifact
+        run: >-
+          tar --dereference --hard-dereference --directory dist
+          -cvf "$RUNNER_TEMP/artifact.tar"
+          --exclude=.git --exclude=.github .
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-artifact@v7
         with:
-          path: frontend/dist
+          name: github-pages
+          path: ${{ runner.temp }}/artifact.tar
+          retention-days: 1
+          if-no-files-found: error
 
   deploy:
     needs: build
