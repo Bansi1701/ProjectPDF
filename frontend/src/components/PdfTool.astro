@@ -1197,6 +1197,8 @@ const dropTitle = takesExcel
 </section>
 
 <script>
+  import { PREVIEW_SIZE_KEY, readPreference, writePreference } from '../lib/browserPreferences';
+
   import type { WorkerRequest, WorkerResponse } from '../lib/pdf/types';
   import type { EditMark } from '../lib/pdf/types';
   import { parsePageSet } from '../lib/pdf/pageset';
@@ -2163,21 +2165,27 @@ const dropTitle = takesExcel
     workspace.addEventListener('input', updateLiveOverlay);
     workspace.addEventListener('change', updateLiveOverlay);
 
-    const PREVIEW_SIZE_KEY = 'pdftool-preview-size';
     const sizeButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-preview-sizes] [data-size]')];
 
-    function setPreviewSize(sizeValue: string) {
+    type PreviewSize = 'sm' | 'md' | 'lg';
+    const isPreviewSize = (value: unknown): value is PreviewSize =>
+      value === 'sm' || value === 'md' || value === 'lg';
+
+    function setPreviewSize(sizeValue: PreviewSize, persist = false) {
       previewPages.dataset.size = sizeValue;
       for (const button of sizeButtons) {
         button.setAttribute('aria-pressed', String(button.dataset.size === sizeValue));
       }
-      localStorage.setItem(PREVIEW_SIZE_KEY, sizeValue);
+      if (persist) writePreference(PREVIEW_SIZE_KEY, sizeValue);
     }
 
     for (const button of sizeButtons) {
-      button.addEventListener('click', () => setPreviewSize(button.dataset.size ?? 'md'));
+      button.addEventListener('click', () => {
+        const size = button.dataset.size;
+        setPreviewSize(isPreviewSize(size) ? size : 'md', true);
+      });
     }
-    setPreviewSize(localStorage.getItem(PREVIEW_SIZE_KEY) ?? 'md');
+    setPreviewSize(readPreference(PREVIEW_SIZE_KEY, isPreviewSize) ?? 'md');
 
     /**
      * Shows what the file is already carrying, and seeds the inputs with it.

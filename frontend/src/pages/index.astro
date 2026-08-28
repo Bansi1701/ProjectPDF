@@ -320,22 +320,19 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 </BaseLayout>
 
 <script>
+  import { FAVOURITES_KEY, readPreference, writePreference } from '../lib/browserPreferences';
+
   /* ── Your tools ────────────────────────────────────────────────────────
      Kept in this browser, like everything else here. Nobody is asked to make
      an account to remember which five of forty tools they actually use. */
-  const FAVOURITES = 'projectpdf-favourites';
   const yours = document.querySelector<HTMLElement>('[data-yours]');
   const yoursRow = document.querySelector<HTMLElement>('[data-yours-row]');
   const stars = [...document.querySelectorAll<HTMLButtonElement>('[data-fav]')];
 
   const readFavourites = (): string[] => {
-    try {
-      const raw = JSON.parse(localStorage.getItem(FAVOURITES) ?? '[]');
-      return Array.isArray(raw) ? raw.filter((item): item is string => typeof item === 'string') : [];
-    } catch {
-      // Private mode, or storage the browser refuses. Not worth an error.
-      return [];
-    }
+    const accepts = (value: unknown): value is string[] =>
+      Array.isArray(value) && value.every((item) => typeof item === 'string');
+    return readPreference(FAVOURITES_KEY, accepts) ?? [];
   };
 
   function paintFavourites() {
@@ -367,11 +364,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
       if (!slug) return;
       const saved = readFavourites();
       const next = saved.includes(slug) ? saved.filter((item) => item !== slug) : [...saved, slug];
-      try {
-        localStorage.setItem(FAVOURITES, JSON.stringify(next));
-      } catch {
-        // Nothing to do but leave the star as it was.
-      }
+      writePreference(FAVOURITES_KEY, next);
       paintFavourites();
     });
   }

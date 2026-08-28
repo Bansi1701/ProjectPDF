@@ -91,3 +91,14 @@ export async function claim(key: string): Promise<File | null> {
     return null;
   }
 }
+
+/** Removes every unclaimed local handoff when a person clears ProjectPDF data. */
+export async function clearHandoffs(): Promise<void> {
+  if (typeof indexedDB === 'undefined') return;
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error('Could not clear local PDF handoffs.'));
+    request.onblocked = () => reject(new Error('Close other ProjectPDF tabs, then try again.'));
+  });
+}

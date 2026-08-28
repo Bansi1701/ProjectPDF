@@ -283,6 +283,8 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
 </style>
 
 <script>
+  import { THEME_KEY, writePreference } from '../lib/browserPreferences';
+
   const navMenus = Array.from(document.querySelectorAll<HTMLDetailsElement>('[data-nav-menu]'));
   const themeToggle = document.querySelector<HTMLButtonElement>('[data-theme-toggle]');
   const mobileNav = window.matchMedia('(max-width: 48em)');
@@ -323,7 +325,11 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
   themeToggle?.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
-    try { localStorage.setItem('pdfcraft-theme', next); } catch {}
+    writePreference(THEME_KEY, next);
+    paintThemeToggle();
+  });
+  window.addEventListener('projectpdf:preferences-cleared', () => {
+    document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     paintThemeToggle();
   });
   navMenus.forEach((menu) => {
@@ -375,16 +381,6 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
   });
   mobileNav.addEventListener('change', syncMenuState);
   syncMenuState();
-  const slug = location.pathname.split('/').filter(Boolean).at(-1) ?? '';
-  if (slug && document.querySelector(`[data-nav-tool="${CSS.escape(slug)}"]`)) {
-    try {
-      const key = 'projectpdf-tool-usage';
-      const parsed: unknown = JSON.parse(localStorage.getItem(key) ?? '{}');
-      const usage = parsed && typeof parsed === 'object' ? parsed as Record<string, number> : {};
-      usage[slug] = (Number(usage[slug]) || 0) + 1;
-      localStorage.setItem(key, JSON.stringify(usage));
-    } catch {}
-  }
 </script>
 
 <style is:global>

@@ -5,6 +5,7 @@ import Seo from '../components/Seo.astro';
 import ProofCounter from '../components/ProofCounter.astro';
 import SpeedNote from '../components/SpeedNote.astro';
 import { TOOLS } from '../config/site';
+import { LEGACY_USAGE_KEY, PREFERENCE_VERSION, THEME_KEY } from '../lib/browserPreferences';
 
 interface Props {
   title: string;
@@ -25,6 +26,9 @@ const favicon = `${import.meta.env.BASE_URL}/favicon.svg`.replace(/\/{2,}/g, '/'
 
 const pageSlug = Astro.url.pathname.split('/').filter(Boolean).at(-1) ?? '';
 const noindex = TOOLS.some((tool) => tool.slug === pageSlug && tool.status !== 'live');
+const themeKey = THEME_KEY;
+const legacyUsageKey = LEGACY_USAGE_KEY;
+const preferenceVersion = PREFERENCE_VERSION;
 ---
 
 <!doctype html>
@@ -40,15 +44,31 @@ const noindex = TOOLS.some((tool) => tool.slug === pageSlug && tool.status !== '
     <meta name="theme-color" content="#0b0f17" media="(prefers-color-scheme: dark)" />
 
     <link rel="icon" href={favicon} type="image/svg+xml" />
-    <script is:inline>
+    <script is:inline define:vars={{ themeKey, legacyUsageKey, preferenceVersion }}>
       try {
-        const saved = localStorage.getItem('pdfcraft-theme');
-        const theme = saved === 'light' || saved === 'dark'
-          ? saved
-          : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        // This retired counter was never transmitted or used. Remove any copy
+        // left by an earlier release before reading the requested appearance.
+        localStorage.removeItem(legacyUsageKey);
+        const raw = localStorage.getItem(themeKey);
+        let saved = null;
+        if (raw) {
+          try {
+            const record = JSON.parse(raw);
+            if (
+              record?.version === preferenceVersion &&
+              (record.value === 'light' || record.value === 'dark') &&
+              typeof record.expiresAt === 'number' &&
+              record.expiresAt > Date.now()
+            ) saved = record.value;
+            else localStorage.removeItem(themeKey);
+          } catch {
+            localStorage.removeItem(themeKey);
+          }
+        }
+        const theme = saved ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.dataset.theme = theme;
       } catch {
-        document.documentElement.dataset.theme = 'light';
+        document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
     </script>
   </head>
