@@ -82,7 +82,7 @@ const { mode } = Astro.props;
   }
 
   .page-grid__count {
-    font-size: 0.85rem;
+    font-size: var(--step--1);
     color: var(--muted);
   }
 
@@ -94,7 +94,7 @@ const { mode } = Astro.props;
 
   .page-grid__btn {
     font: inherit;
-    font-size: 0.78rem;
+    font-size: var(--step--1);
     padding: 0.3rem 0.6rem;
     border: 1px solid var(--line);
     border-radius: calc(var(--radius) * 0.5);
@@ -115,7 +115,7 @@ const { mode } = Astro.props;
 
   .page-grid__hint,
   .page-grid__limit {
-    font-size: 0.8rem;
+    font-size: var(--step--1);
     color: var(--muted);
     margin: 0 0 0.6rem;
   }
@@ -215,11 +215,11 @@ const { mode } = Astro.props;
     display: grid;
     place-items: center;
     color: var(--muted);
-    font-size: 0.75rem;
+    font-size: var(--step--2);
   }
 
   .page-cell__label {
-    font-size: 0.72rem;
+    font-size: var(--step--2);
     color: var(--muted);
     font-variant-numeric: tabular-nums;
   }
@@ -244,7 +244,7 @@ const { mode } = Astro.props;
 
   .page-cell__tool {
     font: inherit;
-    font-size: 0.72rem;
+    font-size: var(--step--2);
     line-height: 1;
     min-width: 2.05rem;
     min-height: 2.05rem;
@@ -315,7 +315,7 @@ const { mode } = Astro.props;
     border-radius: 50%;
     background: var(--paper, #fff);
     color: transparent;
-    font-size: 0.8rem;
+    font-size: var(--step--1);
     line-height: 1;
     cursor: pointer;
     z-index: 2;
@@ -405,7 +405,7 @@ const { mode } = Astro.props;
   .page-view__loading {
     padding: 4rem 2rem;
     color: var(--muted);
-    font-size: 0.85rem;
+    font-size: var(--step--1);
   }
 
   .page-view__bar {
@@ -417,7 +417,7 @@ const { mode } = Astro.props;
   }
 
   .page-view__label {
-    font-size: 0.85rem;
+    font-size: var(--step--1);
     color: var(--muted);
     font-variant-numeric: tabular-nums;
     min-width: 9rem;
@@ -465,7 +465,7 @@ const { mode } = Astro.props;
       flex: 1 1 auto;
       min-height: 2.75rem;
       padding: 0.55rem 0.65rem;
-      font-size: 0.8rem;
+      font-size: var(--step--1);
       text-align: center;
       min-width: 7.5rem;
     }

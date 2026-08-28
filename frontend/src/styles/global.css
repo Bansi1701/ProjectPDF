@@ -98,6 +98,18 @@
   --font-doc: ui-serif, 'New York', Georgia, 'Times New Roman', serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
+  /* Four interface weights and four line-height roles cover the whole site. */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --leading-display: 1.06;
+  --leading-heading: 1.2;
+  --leading-copy: 1.62;
+  --leading-compact: 1.35;
+  --tracking-tight: -0.028em;
+  --tracking-label: 0.1em;
+
   --step--2: clamp(0.6875rem, 0.665rem + 0.11vw, 0.75rem);
   --step--1: clamp(0.8125rem, 0.782rem + 0.15vw, 0.875rem);
   --step-0: clamp(1rem, 0.965rem + 0.17vw, 1.0625rem);
@@ -237,7 +249,8 @@ body {
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--step-0);
-  line-height: 1.62;
+  font-weight: var(--weight-regular);
+  line-height: var(--leading-copy);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   font-synthesis-weight: none;
@@ -248,9 +261,9 @@ h2,
 h3 {
   font-family: var(--font-display);
   margin: 0;
-  line-height: 1.06;
-  letter-spacing: -0.028em;
-  font-weight: 700;
+  line-height: var(--leading-display);
+  letter-spacing: var(--tracking-tight);
+  font-weight: var(--weight-bold);
   text-wrap: balance;
 }
 
@@ -258,13 +271,18 @@ h4,
 h5,
 h6 {
   font-family: var(--font-display);
-  font-weight: 600;
-  line-height: 1.2;
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-heading);
 }
 
 p {
   margin: 0;
   text-wrap: pretty;
+}
+
+strong,
+b {
+  font-weight: var(--weight-semibold);
 }
 
 a {

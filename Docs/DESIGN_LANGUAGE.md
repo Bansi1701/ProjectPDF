@@ -56,6 +56,9 @@ The approved palette is stable and must not be changed as part of typography or 
 
 - Use self-hosted Inter through `--font-sans` for all interface text, Plus Jakarta Sans through `--font-display` for headings, and `--font-mono` for measurements, job receipts, and technical facts.
 - Use the fluid `--step-*` scale. Do not introduce arbitrary font sizes unless a component needs an icon-sized label.
+- Use only the loaded weight roles: regular `400`, medium `500`, semibold `600`, and bold `700`. Reference `--weight-regular`, `--weight-medium`, `--weight-semibold`, and `--weight-bold` when adding shared components.
+- Use `--leading-display` for major headings, `--leading-heading` for smaller headings and compact labels, `--leading-copy` for body text, and `--leading-compact` for dense controls.
+- Keep headings left-aligned in content and tool views. Centre text only inside intentional hero, empty-state, dialog, or button compositions; alignment is a layout choice, not a new text style.
 - Headings are short, direct, and sentence case: “Split PDF”, not “THE BEST PDF SPLITTER”.
 - Body copy explains the outcome first, then the mechanism: “Creates separate PDFs from your selected ranges. Processing stays in this tab.”
 - Avoid hype, unexplained claims, and faux security badges.

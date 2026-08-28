@@ -5,15 +5,16 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/copy-wasm.mjs && astro dev",
-    "build": "node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs",
+    "build": "node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs",
     "preview": "astro preview",
     "assets": "node scripts/copy-wasm.mjs",
     "audit:icons": "node scripts/audit-icons.mjs",
+    "audit:typography": "node scripts/audit-typography.mjs",
     "audit:actions": "node scripts/audit-actions.mjs",
     "audit:storage": "node scripts/audit-storage.mjs",
     "audit:bundles": "node scripts/audit-bundles.mjs",
     "audit:links": "node scripts/audit-links.mjs",
-    "check": "node scripts/audit-icons.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-links.mjs"
+    "check": "node scripts/audit-icons.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-links.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",

@@ -2607,7 +2607,7 @@ const { profile = 'full' } = Astro.props;
     background: var(--paper-raised);
     overflow: visible;
   }
-  .editor__tool-rail-label { margin: 0.15rem 0 0.3rem; color: var(--muted); font: 600 0.53rem/1 var(--font-mono); letter-spacing: 0.12em; text-align: center; }
+  .editor__tool-rail-label { margin: 0.15rem 0 0.3rem; color: var(--muted); font: var(--weight-semibold) var(--step--2)/1 var(--font-mono); letter-spacing: var(--tracking-label); text-align: center; }
   .editor__tools button {
     position: relative;
     display: grid;
@@ -2619,7 +2619,7 @@ const { profile = 'full' } = Astro.props;
     border-radius: 11px;
     background: transparent;
     color: var(--muted);
-    font: 500 0.63rem/1 var(--font-sans);
+    font: var(--weight-medium) var(--step--2)/1 var(--font-sans);
     cursor: pointer;
   }
   .editor__tools button:hover:not(:disabled) { color: var(--ink); background: var(--paper-sunk); }
@@ -2631,55 +2631,55 @@ const { profile = 'full' } = Astro.props;
   .editor__tool-group { position: relative; }
   .editor__tool-menu { grid-template-columns: 1fr auto; grid-template-rows: auto auto; }
   .editor__tool-menu > span:first-child { grid-row: span 2; align-self: center; }
-  .editor__tool-chevron { grid-column: 2; color: var(--muted); font-size: 0.72rem; line-height: 0.6; }
-  .editor__tool-icon { display: grid; place-items: center; width: 1.28rem; height: 1.28rem; border: 1px solid currentColor; border-radius: 5px; font: 700 0.77rem/1 var(--font-brand); }
+  .editor__tool-chevron { grid-column: 2; color: var(--muted); font-size: var(--step--2); line-height: 0.6; }
+  .editor__tool-icon { display: grid; place-items: center; width: 1.28rem; height: 1.28rem; border: 1px solid currentColor; border-radius: 5px; font: 700 var(--step--2)/1 var(--font-display); }
   .editor__tool-icon--markup { border: 0; transform: rotate(-8deg); }
   .editor__tool-icon--draw { border: 0; font-size: 1.35rem; }
-  .editor__tool-icon--stamp { border: 0; font-size: 0.72rem; letter-spacing: -0.08em; }
+  .editor__tool-icon--stamp { border: 0; font-size: var(--step--2); letter-spacing: -0.08em; }
   .editor__tool-icon--signature { border: 0; font: italic 1.35rem/1 Georgia, serif; }
   .editor__popover { position: absolute; z-index: 10; top: 0; left: calc(100% + 0.6rem); display: grid; width: 15.75rem; gap: 0.15rem; padding: 0.45rem; border: 1px solid var(--line-strong); border-radius: 13px; background: var(--paper-raised); box-shadow: 0 16px 40px rgb(15 23 42 / 0.18), 0 2px 7px rgb(15 23 42 / 0.08); }
   .editor__popover[hidden] { display: none; }
   .editor__popover-heading { display: grid; gap: 0.1rem; padding: 0.52rem 0.6rem 0.45rem; margin-bottom: 0.2rem; border-bottom: 1px solid var(--line); }
-  .editor__popover-heading strong { font: 600 0.75rem var(--font-brand); color: var(--ink); }
-  .editor__popover-heading span { color: var(--muted); font-size: 0.64rem; }
+  .editor__popover-heading strong { font: 600 var(--step--2) var(--font-display); color: var(--ink); }
+  .editor__popover-heading span { color: var(--muted); font-size: var(--step--2); }
   .editor__popover button { display: grid; grid-template-columns: 1.55rem minmax(0, 1fr) auto; align-items: center; justify-items: start; gap: 0.45rem; width: 100%; padding: 0.46rem 0.48rem; border: 1px solid transparent; border-radius: 8px; color: var(--ink-2); text-align: left; }
   .editor__popover button:hover { border-color: var(--line); background: var(--paper-sunk); color: var(--ink); }
   .editor__popover button > span:nth-child(2) { display: grid; gap: 0.08rem; min-width: 0; }
-  .editor__popover button strong { color: inherit; font-size: 0.68rem; font-weight: 600; }
-  .editor__popover button small { overflow: hidden; color: var(--muted); font-size: 0.6rem; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-  .editor__popover button em { color: var(--muted); font: 500 0.54rem var(--font-mono); text-transform: uppercase; }
-  .editor__menu-icon { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--accent); font: 600 0.86rem/1 var(--font-brand); }
+  .editor__popover button strong { color: inherit; font-size: var(--step--2); font-weight: var(--weight-semibold); }
+  .editor__popover button small { overflow: hidden; color: var(--muted); font-size: var(--step--2); line-height: var(--leading-heading); text-overflow: ellipsis; white-space: nowrap; }
+  .editor__popover button em { color: var(--muted); font: var(--weight-medium) var(--step--2) var(--font-mono); text-transform: uppercase; }
+  .editor__menu-icon { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--accent); font: 600 var(--step--1)/1 var(--font-display); }
   .editor__menu-icon--yellow { color: #b7791f; background: #fef3c7; border-color: #fde68a; }
   .editor__menu-icon--ok { color: var(--ok); }
   .editor__menu-icon--bad { color: var(--accent); }
   .editor__signature-panel { width: 17.25rem; }
   .editor__signature-panel button { grid-template-columns: 4.2rem minmax(0, 1fr); }
-  .editor__signature-input { display: grid; gap: 0.3rem; margin: 0.35rem 0.45rem 0.55rem; color: var(--muted); font-size: 0.62rem; }
+  .editor__signature-input { display: grid; gap: 0.3rem; margin: 0.35rem 0.45rem 0.55rem; color: var(--muted); font-size: var(--step--2); }
   .editor__signature-input input { min-height: 2.25rem; padding: 0.45rem 0.55rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); font: inherit; }
   .editor__signature-input input:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .editor__signature-draw { display: grid; gap: 0.35rem; margin: 0.65rem 0.45rem 0.3rem; color: var(--muted); font-size: 0.62rem; }
+  .editor__signature-draw { display: grid; gap: 0.35rem; margin: 0.65rem 0.45rem 0.3rem; color: var(--muted); font-size: var(--step--2); }
   .editor__signature-draw canvas { display: block; width: 100%; height: 4.8rem; border: 1px dashed var(--line-strong); border-radius: 9px; background: #fff; cursor: crosshair; touch-action: none; }
   .editor__signature-draw > div { display: grid; grid-template-columns: 0.7fr 1.3fr; gap: 0.4rem; }
   .editor__signature-draw .editor__signature-clear,
-  .editor__signature-draw .editor__signature-place { display: block; min-height: 2rem; padding: 0.35rem 0.45rem; border: 1px solid var(--line-strong); border-radius: 7px; text-align: center; font-size: 0.6rem; }
+  .editor__signature-draw .editor__signature-place { display: block; min-height: 2rem; padding: 0.35rem 0.45rem; border: 1px solid var(--line-strong); border-radius: 7px; text-align: center; font-size: var(--step--2); }
   .editor__signature-draw .editor__signature-place { border-color: var(--accent); background: var(--accent); color: white; }
-  .editor__signature-link { display: block; margin: 0.55rem 0.5rem 0.2rem; color: var(--accent); font-size: 0.64rem; font-weight: 600; text-decoration: none; }
+  .editor__signature-link { display: block; margin: 0.55rem 0.5rem 0.2rem; color: var(--accent); font-size: var(--step--2); font-weight: var(--weight-semibold); text-decoration: none; }
   .editor__signature-link:hover { text-decoration: underline; }
   .editor__signature-glyph { display: grid; place-items: center; min-height: 2.2rem; border: 1px dashed var(--line-strong); border-radius: 7px; color: var(--ink-2); font: italic 0.82rem Georgia, serif; white-space: nowrap; }
-  .editor__signature-glyph--initials { font: 700 0.85rem var(--font-brand); }
+  .editor__signature-glyph--initials { font: 700 var(--step--1) var(--font-display); }
   .editor__signature-glyph--stamp { color: var(--accent); font: 600 0.5rem var(--font-mono); letter-spacing: 0.05em; }
-  .editor__signature-upload { display: grid; gap: 0.3rem; margin: 0.5rem 0.45rem 0.2rem; color: var(--muted); font-size: 0.62rem; }
-  .editor__signature-upload input[type='file'] { font-size: 0.6rem; color: var(--ink-2); max-width: 100%; }
+  .editor__signature-upload { display: grid; gap: 0.3rem; margin: 0.5rem 0.45rem 0.2rem; color: var(--muted); font-size: var(--step--2); }
+  .editor__signature-upload input[type='file'] { font-size: var(--step--2); color: var(--ink-2); max-width: 100%; }
   .editor__signature-upload input[type='file']::file-selector-button {
     margin-right: 0.5rem; padding: 0.3rem 0.6rem; border: 1px solid var(--line-strong);
     border-radius: 7px; background: var(--paper-raised); color: var(--ink); font: inherit;
-    font-size: 0.6rem; cursor: pointer;
+    font-size: var(--step--2); cursor: pointer;
   }
   .editor__signature-upload input[type='file']::file-selector-button:hover { border-color: var(--accent); color: var(--accent); }
   .editor__signature-upload small { line-height: 1.35; }
 
-  .editor__signature-note { margin: 0.35rem 0.5rem 0.25rem; color: var(--muted); font-size: 0.61rem; line-height: 1.35; }
-  .editor__tool-footnote { margin: auto 0.12rem 0.1rem; color: var(--muted); font-size: 0.57rem; line-height: 1.3; text-align: center; }
+  .editor__signature-note { margin: 0.35rem 0.5rem 0.25rem; color: var(--muted); font-size: var(--step--2); line-height: var(--leading-compact); }
+  .editor__tool-footnote { margin: auto 0.12rem 0.1rem; color: var(--muted); font-size: var(--step--2); line-height: var(--leading-compact); text-align: center; }
 
   .editor__pages { min-width: 0; border-right: 1px solid var(--line); background: var(--paper-raised); }
   .editor__pages-head { display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
@@ -2687,7 +2687,7 @@ const { profile = 'full' } = Astro.props;
   :global(.editor-thumb) { display: grid; gap: 0.3rem; padding: 0.35rem; border: 1px solid var(--line); border-radius: 9px; background: var(--paper-raised); color: var(--muted); cursor: pointer; }
   :global(.editor-thumb:hover), :global(.editor-thumb[aria-current='true']) { border-color: var(--accent); color: var(--accent); }
   :global(.editor-thumb canvas) { display: block; width: 100%; min-height: 4.6rem; background: white; border-radius: 3px; }
-  :global(.editor-thumb span) { font: 500 0.65rem var(--font-mono); }
+  :global(.editor-thumb span) { font: var(--weight-medium) var(--step--2) var(--font-mono); }
 
   .editor__workarea { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; }
   .editor__viewbar { display: flex; justify-content: space-between; gap: 1rem; padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--line); background: var(--paper-raised); }
@@ -2721,18 +2721,18 @@ const { profile = 'full' } = Astro.props;
     background: linear-gradient(180deg, color-mix(in oklab, var(--paper-raised) 92%, white), var(--paper-raised));
   }
   .editor__inspector-copy { display: grid; gap: 0.18rem; }
-  .editor__inspector-copy strong { color: var(--ink); font: 700 var(--step-0) var(--font-brand); letter-spacing: -0.02em; }
+  .editor__inspector-copy strong { color: var(--ink); font: 700 var(--step-0) var(--font-display); letter-spacing: var(--tracking-tight); }
   .editor__inspector-copy p { margin: 0; color: var(--muted); font-size: var(--step--2); line-height: 1.45; }
   .editor__inspector-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 0.65rem; }
   .editor__inspector-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .editor__signature-actions { display: contents; }
   .editor__signature-actions[hidden] { display: none; }
-  .editor__properties label { display: grid; gap: 0.25rem; color: var(--muted); font-size: 0.68rem; }
+  .editor__properties label { display: grid; gap: 0.25rem; color: var(--muted); font-size: var(--step--2); }
   .editor__properties label[hidden] { display: none; }
   .editor__properties input:not([type='color']), .editor__properties select { min-height: 2.3rem; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper-raised); color: var(--ink); padding: 0.45rem 0.6rem; font: inherit; }
   .editor__properties input[type='color'] { width: 2.45rem; height: 2.3rem; padding: 0.18rem; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper-raised); }
   .editor__properties p { margin: 0; color: var(--muted); font-size: var(--step--2); }
-  .editor__properties .editor__feedback { min-height: 1.1rem; color: var(--accent); font-size: 0.68rem; }
+  .editor__properties .editor__feedback { min-height: 1.1rem; color: var(--accent); font-size: var(--step--2); }
   :global(.editor-selection) { fill: none; stroke: color-mix(in oklab, var(--accent) 80%, white); stroke-width: 2.4; stroke-dasharray: 10 7; vector-effect: non-scaling-stroke; pointer-events: none; }
   :global(.editor-selection__hit) { fill: transparent; stroke: none; pointer-events: all; cursor: grab; }
   :global(.editor-selection__handle) { fill: var(--paper-raised); stroke: color-mix(in oklab, var(--accent) 90%, black); stroke-width: 1.75; vector-effect: non-scaling-stroke; pointer-events: none; }
@@ -2752,7 +2752,7 @@ const { profile = 'full' } = Astro.props;
     .editor__privacy { display: none; }
     .editor__shell { grid-template-columns: 1fr; min-height: 0; }
     .editor__tools { position: sticky; top: 0; z-index: 8; flex-direction: row; overflow-x: auto; overflow-y: visible; border-right: 0; border-bottom: 1px solid var(--line); scroll-snap-type: x proximity; scrollbar-width: thin; overscroll-behavior-inline: contain; }
-    .editor__tools button { min-width: 4rem; min-height: 2.75rem; padding-block: 0.55rem; scroll-snap-align: start; font-size: 0.72rem; }
+    .editor__tools button { min-width: 4rem; min-height: 2.75rem; padding-block: 0.55rem; scroll-snap-align: start; font-size: var(--step--2); }
     .editor__tool-rail-label, .editor__tool-footnote { display: none; }
     .editor__tool-group { position: static; }
     .editor__popover {
@@ -2768,11 +2768,11 @@ const { profile = 'full' } = Astro.props;
     }
     .editor__signature-panel { width: auto; }
     .editor__popover button { min-height: 3.25rem; }
-    .editor__popover button strong { font-size: 0.8rem; }
-    .editor__popover button small { font-size: 0.72rem; white-space: normal; }
+    .editor__popover button strong { font-size: var(--step--1); }
+    .editor__popover button small { font-size: var(--step--2); white-space: normal; }
     .editor__signature-input,
     .editor__signature-draw,
-    .editor__signature-upload { font-size: 0.75rem; }
+    .editor__signature-upload { font-size: var(--step--2); }
     .editor__signature-draw .editor__signature-clear,
     .editor__signature-draw .editor__signature-place,
     .editor__signature-input input,

@@ -161,16 +161,16 @@ const collectionSchema = helpCollectionLd(
   .help-hero { position: relative; max-width: 66rem; padding-bottom: clamp(3rem, 7vw, 5.5rem); }
   .eyebrow { display: flex; align-items: center; gap: 0.55rem; margin: 2.8rem 0 0.9rem; color: var(--muted); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; }
   .eyebrow span { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 5px color-mix(in srgb, var(--ok) 12%, transparent); }
-  h1 { max-width: 13ch; margin: 0; font-size: clamp(2.8rem, 7vw, 5.8rem); line-height: 0.96; letter-spacing: -0.055em; }
+  h1 { max-width: 13ch; margin: 0; font-size: var(--step-5); line-height: var(--leading-display); letter-spacing: var(--tracking-tight); }
   .help-hero__intro { max-width: 48rem; margin: 1.3rem 0 0; color: var(--ink-2); font-size: var(--step-1); line-height: 1.65; }
   .help-search { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; max-width: 48rem; min-height: 4rem; margin-top: 1.8rem; padding: 0 1rem; border: 1px solid var(--line-strong); border-radius: calc(var(--radius) * 1.15); background: var(--paper-raised); box-shadow: var(--shadow-paper); }
   .help-search > span { color: var(--accent); font-size: 1.6rem; }
   .help-search input { min-width: 0; padding: 0.8rem; border: 0; outline: 0; background: transparent; color: var(--ink); font: 600 var(--step-0)/1 var(--font-sans); }
   .help-search:focus-within { border-color: var(--accent); box-shadow: var(--shadow-paper), 0 0 0 4px color-mix(in srgb, var(--accent) 9%, transparent); }
-  .help-search kbd { color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
+  .help-search kbd { color: var(--muted); font: var(--weight-semibold) var(--step--2)/1 var(--font-mono); }
   .help-results { min-height: 1.4rem; margin: 0.65rem 0 0; color: var(--muted); font-size: var(--step--2); }
   .help-jumps { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.1rem; }
-  .help-jumps a { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.5rem 0.72rem; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink-2); font-size: var(--step--2); font-weight: 650; text-decoration: none; }
+  .help-jumps a { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.5rem 0.72rem; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink-2); font-size: var(--step--2); font-weight: var(--weight-semibold); text-decoration: none; }
   .help-jumps a:hover { border-color: var(--accent); color: var(--accent); }
   .help-jumps span { color: var(--muted); font-family: var(--font-mono); }
   .section-head { display: flex; align-items: end; justify-content: space-between; gap: 1.5rem; margin-bottom: 1.1rem; }
@@ -183,7 +183,7 @@ const collectionSchema = helpCollectionLd(
   .popular__grid a { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.85rem; padding: 0.85rem; border: 1px solid var(--line); border-radius: calc(var(--radius) * 1.15); background: var(--paper-raised); color: var(--ink); text-decoration: none; }
   .popular__grid a:hover { border-color: color-mix(in srgb, var(--accent) 52%, var(--line)); transform: translateY(-2px); }
   .popular__grid a > span { display: grid; gap: 0.15rem; min-width: 0; }
-  .popular__grid small { color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); text-transform: uppercase; }
+  .popular__grid small { color: var(--muted); font: var(--weight-semibold) var(--step--2)/1 var(--font-mono); text-transform: uppercase; }
   .popular__grid strong { font-size: var(--step-0); }
   .popular__grid em { overflow: hidden; color: var(--ink-2); font-size: var(--step--2); font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
   .popular__grid b { color: var(--accent); }
@@ -202,7 +202,7 @@ const collectionSchema = helpCollectionLd(
   .guide-card[hidden] { display: none; }
   .guide-card__hit { position: absolute; inset: 0; z-index: 2; }
   .guide-card__top { display: flex; align-items: start; justify-content: space-between; }
-  .guide-card__top > span { padding: 0.35rem 0.5rem; border-radius: 999px; background: var(--paper-sunk); color: var(--muted); font: 650 var(--step--2)/1 var(--font-mono); }
+  .guide-card__top > span { padding: 0.35rem 0.5rem; border-radius: 999px; background: var(--paper-sunk); color: var(--muted); font: var(--weight-semibold) var(--step--2)/1 var(--font-mono); }
   .guide-card > p { margin: 1rem 0 0.35rem; color: var(--group-color); font: 700 var(--step--2)/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
   .guide-card h3 { margin: 0; font-size: var(--step-1); }
   .guide-card > div:not(.guide-card__top) { margin-top: 0.7rem; color: var(--ink-2); font-size: var(--step--1); line-height: 1.55; }
@@ -215,12 +215,12 @@ const collectionSchema = helpCollectionLd(
   .help-close h2 { max-width: 18ch; margin: 0; font-size: var(--step-3); }
   .help-close > div { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin-top: 2rem; }
   .help-close span { display: grid; gap: 0.5rem; padding-top: 0.8rem; border-top: 1px solid var(--line-strong); color: var(--ink-2); font-size: var(--step--1); }
-  .help-close b { color: var(--accent); font: 650 var(--step--2)/1 var(--font-mono); }
+  .help-close b { color: var(--accent); font: var(--weight-semibold) var(--step--2)/1 var(--font-mono); }
   .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
   @media (max-width: 60rem) { .guide-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 44rem) {
     .help-home { padding-top: 1.5rem; }
-    h1 { max-width: 10ch; font-size: clamp(2.55rem, 13vw, 4rem); overflow-wrap: anywhere; }
+    h1 { max-width: 10ch; font-size: var(--step-4); overflow-wrap: anywhere; }
     .popular__grid, .guide-grid { grid-template-columns: 1fr; }
     .guide-card { min-height: 17rem; }
     .section-head { align-items: start; flex-direction: column; gap: 0.45rem; }

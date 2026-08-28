@@ -201,7 +201,7 @@
 
   .split-studio__head { justify-content: space-between; gap: 1rem; }
   .split-studio__head h2 { margin: 0.12rem 0 0; font-size: var(--step-1); line-height: 1.2; }
-  .split-studio__eyebrow { margin: 0; color: var(--accent); font: 700 var(--step--2)/1 var(--sans); letter-spacing: 0.12em; text-transform: uppercase; }
+  .split-studio__eyebrow { margin: 0; color: var(--accent); font: 700 var(--step--2)/1 var(--font-sans); letter-spacing: var(--tracking-label); text-transform: uppercase; }
   .split-studio__privacy { padding: 0.42rem 0.7rem; border-radius: 999px; background: color-mix(in srgb, var(--ok) 13%, transparent); color: var(--ok); font-size: var(--step--2); font-weight: 700; white-space: nowrap; }
 
   .split-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.55rem; }
@@ -216,11 +216,11 @@
     text-align: left;
     cursor: pointer;
   }
-  .split-tabs button > span { display: grid; flex: 0 0 2rem; width: 2rem; aspect-ratio: 1; place-items: center; border-radius: 0.65rem; background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); font-weight: 800; }
+  .split-tabs button > span { display: grid; flex: 0 0 2rem; width: 2rem; aspect-ratio: 1; place-items: center; border-radius: 0.65rem; background: color-mix(in srgb, var(--accent) 9%, transparent); color: var(--accent); font-weight: var(--weight-bold); }
   .split-tabs button strong,
   .split-tabs button small { display: block; }
   .split-tabs button strong { color: var(--ink); font-size: var(--step--1); }
-  .split-tabs button small { margin-top: 0.1rem; font-size: 0.68rem; line-height: 1.25; }
+  .split-tabs button small { margin-top: 0.1rem; font-size: var(--step--2); line-height: var(--leading-compact); }
   .split-tabs button[aria-selected='true'] { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: color-mix(in srgb, var(--accent) 7%, var(--paper)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 16%, transparent); }
 
   .split-panel { display: grid; gap: 0.9rem; padding-top: 0.15rem; }
@@ -248,7 +248,7 @@
   .split-note,
   .split-studio__summary { margin: 0; color: var(--muted); font-size: var(--step--1); line-height: 1.5; }
   .split-note { padding: 0.75rem; border-left: 3px solid color-mix(in srgb, var(--accent) 55%, transparent); background: color-mix(in srgb, var(--accent) 4%, transparent); }
-  .split-studio__summary { padding-top: 0.85rem; border-top: 1px solid var(--line); color: var(--ink); font-weight: 650; }
+  .split-studio__summary { padding-top: 0.85rem; border-top: 1px solid var(--line); color: var(--ink); font-weight: var(--weight-semibold); }
 
   @media (max-width: 50rem) {
     .split-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
