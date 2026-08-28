@@ -2751,8 +2751,8 @@ const { profile = 'full' } = Astro.props;
     .editor__topbar { align-items: flex-start; }
     .editor__privacy { display: none; }
     .editor__shell { grid-template-columns: 1fr; min-height: 0; }
-    .editor__tools { position: sticky; top: 0; z-index: 8; flex-direction: row; overflow-x: auto; overflow-y: visible; border-right: 0; border-bottom: 1px solid var(--line); }
-    .editor__tools button { min-width: 3.6rem; }
+    .editor__tools { position: sticky; top: 0; z-index: 8; flex-direction: row; overflow-x: auto; overflow-y: visible; border-right: 0; border-bottom: 1px solid var(--line); scroll-snap-type: x proximity; scrollbar-width: thin; overscroll-behavior-inline: contain; }
+    .editor__tools button { min-width: 4rem; min-height: 2.75rem; padding-block: 0.55rem; scroll-snap-align: start; font-size: 0.72rem; }
     .editor__tool-rail-label, .editor__tool-footnote { display: none; }
     .editor__tool-group { position: static; }
     .editor__popover {
@@ -2767,12 +2767,24 @@ const { profile = 'full' } = Astro.props;
       z-index: 40;
     }
     .editor__signature-panel { width: auto; }
+    .editor__popover button { min-height: 3.25rem; }
+    .editor__popover button strong { font-size: 0.8rem; }
+    .editor__popover button small { font-size: 0.72rem; white-space: normal; }
+    .editor__signature-input,
+    .editor__signature-draw,
+    .editor__signature-upload { font-size: 0.75rem; }
+    .editor__signature-draw .editor__signature-clear,
+    .editor__signature-draw .editor__signature-place,
+    .editor__signature-input input,
+    .editor__properties input:not([type='color']),
+    .editor__properties select { min-height: 2.75rem; }
     .editor__tool-rule { width: 1px; height: auto; margin: 0 0.2rem; }
     .editor__pages { border-right: 0; border-bottom: 1px solid var(--line); }
     .editor__pages-head { display: none; }
     .editor__thumbs { grid-auto-flow: column; grid-auto-columns: minmax(5.2rem, 1fr); overflow-x: auto; overflow-y: hidden; max-height: none; padding-bottom: 0.45rem; }
     :global(.editor-thumb canvas) { min-height: 3.5rem; }
     .editor__viewport { min-height: 24rem; }
+    .editor__viewbar button { width: 2.75rem; height: 2.75rem; }
     .editor__footer span:last-child { display: none; }
     .editor__properties { padding: 0.8rem; }
     .editor__inspector-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

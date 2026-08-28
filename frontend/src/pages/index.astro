@@ -427,8 +427,15 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     position: relative;
     isolation: isolate;
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: clamp(3rem, 2rem + 5vw, 5rem);
     padding-block: clamp(2.75rem, 2rem + 3.5vw, 4.75rem) clamp(2.75rem, 2rem + 3vw, 4.25rem);
+  }
+
+  .hero > *,
+  .hero__copy {
+    min-width: 0;
+    max-width: 100%;
   }
 
   .hero::before {
@@ -913,7 +920,18 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   }
 
   @media (max-width: 48em) {
+    .hero {
+      gap: 2rem;
+      padding-block: clamp(2.25rem, 8vw, 3.25rem) 2.75rem;
+    }
     .hero__desk { display: none; }
+    h1 {
+      max-width: 12ch;
+      font-size: clamp(2.35rem, 10.75vw, 3.05rem);
+      letter-spacing: -0.04em;
+      text-wrap: balance;
+    }
+    .hero__copy .lede { max-width: 39ch; }
   }
 
   @media (max-width: 30em) {
@@ -921,6 +939,8 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
     .hero__tool-orbit { left: 0.25rem; bottom: 0.65rem; }
     .orbit-card { padding: 0.35rem 0.45rem; }
     .orbit-card span { display: none; }
+    .hero__actions .btn { flex: 1 1 100%; justify-content: center; }
+    .hero__proof { display: grid; grid-template-columns: 1fr; }
   }
 
   .cluster--yours .shortcuts { margin-top: 0; }
@@ -1041,12 +1061,15 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
 
   @media (max-width: 48em) {
     .shortcuts {
+      width: calc(100% + var(--gutter));
+      max-width: calc(100% + var(--gutter));
       flex-wrap: nowrap;
       overflow-x: auto;
       margin-right: calc(var(--gutter) * -1);
       padding-right: var(--gutter);
       padding-bottom: 0.35rem;
       scrollbar-width: none;
+      overscroll-behavior-inline: contain;
     }
     .shortcuts::-webkit-scrollbar { display: none; }
     .category-shortcuts .shortcuts__item { min-height: 3rem; }

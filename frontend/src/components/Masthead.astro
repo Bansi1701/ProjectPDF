@@ -246,14 +246,14 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
     .masthead-slot :global(.rail) { min-height: 3.65rem; padding: 0.3rem 0.38rem 0.3rem 0.45rem; }
     .masthead-slot :global(.rail .lens__body) { min-height: 3rem; }
     .brand { gap: 0.45rem; margin-right: auto; font-size: 0.86rem; }
-    .nav-menu > summary { min-height: 2.55rem; padding-inline: 0.7rem; }
+    .nav-menu > summary { min-height: 2.75rem; padding-inline: 0.7rem; }
     .all-menu > summary span { font-size: 0; }
     .all-menu > summary span::after { content: 'Tools'; font-size: 0.76rem; }
     .rail__actions { margin-left: 0; }
-    .header-search { grid-template-columns: 2.45rem 0 0; width: 2.55rem; min-width: 2.55rem; }
+    .header-search { grid-template-columns: 2.65rem 0 0; width: 2.75rem; min-width: 2.75rem; min-height: 2.75rem; }
     .header-search input { width: 0; opacity: 0; pointer-events: none; }
     .header-search > kbd { opacity: 0; }
-    .header-search:focus-within { position: absolute; right: 2.95rem; grid-template-columns: 2.45rem minmax(6rem, 1fr) auto; width: min(17rem, calc(100vw - 8.25rem)); }
+    .header-search:focus-within { position: absolute; right: 3rem; grid-template-columns: 2.65rem minmax(6rem, 1fr) auto; width: min(17rem, calc(100vw - 8.25rem)); }
     .header-search:focus-within input { width: 100%; opacity: 1; pointer-events: auto; }
     .header-search:focus-within > kbd { opacity: 1; }
     .all-panel { position: fixed; top: 4.65rem; right: 0.5rem; bottom: max(0.5rem, env(safe-area-inset-bottom)); left: 0.5rem; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; width: auto; max-height: none; padding: 1rem; overflow: hidden; transform: none; }

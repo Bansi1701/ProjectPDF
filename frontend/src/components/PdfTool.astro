@@ -3750,6 +3750,15 @@ const dropTitle = takesExcel
      job put its text box ~1500px down and Sign put Save at ~2800px. Three changes
      fix that class of problem for every tool at once, rather than page by page. */
   @media (max-width: 48em) {
+    .tool { gap: 1.25rem; padding-top: 1.5rem; }
+
+    .tool__head h1 {
+      overflow-wrap: anywhere;
+      text-wrap: balance;
+    }
+
+    .files :global(.file__btn) { width: 2.75rem; height: 2.75rem; }
+    .preview__sizes button { min-width: 2.75rem; min-height: 2.75rem; }
     /* 1. The header has done its job the moment a file exists. */
     .tool[data-stage='adjust'] .tool__head .lede,
     .tool[data-stage='save'] .tool__head .lede,
@@ -3803,8 +3812,9 @@ const dropTitle = takesExcel
       grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
     }
 
-    .flow { font-size: 0.6875rem; }
-    .flow li { padding: 0.25rem 0.55rem 0.25rem 0.3rem; }
+    .flow { width: 100%; font-size: var(--step--2); }
+    .flow li { flex: 1 1 0; min-width: 0; min-height: 2.75rem; justify-content: center; padding: 0.3rem 0.45rem; }
+    .flow li:not(:last-child)::after { display: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {

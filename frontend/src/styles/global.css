@@ -6,6 +6,46 @@
    branded motifs. Keep rose for decisions, never for large decoration.
    ============================================================================ */
 
+/* Self-host the two type families used by the interface. Keeping the files on
+   our own origin makes typography deterministic across devices without adding
+   a Google Fonts request to a private document workspace. The Latin and
+   Latin-extended subsets are separate so browsers only fetch what a page uses. */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/ProjectPDF/fonts/inter-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('/ProjectPDF/fonts/inter-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('/ProjectPDF/fonts/plus-jakarta-sans-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src: url('/ProjectPDF/fonts/plus-jakarta-sans-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 /* Registered so the rim angle and sheen position can be animated. Must live at
    document scope — a scoped <style> would re-register per component instance. */
 @property --lens-rim-angle {
@@ -58,23 +98,36 @@
   /* ---- type --------------------------------------------------------- */
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
   --font-brand: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-sans);
+  --font-display: var(--font-brand);
   --font-doc: ui-serif, Georgia, 'Times New Roman', serif;
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 
-  --step--2: clamp(0.6875rem, 0.665rem + 0.11vw, 0.75rem);
-  --step--1: clamp(0.8125rem, 0.782rem + 0.15vw, 0.875rem);
+  /* One fluid type ladder. Components choose a role from this scale instead
+     of inventing a new size, which keeps hierarchy stable from 320px up. */
+  --step--2: clamp(0.75rem, 0.72rem + 0.12vw, 0.8125rem);
+  --step--1: clamp(0.875rem, 0.84rem + 0.16vw, 0.9375rem);
   --step-0: clamp(1rem, 0.965rem + 0.17vw, 1.0625rem);
-  --step-1: clamp(1.125rem, 1.06rem + 0.33vw, 1.3125rem);
-  --step-2: clamp(1.375rem, 1.24rem + 0.68vw, 1.75rem);
-  --step-3: clamp(1.75rem, 1.5rem + 1.25vw, 2.5rem);
-  --step-4: clamp(2.125rem, 1.7rem + 2.1vw, 3.375rem);
-  --step-5: clamp(2.625rem, 1.9rem + 3.6vw, 4.75rem);
+  --step-1: clamp(1.125rem, 1.07rem + 0.28vw, 1.25rem);
+  --step-2: clamp(1.375rem, 1.27rem + 0.52vw, 1.625rem);
+  --step-3: clamp(1.75rem, 1.55rem + 1vw, 2.25rem);
+  --step-4: clamp(2.25rem, 1.95rem + 1.5vw, 3rem);
+  --step-5: clamp(2.75rem, 2.05rem + 3.45vw, 4.5rem);
+
+  --leading-tight: 1.08;
+  --leading-copy: 1.62;
+  --tracking-tight: -0.028em;
 
   /* ---- space -------------------------------------------------------- */
   --gutter: clamp(1.25rem, 0.9rem + 1.7vw, 2.5rem);
   --measure: 62ch;
   --content: 71.25rem; /* 1140px */
   --radius: 16px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --shadow-lg: var(--shadow-paper);
 
   /* ---- lens: light -------------------------------------------------- */
   --lens-radius: 20px;
@@ -203,7 +256,7 @@ body {
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: var(--step-0);
-  line-height: 1.62;
+  line-height: var(--leading-copy);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   font-synthesis-weight: none;
@@ -214,8 +267,8 @@ h2,
 h3 {
   font-family: var(--font-brand);
   margin: 0;
-  line-height: 1.06;
-  letter-spacing: -0.028em;
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
   font-weight: 600;
   text-wrap: balance;
 }
@@ -223,6 +276,14 @@ h3 {
 p {
   margin: 0;
   text-wrap: pretty;
+}
+
+:where(h1, h2, h3, h4, p, li, dd, a, button) {
+  overflow-wrap: break-word;
+}
+
+:where(button, input, select, textarea) {
+  font: inherit;
 }
 
 a {
@@ -287,6 +348,7 @@ svg {
   font-size: var(--step-1);
   line-height: 1.55;
   color: var(--ink-2);
+  width: 100%;
   max-width: 46ch;
 }
 
@@ -302,10 +364,21 @@ svg {
   font-weight: 500;
   text-decoration: none;
   border: 1px solid transparent;
+  min-height: 2.75rem;
   transition:
     box-shadow 180ms ease-out,
     transform 180ms ease-out,
     background-color 180ms ease-out;
+}
+
+@media (max-width: 30rem) {
+  :root {
+    --gutter: 1rem;
+  }
+
+  body {
+    line-height: 1.58;
+  }
 }
 
 .btn--primary {
