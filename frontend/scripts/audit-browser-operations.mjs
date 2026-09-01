@@ -144,6 +144,7 @@ const cases = [
     slug: 'edit-pdf',
     files: [pdf],
     timeout: 45_000,
+    expectPdfPages: 2,
     prepare: async (page) => {
       await page.locator('live-pdf-editor:not([hidden])').waitFor({ state: 'visible', timeout: 30_000 });
       await page.locator('[data-editor-loading]').waitFor({ state: 'hidden', timeout: 30_000 });
@@ -156,6 +157,7 @@ const cases = [
     slug: 'sign-pdf',
     files: [pdf],
     timeout: 45_000,
+    expectPdfPages: 2,
     prepare: async (page) => {
       await page.locator('live-pdf-editor:not([hidden])').waitFor({ state: 'visible', timeout: 30_000 });
       await page.locator('[data-editor-loading]').waitFor({ state: 'hidden', timeout: 30_000 });
@@ -196,9 +198,59 @@ const cases = [
   { slug: 'powerpoint-to-pdf', files: [pptx], timeout: 45_000 },
 ];
 
+async function auditEditorLayout(browser) {
+  for (const viewport of [
+    { name: 'desktop', width: 1280, height: 900 },
+    { name: 'mobile', width: 390, height: 844 },
+  ]) {
+    const context = await browser.newContext({ viewport });
+    const page = await context.newPage();
+    await page.goto(`${base}/edit-pdf/`, { waitUntil: 'networkidle', timeout: 30_000 });
+    await page.locator('[data-input]').setInputFiles(pdf);
+    await page.locator('live-pdf-editor:not([hidden])').waitFor({ state: 'visible', timeout: 30_000 });
+    await page.locator('[data-editor-loading]').waitFor({ state: 'hidden', timeout: 30_000 });
+
+    const layout = await page.evaluate(() => {
+      const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect();
+      const stage = rect('[data-editor-page-stage]');
+      const viewportBox = rect('[data-editor-viewport]');
+      const tools = rect('.editor__tools');
+      const pages = rect('.editor__pages');
+      const properties = rect('.editor__properties');
+      const thumb = rect('.editor-thumb');
+      const actions = document.querySelector('[data-editor-inspector-actions]');
+      return {
+        horizontalOverflow: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth,
+        stageWidth: stage?.width ?? 0,
+        viewportInnerWidth: document.querySelector('[data-editor-viewport]')?.clientWidth ?? 0,
+        toolbarBeforePages: Boolean(tools && pages && tools.top < pages.top),
+        inspectorBesideCanvas: Boolean(viewportBox && properties && properties.left >= viewportBox.right - 2),
+        thumbWidth: thumb?.width ?? 0,
+        emptyActionsHidden: actions instanceof HTMLElement && actions.hidden,
+      };
+    });
+
+    if (layout.horizontalOverflow > 2) throw new Error(`edit-pdf ${viewport.name}: ${layout.horizontalOverflow}px page overflow after upload`);
+    if (layout.stageWidth <= 0 || layout.stageWidth > layout.viewportInnerWidth + 2) {
+      throw new Error(`edit-pdf ${viewport.name}: page does not fit the editing canvas (${layout.stageWidth}/${layout.viewportInnerWidth})`);
+    }
+    if (!layout.toolbarBeforePages) throw new Error(`edit-pdf ${viewport.name}: tool rail is not above the document workspace`);
+    if (!layout.emptyActionsHidden) throw new Error(`edit-pdf ${viewport.name}: object actions are visible without a selection`);
+    if (viewport.name === 'desktop' && !layout.inspectorBesideCanvas) {
+      throw new Error('edit-pdf desktop: properties inspector is not beside the document canvas');
+    }
+    if (viewport.name === 'mobile' && layout.thumbWidth > 100) {
+      throw new Error(`edit-pdf mobile: a page thumbnail expanded to ${Math.round(layout.thumbWidth)}px`);
+    }
+    await context.close();
+  }
+  process.stdout.write('✓ edit-pdf responsive workspace\n');
+}
+
 const browser = await chromium.launch({ headless: true });
 const completed = [];
 try {
+  await auditEditorLayout(browser);
   for (const test of cases) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await context.newPage();
@@ -226,6 +278,20 @@ try {
 
     const downloads = await page.locator('[data-downloads] a[download]').count();
     if (downloads === 0) throw new Error(`${test.slug}: completed without a downloadable result`);
+    if (test.expectPdfPages) {
+      const bytes = await page.locator('[data-downloads] a[download]').first().evaluate(async (anchor) => {
+        const response = await fetch(anchor.href);
+        return Array.from(new Uint8Array(await response.arrayBuffer()));
+      });
+      const output = await PDFDocument.load(Uint8Array.from(bytes));
+      if (output.getPageCount() !== test.expectPdfPages) {
+        throw new Error(`${test.slug}: expected ${test.expectPdfPages} output pages, found ${output.getPageCount()}`);
+      }
+      const [first] = output.getPages();
+      if (!first || Math.abs(first.getWidth() - 360) > 0.1 || Math.abs(first.getHeight() - 480) > 0.1) {
+        throw new Error(`${test.slug}: output changed the source page dimensions`);
+      }
+    }
     if (runtimeErrors.length) throw new Error(`${test.slug}: ${runtimeErrors.join('; ')}`);
     completed.push(test.slug);
     process.stdout.write(`✓ ${test.slug}\n`);

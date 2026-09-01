@@ -35,7 +35,7 @@ const ACTIONS: Record<Operation, string> = {
   reorder: 'Reorder pages',
   extract: 'Extract pages',
   delete: 'Delete pages',
-  edit: 'Add the text',
+  edit: 'Save edited PDF',
   watermark: 'Add watermark',
   'page-numbers': 'Add numbers',
   compare: 'Compare',
@@ -43,7 +43,7 @@ const ACTIONS: Record<Operation, string> = {
   unlock: 'Unlock',
   'pdf-to-markdown': 'Convert to Markdown',
   forms: 'Fill the form',
-  sign: 'Place the signature',
+  sign: 'Save signed PDF',
   'pdf-a': 'Convert to PDF/A',
   repair: 'Repair',
   ocr: 'Read the text',
@@ -1642,6 +1642,24 @@ const dropTitle = takesExcel
     display: grid;
     gap: clamp(1.5rem, 1rem + 2vw, 2.5rem);
     max-width: 46rem;
+  }
+
+  /*
+   * The editing studio needs horizontal room after a document is opened. The
+   * introductory copy and file picker keep the calmer reading measure, while
+   * the live workspace can use the full application canvas.
+   */
+  .tool[data-mode='edit'],
+  .tool[data-mode='sign'] {
+    max-width: 76rem;
+  }
+
+  .tool[data-mode='edit'] > :where(.back, .tool__head, .file-bar, .privacy, .status),
+  .tool[data-mode='sign'] > :where(.back, .tool__head, .file-bar, .privacy, .status),
+  .tool[data-mode='edit'] > :global(.drop),
+  .tool[data-mode='sign'] > :global(.drop) {
+    width: min(100%, 46rem);
+    justify-self: center;
   }
 
   .back {

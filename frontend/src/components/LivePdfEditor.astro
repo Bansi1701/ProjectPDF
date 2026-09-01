@@ -19,7 +19,15 @@ const { profile = 'full' } = Astro.props;
       <p class="editor__eyebrow">{profile === 'sign' ? 'Signature workspace' : 'Live document workspace'}</p>
       <h2>{profile === 'sign' ? 'Place a signature on the page' : 'Edit the page before you export'}</h2>
     </div>
-    <span class="editor__privacy">{profile === 'sign' ? 'Local preview · signature stays in this tab' : 'Local preview · edits stay in this tab'}</span>
+    <div class="editor__topbar-meta">
+      {profile === 'full' && (
+        <div class="editor__quick-actions" aria-label="Quick editing actions">
+          <button type="button" data-editor-action="insert-text" data-editor-tool="text">+ Add text</button>
+          <button type="button" data-editor-action="highlight" data-editor-tool="highlight">Highlight</button>
+        </div>
+      )}
+      <span class="editor__privacy">{profile === 'sign' ? 'Local preview · signature stays in this tab' : 'Local preview · edits stay in this tab'}</span>
+    </div>
   </header>
 
   <div class="editor__shell">
@@ -273,7 +281,7 @@ const { profile = 'full' } = Astro.props;
           </label>
         </div>
 
-        <div class="editor__inspector-actions">
+        <div class="editor__inspector-actions" data-editor-inspector-actions hidden>
           <button type="button" class="btn btn--quiet" data-editor-duplicate>Duplicate</button>
           <button type="button" class="btn btn--quiet" data-editor-backward>Backward</button>
           <button type="button" class="btn btn--quiet" data-editor-forward>Forward</button>
@@ -1167,13 +1175,16 @@ const { profile = 'full' } = Astro.props;
       if (!this.doc) return;
       const pageNumber = Number(button.dataset.page);
       const page = await this.doc.getPage(pageNumber);
-      const viewport = page.getViewport({ scale: 0.22 });
-      const canvas = button.querySelector('canvas')!;
-      canvas.width = Math.max(1, Math.floor(viewport.width));
-      canvas.height = Math.max(1, Math.floor(viewport.height));
-      const context = canvas.getContext('2d');
-      if (context) await page.render({ canvasContext: context, viewport, canvas }).promise;
-      page.cleanup();
+      try {
+        const viewport = page.getViewport({ scale: 0.22 });
+        const canvas = button.querySelector('canvas')!;
+        canvas.width = Math.max(1, Math.floor(viewport.width));
+        canvas.height = Math.max(1, Math.floor(viewport.height));
+        const context = canvas.getContext('2d');
+        if (context) await page.render({ canvasContext: context, viewport, canvas }).promise;
+      } finally {
+        page.cleanup();
+      }
     }
 
     private async setPage(page: number): Promise<void> {
@@ -1209,13 +1220,22 @@ const { profile = 'full' } = Astro.props;
 
       const page = await this.doc.getPage(this.activePage);
       const viewport = page.getViewport({ scale: 1.35 });
-      if (token !== this.renderToken) return;
+      if (token !== this.renderToken) {
+        page.cleanup();
+        return;
+      }
       this.canvas.width = Math.max(1, Math.floor(viewport.width));
       this.canvas.height = Math.max(1, Math.floor(viewport.height));
       const context = this.canvas.getContext('2d');
-      if (!context) return;
-      await page.render({ canvasContext: context, viewport, canvas: this.canvas }).promise;
-      page.cleanup();
+      if (!context) {
+        page.cleanup();
+        return;
+      }
+      try {
+        await page.render({ canvasContext: context, viewport, canvas: this.canvas }).promise;
+      } finally {
+        page.cleanup();
+      }
       if (token !== this.renderToken) return;
 
       this.pageStage.dataset.pageWidth = String(viewport.width / 1.35);
@@ -1340,9 +1360,10 @@ const { profile = 'full' } = Astro.props;
       const viewportStyle = getComputedStyle(this.viewport);
       const horizontalPadding = Number.parseFloat(viewportStyle.paddingLeft) + Number.parseFloat(viewportStyle.paddingRight);
       const availableWidth = Math.max(1, this.viewport.clientWidth - horizontalPadding);
-      const fitScale = matchMedia('(max-width: 760px)').matches
-        ? Math.min(1, availableWidth / Math.max(1, this.canvas.width))
-        : 1;
+      // Fit the document to its actual workspace at every breakpoint. The old
+      // desktop-only scale of 1 made an A4 page wider than the editing canvas,
+      // forcing two-dimensional scrolling before the first edit.
+      const fitScale = Math.min(1, availableWidth / Math.max(1, this.canvas.width));
       const width = this.canvas.width * fitScale * this.zoom;
       const height = this.canvas.height * fitScale * this.zoom;
       this.pageStage.style.width = `${width}px`;
@@ -1632,6 +1653,7 @@ const { profile = 'full' } = Astro.props;
       const signatureLock = this.querySelector<HTMLElement>('[data-editor-signature-lock]');
       const signatureSize = this.querySelector<HTMLElement>('[data-editor-signature-size]');
       const signatureActions = this.querySelector<HTMLElement>('[data-editor-signature-actions]');
+      const inspectorActions = this.querySelector<HTMLElement>('[data-editor-inspector-actions]');
       const geometryControls = this.querySelectorAll<HTMLElement>('[data-editor-geometry-x], [data-editor-geometry-y], [data-editor-geometry-w], [data-editor-geometry-h]');
 
       const setValue = (selector: string, value: string): void => {
@@ -1661,6 +1683,7 @@ const { profile = 'full' } = Astro.props;
       }
 
       if (!mark) {
+        if (inspectorActions) inspectorActions.hidden = true;
         const activePlacement = !['select', 'pan'].includes(this.tool);
         if (title) title.textContent = activePlacement ? `${this.tool.replace(/[-_]/g, ' ')} settings` : 'No object selected';
         if (subtitle) subtitle.textContent = activePlacement
@@ -1696,6 +1719,7 @@ const { profile = 'full' } = Astro.props;
       }
 
       const rect = this.markRect(mark);
+      if (inspectorActions) inspectorActions.hidden = false;
       if (title) title.textContent = `${mark.kind.replace(/[-_]/g, ' ')} selected`;
       if (subtitle) subtitle.textContent = 'Use the handles or the inspector to fine tune this object.';
       if (hint) hint.textContent = 'Drag the object, then use the handles to resize or rotate it.';
@@ -2587,12 +2611,26 @@ const { profile = 'full' } = Astro.props;
   }
   .editor__eyebrow { margin: 0 0 0.2rem; color: var(--accent); font: 600 var(--step--2) var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; }
   .editor__topbar h2 { margin: 0; font-size: var(--step-1); letter-spacing: -0.02em; }
+  .editor__topbar-meta { display: flex; align-items: center; justify-content: flex-end; gap: 0.8rem; flex-wrap: wrap; }
+  .editor__quick-actions { display: flex; align-items: center; gap: 0.45rem; }
+  .editor__quick-actions button {
+    min-height: 2.25rem;
+    padding: 0.42rem 0.72rem;
+    border: 1px solid color-mix(in oklab, var(--accent) 24%, var(--line));
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--accent) 7%, var(--paper-raised));
+    color: var(--accent);
+    font: var(--weight-semibold) var(--step--2)/1 var(--font-sans);
+    cursor: pointer;
+  }
+  .editor__quick-actions button:hover { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 12%, var(--paper-raised)); }
   .editor__privacy { color: var(--muted); font-size: var(--step--2); }
 
   .editor__shell {
     display: grid;
-    grid-template-columns: 4.8rem 8.8rem minmax(0, 1fr);
-    min-height: 39rem;
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 42rem;
     background: var(--paper-sunk);
   }
 
@@ -2600,21 +2638,25 @@ const { profile = 'full' } = Astro.props;
     position: relative;
     z-index: 4;
     display: flex;
-    flex-direction: column;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    align-items: center;
+    flex-wrap: wrap;
     gap: 0.25rem;
-    padding: 0.65rem 0.5rem;
-    border-right: 1px solid var(--line);
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid var(--line);
     background: var(--paper-raised);
     overflow: visible;
   }
-  .editor__tool-rail-label { margin: 0.15rem 0 0.3rem; color: var(--muted); font: var(--weight-semibold) var(--step--2)/1 var(--font-mono); letter-spacing: var(--tracking-label); text-align: center; }
+  .editor__tool-rail-label { margin-right: 0.25rem; color: var(--muted); font: var(--weight-semibold) var(--step--2)/1 var(--font-mono); letter-spacing: var(--tracking-label); text-align: center; }
   .editor__tools button {
     position: relative;
     display: grid;
     justify-items: center;
     gap: 0.18rem;
-    width: 100%;
-    padding: 0.5rem 0.15rem;
+    min-width: 4.15rem;
+    min-height: 3.2rem;
+    padding: 0.42rem 0.35rem;
     border: 1px solid transparent;
     border-radius: 11px;
     background: transparent;
@@ -2626,7 +2668,7 @@ const { profile = 'full' } = Astro.props;
   .editor__tools button[aria-pressed='true'] { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 28%, var(--line)); background: color-mix(in oklab, var(--accent) 9%, var(--paper-raised)); }
   .editor__tools button:disabled { opacity: 0.35; cursor: not-allowed; }
   .editor__tools svg { width: 1.25rem; height: 1.25rem; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  .editor__tool-rule { height: 1px; background: var(--line); margin: 0.25rem 0; }
+  .editor__tool-rule { width: 1px; height: 2rem; flex: 0 0 1px; background: var(--line); margin-inline: 0.2rem; }
   .editor__tool-primary[aria-pressed='true'], .editor__tool-secondary[aria-pressed='true'] { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 28%, var(--line)); background: color-mix(in oklab, var(--accent) 9%, var(--paper-raised)); }
   .editor__tool-group { position: relative; }
   .editor__tool-menu { grid-template-columns: 1fr auto; grid-template-rows: auto auto; }
@@ -2637,7 +2679,7 @@ const { profile = 'full' } = Astro.props;
   .editor__tool-icon--draw { border: 0; font-size: 1.35rem; }
   .editor__tool-icon--stamp { border: 0; font-size: var(--step--2); letter-spacing: -0.08em; }
   .editor__tool-icon--signature { border: 0; font: italic 1.35rem/1 Georgia, serif; }
-  .editor__popover { position: absolute; z-index: 10; top: 0; left: calc(100% + 0.6rem); display: grid; width: 15.75rem; gap: 0.15rem; padding: 0.45rem; border: 1px solid var(--line-strong); border-radius: 13px; background: var(--paper-raised); box-shadow: 0 16px 40px rgb(15 23 42 / 0.18), 0 2px 7px rgb(15 23 42 / 0.08); }
+  .editor__popover { position: absolute; z-index: 10; top: calc(100% + 0.55rem); left: 0; display: grid; width: 15.75rem; gap: 0.15rem; padding: 0.45rem; border: 1px solid var(--line-strong); border-radius: 13px; background: var(--paper-raised); box-shadow: 0 16px 40px rgb(15 23 42 / 0.18), 0 2px 7px rgb(15 23 42 / 0.08); }
   .editor__popover[hidden] { display: none; }
   .editor__popover-heading { display: grid; gap: 0.1rem; padding: 0.52rem 0.6rem 0.45rem; margin-bottom: 0.2rem; border-bottom: 1px solid var(--line); }
   .editor__popover-heading strong { font: 600 var(--step--2) var(--font-display); color: var(--ink); }
@@ -2679,9 +2721,9 @@ const { profile = 'full' } = Astro.props;
   .editor__signature-upload small { line-height: 1.35; }
 
   .editor__signature-note { margin: 0.35rem 0.5rem 0.25rem; color: var(--muted); font-size: var(--step--2); line-height: var(--leading-compact); }
-  .editor__tool-footnote { margin: auto 0.12rem 0.1rem; color: var(--muted); font-size: var(--step--2); line-height: var(--leading-compact); text-align: center; }
+  .editor__tool-footnote { margin: 0 0 0 auto; min-width: 9rem; color: var(--muted); font-size: var(--step--2); line-height: var(--leading-compact); text-align: right; }
 
-  .editor__pages { min-width: 0; border-right: 1px solid var(--line); background: var(--paper-raised); }
+  .editor__pages { grid-column: 1; grid-row: 2; min-width: 0; border-right: 1px solid var(--line); background: var(--paper-raised); }
   .editor__pages-head { display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
   .editor__thumbs { display: grid; gap: 0.7rem; align-content: start; max-height: 36.3rem; overflow-y: auto; padding: 0.7rem; }
   :global(.editor-thumb) { display: grid; gap: 0.3rem; padding: 0.35rem; border: 1px solid var(--line); border-radius: 9px; background: var(--paper-raised); color: var(--muted); cursor: pointer; }
@@ -2689,13 +2731,13 @@ const { profile = 'full' } = Astro.props;
   :global(.editor-thumb canvas) { display: block; width: 100%; min-height: 4.6rem; background: white; border-radius: 3px; }
   :global(.editor-thumb span) { font: var(--weight-medium) var(--step--2) var(--font-mono); }
 
-  .editor__workarea { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; }
-  .editor__viewbar { display: flex; justify-content: space-between; gap: 1rem; padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--line); background: var(--paper-raised); }
+  .editor__workarea { grid-column: 2; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 18rem); grid-template-rows: auto minmax(0, 1fr); min-width: 0; }
+  .editor__viewbar { grid-column: 1; grid-row: 1; display: flex; justify-content: space-between; gap: 1rem; padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--line); background: var(--paper-raised); }
   .editor__pager, .editor__zoom { display: flex; align-items: center; gap: 0.55rem; color: var(--muted); font-size: var(--step--2); }
   .editor__viewbar button { width: 2rem; height: 2rem; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-raised); color: var(--ink); cursor: pointer; }
   .editor__viewbar button:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  .editor__viewport { position: relative; min-height: 27rem; overflow: auto; padding: clamp(1rem, 2vw, 2rem); background-image: radial-gradient(circle, color-mix(in oklab, var(--muted) 18%, transparent) 1px, transparent 1px); background-size: 18px 18px; }
+  .editor__viewport { position: relative; grid-column: 1; grid-row: 2; min-height: 34rem; max-height: 70vh; overflow: auto; padding: clamp(1rem, 2vw, 2rem); background-image: radial-gradient(circle, color-mix(in oklab, var(--muted) 18%, transparent) 1px, transparent 1px); background-size: 18px 18px; }
   .editor__page { position: relative; margin: 0 auto; background: white; box-shadow: 0 14px 38px rgb(15 23 42 / 0.16), 0 0 0 1px rgb(15 23 42 / 0.08); transform-origin: top center; }
   .editor__page[hidden] { display: none; }
   .editor__page canvas, .editor__page svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -2715,16 +2757,22 @@ const { profile = 'full' } = Astro.props;
 
   .editor__properties {
     display: grid;
+    grid-column: 2;
+    grid-row: 1 / -1;
+    align-content: start;
     gap: 0.8rem;
     padding: 0.9rem 1rem 1rem;
-    border-top: 1px solid var(--line);
+    border-left: 1px solid var(--line);
     background: linear-gradient(180deg, color-mix(in oklab, var(--paper-raised) 92%, white), var(--paper-raised));
+    max-height: 70vh;
+    overflow-y: auto;
   }
   .editor__inspector-copy { display: grid; gap: 0.18rem; }
   .editor__inspector-copy strong { color: var(--ink); font: 700 var(--step-0) var(--font-display); letter-spacing: var(--tracking-tight); }
   .editor__inspector-copy p { margin: 0; color: var(--muted); font-size: var(--step--2); line-height: 1.45; }
   .editor__inspector-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: 0.65rem; }
   .editor__inspector-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .editor__inspector-actions[hidden] { display: none; }
   .editor__signature-actions { display: contents; }
   .editor__signature-actions[hidden] { display: none; }
   .editor__properties label { display: grid; gap: 0.25rem; color: var(--muted); font-size: var(--step--2); }
@@ -2747,11 +2795,21 @@ const { profile = 'full' } = Astro.props;
   .editor__footer [data-editor-count]:not(:only-child) { color: var(--ink-2); font-weight: 500; }
   .editor__footer kbd { padding: 0.1rem 0.3rem; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--paper-sunk); font: inherit; }
 
+  @media (max-width: 980px) and (min-width: 761px) {
+    .editor__workarea { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+    .editor__viewbar { grid-column: 1; grid-row: 1; }
+    .editor__viewport { grid-column: 1; grid-row: 2; }
+    .editor__properties { grid-column: 1; grid-row: 3; max-height: none; border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+  }
+
   @media (max-width: 760px) {
-    .editor__topbar { align-items: flex-start; }
+    .editor__topbar { align-items: flex-start; flex-direction: column; }
+    .editor__topbar-meta { width: 100%; justify-content: flex-start; }
+    .editor__quick-actions { width: 100%; }
+    .editor__quick-actions button { min-height: 2.75rem; flex: 1 1 0; }
     .editor__privacy { display: none; }
-    .editor__shell { grid-template-columns: 1fr; min-height: 0; }
-    .editor__tools { position: sticky; top: 0; z-index: 8; flex-direction: row; overflow-x: auto; overflow-y: visible; border-right: 0; border-bottom: 1px solid var(--line); scroll-snap-type: x proximity; scrollbar-width: thin; overscroll-behavior-inline: contain; }
+    .editor__shell { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; }
+    .editor__tools { position: sticky; grid-column: 1; grid-row: 1; top: 0; z-index: 8; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; overflow-y: visible; border-right: 0; border-bottom: 1px solid var(--line); scroll-snap-type: x proximity; scrollbar-width: thin; overscroll-behavior-inline: contain; }
     .editor__tools button { min-width: 4rem; min-height: 2.75rem; padding-block: 0.55rem; scroll-snap-align: start; font-size: var(--step--2); }
     .editor__tool-rail-label, .editor__tool-footnote { display: none; }
     .editor__tool-group { position: static; }
@@ -2778,15 +2836,17 @@ const { profile = 'full' } = Astro.props;
     .editor__signature-input input,
     .editor__properties input:not([type='color']),
     .editor__properties select { min-height: 2.75rem; }
-    .editor__tool-rule { width: 1px; height: auto; margin: 0 0.2rem; }
-    .editor__pages { border-right: 0; border-bottom: 1px solid var(--line); }
+    .editor__tool-rule { width: 1px; height: 2rem; margin: 0 0.2rem; }
+    .editor__pages { grid-column: 1; grid-row: 2; border-right: 0; border-bottom: 1px solid var(--line); }
     .editor__pages-head { display: none; }
-    .editor__thumbs { grid-auto-flow: column; grid-auto-columns: minmax(5.2rem, 1fr); overflow-x: auto; overflow-y: hidden; max-height: none; padding-bottom: 0.45rem; }
+    .editor__thumbs { grid-auto-flow: column; grid-auto-columns: 5.25rem; justify-content: start; overflow-x: auto; overflow-y: hidden; max-height: none; padding-bottom: 0.45rem; }
     :global(.editor-thumb canvas) { min-height: 3.5rem; }
-    .editor__viewport { min-height: 24rem; }
+    .editor__workarea { grid-column: 1; grid-row: 3; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; }
+    .editor__viewbar { grid-column: 1; grid-row: 1; }
+    .editor__viewport { grid-column: 1; grid-row: 2; min-height: 22rem; max-height: 70dvh; }
     .editor__viewbar button { width: 2.75rem; height: 2.75rem; }
     .editor__footer span:last-child { display: none; }
-    .editor__properties { padding: 0.8rem; }
+    .editor__properties { grid-column: 1; grid-row: 3; padding: 0.8rem; max-height: none; border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
     .editor__inspector-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .editor__inspector-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .editor__signature-actions { display: contents; }
