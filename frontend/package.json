@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "node scripts/copy-wasm.mjs && astro dev",
-    "build": "tsc --noEmit --pretty false && node scripts/audit-tools.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs",
+    "build": "tsc --noEmit --pretty false && node scripts/audit-tools.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-brand.mjs",
     "preview": "astro preview",
     "assets": "node scripts/copy-wasm.mjs",
     "audit:icons": "node scripts/audit-icons.mjs",
@@ -18,9 +18,10 @@
     "test:operations": "node scripts/run-operation-smoke.mjs",
     "audit:storage": "node scripts/audit-storage.mjs",
     "audit:bundles": "node scripts/audit-bundles.mjs",
+    "audit:brand": "node scripts/audit-brand.mjs",
     "audit:links": "node scripts/audit-links.mjs",
     "typecheck": "tsc --noEmit --pretty false",
-    "check": "tsc --noEmit --pretty false && node scripts/audit-tools.mjs && node scripts/audit-icons.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/run-operation-smoke.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-links.mjs"
+    "check": "tsc --noEmit --pretty false && node scripts/audit-tools.mjs && node scripts/audit-icons.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/run-operation-smoke.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-links.mjs && node scripts/audit-brand.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.3",

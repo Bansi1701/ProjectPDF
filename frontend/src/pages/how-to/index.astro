@@ -5,10 +5,10 @@ import { RECIPES } from '../../config/recipes';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 
-<BaseLayout title="Private PDF workflow recipes | ProjectPDF" description="Complete multi-step PDF jobs without uploading or choosing the same file at every step.">
+<BaseLayout title="Private PDF workflow recipes | HatePDF" description="Complete multi-step PDF jobs without uploading or choosing the same file at every step.">
   <Masthead />
   <main id="main" class="recipes">
-    <header><p>Connected workflows</p><h1>Finish the job, not just one PDF step.</h1><span>Choose a file once. ProjectPDF carries it between tools in your browser, then deletes each handoff as soon as it is used.</span></header>
+    <header><p>Connected workflows</p><h1>Finish the job, not just one PDF step.</h1><span>Choose a file once. HatePDF carries it between tools in your browser, then deletes each handoff as soon as it is used.</span></header>
     <div class="recipes__grid">
       {RECIPES.map((recipe) => <a href={`${base}/how-to/${recipe.slug}/`}><small>{recipe.steps.length} steps</small><h2>{recipe.title}</h2><p>{recipe.outcome}</p><strong>Open recipe →</strong></a>)}
     </div>

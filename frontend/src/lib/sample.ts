@@ -80,7 +80,7 @@ const ROWS: [string, string, string, string][] = [
 export async function sampleDocument(): Promise<File> {
   const doc = await PDFDocument.create();
   doc.setTitle('Sample document');
-  doc.setAuthor('ProjectPDF');
+  doc.setAuthor('HatePDF');
   doc.setSubject('A demonstration file, generated in the browser');
 
   const regular = await doc.embedFont(StandardFonts.Helvetica);

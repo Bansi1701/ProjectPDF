@@ -1,72 +1,43 @@
 ---
 import LegalShell from '../components/LegalShell.astro';
-import { BROWSER_STORAGE_ITEMS } from '../config/browserStorage';
-import { auditedNetworkRequests } from '../lib/networkAudit';
-
-const requests = auditedNetworkRequests();
-const sourceBase = 'https://github.com/Bansi1701/ProjectPDF/blob/main/frontend/src/';
 ---
 <LegalShell
-  title="Privacy that can fail its own build"
+  title="Privacy policy"
   eyebrow="Privacy"
-  updated="August 28, 2026"
-  description="ProjectPDF's privacy promise is narrow and testable: live document tools process files on your device. The build refuses undocumented network requests or browser storage."
+  updated="September 1, 2026"
+  description="How HatePDF handles documents, device preferences and basic website connection information."
 >
-  <div class="callout"><strong>The useful version</strong><p>ProjectPDF does not receive, store, analyze, or sell the contents of PDFs used with its currently live tools. There are no analytics scripts, advertising trackers, user accounts, or document cookies in this release. ProjectPDF does not count which tools you visit.</p></div>
+  <div class="callout"><strong>In short</strong><p>HatePDF's live document tools process your files in your browser. We do not receive, store, analyse or sell the contents of those documents.</p></div>
 
-  <h2>What the site processes</h2>
-  <p>When you choose a document, browser code reads it into memory and creates the result on the same device. A finished tool receipt shows how many document bytes were sent. Navigating away normally releases in-memory data.</p>
+  <h2>Documents you choose</h2>
+  <p>For tools marked as running on your device, the selected file, filename and finished result remain in your browser. HatePDF does not create an account or keep a server copy of those documents. Unsaved work can be lost when you close the tab, clear site data or leave the page.</p>
 
-  <h2>Local browser storage</h2>
-  <p>ProjectPDF sets no cookies. It does not create a visitor identifier, usage history, analytics profile, advertising profile, fingerprint, or cross-site record. The build fails if an unapproved browser-storage call is added. The only persistent browser storage begins after you request the feature described below.</p>
-  <table>
-    <thead><tr><th>Item</th><th>When it starts</th><th>Contents and purpose</th><th>Retention and control</th></tr></thead>
-    <tbody>
-      {BROWSER_STORAGE_ITEMS.map((item) => (
-        <tr>
-          <td><strong>{item.name}</strong><br /><code>{item.technology}: {item.key}</code></td>
-          <td>{item.starts}</td>
-          <td>{item.contents}<br />{item.purpose}</td>
-          <td>{item.retention}</td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-  <p>ProjectPDF does not show a cookie banner because there is no optional analytics, advertising, profiling, or third-party tracking choice to approve. If any such technology is proposed later, it must remain disabled until a person gives specific permission.</p>
+  <h2>Public web-page conversion</h2>
+  <p>If a web-page-to-PDF feature is available and you use it, the public URL you enter must be sent to a server so that page can be retrieved. Do not enter a private, authenticated or confidential address. Your own PDF documents are not involved in that request.</p>
+
+  <h2>Cookies, analytics and advertising</h2>
+  <p>HatePDF does not currently use cookies, advertising trackers, analytics profiles, browser fingerprinting or cross-site tracking. We do not sell personal information or count which tools you use.</p>
+
+  <h2>Preferences saved on your device</h2>
+  <p>If you choose a colour theme, preview size or favourite tools, that preference can be saved on your device for up to 12 months. When you continue a PDF into another local tool, the temporary handoff is removed after it is used and abandoned handoffs expire after one hour. These items are not used for advertising or profiling.</p>
 
   <div class="data-controls">
-    <div><strong>Clear ProjectPDF data on this device</strong><p>Removes theme, preview-size and favourite preferences plus any unclaimed connected-workflow PDF.</p></div>
+    <div><strong>Clear HatePDF data on this device</strong><p>Removes saved appearance and favourite preferences plus any unclaimed local workflow file.</p></div>
     <button type="button" data-clear-project-data>Clear site data</button>
     <p class="data-controls__status" data-clear-project-status role="status" aria-live="polite"></p>
   </div>
 
-  <h2>Complete script-initiated request audit</h2>
-  <p>This table is produced during the static build by scanning source files for <code>fetch</code> and <code>XMLHttpRequest</code> call sites. A new unlisted call fails the build. Page navigation and same-origin HTML, CSS, JavaScript, image, worker, and font asset loads are normal browser resource requests and are outside this call-site table.</p>
-  <table>
-    <thead><tr><th>Destination</th><th>When and what</th><th>Availability</th><th>Source</th></tr></thead>
-    <tbody>
-      {requests.map((request) => (
-        <tr>
-          <td>{request.destination}</td>
-          <td><strong>{request.trigger}</strong><br />{request.data}</td>
-          <td>{request.availability}</td>
-          <td><a href={`${sourceBase}${request.source}#L${request.line}`}>{request.source}:{request.line}</a></td>
-        </tr>
-      ))}
-    </tbody>
-  </table>
-
-  <h2>Hosting information</h2>
-  <p>The public site is served by GitHub Pages. Like any web host, GitHub can receive ordinary connection information such as IP address, requested path, browser headers, and time of access when it delivers site files. ProjectPDF does not receive PDF contents through that hosting request. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a> governs its infrastructure processing.</p>
+  <h2>Website hosting</h2>
+  <p>The site is hosted by GitHub Pages. GitHub may receive ordinary connection information, such as your IP address, requested page, browser headers and access time, when it delivers the website. That request does not include the contents of a document you selected for a local tool. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a> explains its processing.</p>
 
   <h2>External links</h2>
-  <p>Comparison pages link to official competitor sites as sources. ProjectPDF does not contact those sites when the page loads; your browser contacts them only if you follow the link.</p>
+  <p>If you follow a link to another website, that site's privacy policy applies. HatePDF does not control external services.</p>
 
-  <h2>Children, sensitive documents, and requests</h2>
-  <p>The service is not directed to children and is not a regulated records repository. Because ProjectPDF has no account or document database, it normally has no ProjectPDF-held document or profile to access, correct, export, or delete. Repository questions and privacy reports can be opened through the public <a href="https://github.com/Bansi1701/ProjectPDF/issues">GitHub issue tracker</a>; do not attach a sensitive document to a public issue.</p>
+  <h2>Children and sensitive information</h2>
+  <p>The service is not directed to children and is not a regulated document repository. Do not post a confidential document, password or personal information in a public support report.</p>
 
-  <h2>Changes to this policy</h2>
-  <p>New network or browser-storage capabilities must be approved and added to the audited manifest before the site can build. Policy changes are versioned in the same public Git history as the product code.</p>
+  <h2>Questions and changes</h2>
+  <p>Privacy questions can be submitted through the public <a href="https://github.com/Bansi1701/ProjectPDF/issues">GitHub issue tracker</a>. Do not attach sensitive material. We will update the date above when this policy changes materially.</p>
 </LegalShell>
 
 <script>
@@ -77,15 +48,15 @@ const sourceBase = 'https://github.com/Bansi1701/ProjectPDF/blob/main/frontend/s
   const status = document.querySelector<HTMLElement>('[data-clear-project-status]');
   button?.addEventListener('click', async () => {
     button.disabled = true;
-    if (status) status.textContent = 'Clearing local ProjectPDF data…';
+    if (status) status.textContent = 'Clearing local HatePDF data…';
     clearPreferences();
     try {
       await clearHandoffs();
       document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       window.dispatchEvent(new Event('projectpdf:preferences-cleared'));
-      if (status) status.textContent = 'ProjectPDF preferences and temporary handoffs were cleared from this browser.';
+      if (status) status.textContent = 'HatePDF preferences and temporary handoffs were cleared from this browser.';
     } catch (error) {
-      if (status) status.textContent = error instanceof Error ? error.message : 'Temporary handoffs could not be cleared. Close other ProjectPDF tabs and try again.';
+      if (status) status.textContent = error instanceof Error ? error.message : 'Temporary handoffs could not be cleared. Close other HatePDF tabs and try again.';
     } finally {
       button.disabled = false;
     }

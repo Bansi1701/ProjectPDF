@@ -35,7 +35,7 @@ export const BROWSER_STORAGE_ITEMS: readonly BrowserStorageItem[] = [
     key: FAVOURITES_KEY,
     starts: 'Only after you mark a tool as a favourite.',
     contents: 'The public URL slugs of the tools you selected and an expiry time.',
-    purpose: 'Builds your local shortcut list. It is never transmitted to ProjectPDF.',
+    purpose: 'Builds your local shortcut list. It is never transmitted to HatePDF.',
     retention: 'Up to 12 months after your last change, or until you clear site data.',
   },
   {
@@ -45,6 +45,6 @@ export const BROWSER_STORAGE_ITEMS: readonly BrowserStorageItem[] = [
     starts: 'Only after you choose “Continue with” another PDF tool.',
     contents: 'The result PDF, filename, media type, random handoff key and creation time.',
     purpose: 'Lets the next local tool claim the file without uploading it to a server.',
-    retention: 'Deleted when claimed. If abandoned, it becomes inaccessible after one hour and is removed the next time ProjectPDF opens; Clear site data removes it sooner.',
+    retention: 'Deleted when claimed. If abandoned, it becomes inaccessible after one hour and is removed the next time HatePDF opens; Clear site data removes it sooner.',
   },
 ] as const;

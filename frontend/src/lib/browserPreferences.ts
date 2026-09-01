@@ -59,7 +59,7 @@ export function writePreference<T>(key: string, value: T): boolean {
   }
 }
 
-/** Removes every ProjectPDF preference, including the retired usage counter. */
+/** Removes every HatePDF preference, including the retired usage counter. */
 export function clearPreferences(): void {
   try {
     for (const key of [...PREFERENCE_KEYS, LEGACY_USAGE_KEY]) remove(key);

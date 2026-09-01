@@ -17,4 +17,4 @@ def test_status_reports_not_launched() -> None:
 
     body = response.json()
     assert body["launched"] is False
-    assert body["name"] == "ProjectPDF API"
+    assert body["name"] == "HatePDF API"

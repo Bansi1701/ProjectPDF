@@ -48,7 +48,7 @@
       const estimated = (size * 8) / (connection.downlink * 1_000_000);
       upload.textContent = `The browser reports ${connection.downlink} Mbps downlink, not upload capacity. At that rate, the upload leg alone would take at least about ${secondsLabel(estimated)} before remote processing began.`;
     } else {
-      upload.textContent = 'This browser does not expose connection speed, so ProjectPDF will not invent an upload-time comparison.';
+      upload.textContent = 'This browser does not expose connection speed, so HatePDF will not invent an upload-time comparison.';
     }
     note.dataset.speedSignature = signature;
     note.hidden = false;
