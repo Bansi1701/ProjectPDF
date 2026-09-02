@@ -4,7 +4,7 @@ import { extname, join, relative } from 'node:path';
 export interface NetworkRequestAudit {
   source: string;
   line: number;
-  kind: 'fetch' | 'XMLHttpRequest';
+  kind: 'fetch' | 'XMLHttpRequest' | 'sendBeacon' | 'WebSocket' | 'EventSource' | 'importScripts';
   destination: string;
   trigger: string;
   data: string;
@@ -59,6 +59,12 @@ function callSites() {
       if (/\b(?:new\s+XMLHttpRequest|XMLHttpRequest\s*\()/.test(text)) {
         found.push({ source, line: index + 1, text, kind: 'XMLHttpRequest' });
       }
+      // No rules exist for these, so any first use fails the build until it
+      // is documented here — same contract as fetch, not an afterthought.
+      if (/\bnavigator\.sendBeacon\s*\(/.test(text)) found.push({ source, line: index + 1, text, kind: 'sendBeacon' });
+      if (/\bnew\s+WebSocket\s*\(/.test(text)) found.push({ source, line: index + 1, text, kind: 'WebSocket' });
+      if (/\bnew\s+EventSource\s*\(/.test(text)) found.push({ source, line: index + 1, text, kind: 'EventSource' });
+      if (/\bimportScripts\s*\(/.test(text)) found.push({ source, line: index + 1, text, kind: 'importScripts' });
       return found;
     });
   });

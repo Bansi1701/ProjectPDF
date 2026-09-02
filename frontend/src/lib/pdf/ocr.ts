@@ -71,12 +71,16 @@ export async function ocrPdf(
   const source = await loadingTask.promise;
 
   // Everything served from our own origin. corePath and langPath are the two
-  // that otherwise reach for a CDN.
+  // that otherwise reach for a CDN. cacheMethod matters just as much: left
+  // unset, the worker writes the 4 MB language file into IndexedDB forever,
+  // which the privacy page does not list — the browser's HTTP cache already
+  // covers repeat downloads without us storing anything.
   const worker = await createWorker('eng', 1, {
     workerPath: origin('tesseract/worker.min.js'),
     corePath: origin('tesseract/'),
     langPath: origin('tessdata/'),
     gzip: true,
+    cacheMethod: 'none',
   });
 
   const output = searchable ? await PDFDocument.create() : null;

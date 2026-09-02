@@ -9,16 +9,18 @@ const sourceBase = 'https://github.com/Bansi1701/ProjectPDF/blob/main/frontend/s
 <LegalShell
   title="Privacy that can fail its own build"
   eyebrow="Privacy"
-  updated="August 28, 2026"
+  updated="September 1, 2026"
   description="ProjectPDF's privacy promise is narrow and testable: live document tools process files on your device. The build refuses undocumented network requests or browser storage."
 >
   <div class="callout"><strong>The useful version</strong><p>ProjectPDF does not receive, store, analyze, or sell the contents of PDFs used with its currently live tools. There are no analytics scripts, advertising trackers, user accounts, or document cookies in this release. ProjectPDF does not count which tools you visit.</p></div>
+
+  <p>ProjectPDF does not sell or share personal information and does not use it for targeted advertising. A Global Privacy Control signal tells a site to stop selling or sharing your data; ProjectPDF has nothing to stop, so every visitor — with or without the signal — already gets the strictest treatment.</p>
 
   <h2>What the site processes</h2>
   <p>When you choose a document, browser code reads it into memory and creates the result on the same device. A finished tool receipt shows how many document bytes were sent. Navigating away normally releases in-memory data.</p>
 
   <h2>Local browser storage</h2>
-  <p>ProjectPDF sets no cookies. It does not create a visitor identifier, usage history, analytics profile, advertising profile, fingerprint, or cross-site record. The build fails if an unapproved browser-storage call is added. The only persistent browser storage begins after you request the feature described below.</p>
+  <p>ProjectPDF sets no cookies. It does not create a visitor identifier, usage history, analytics profile, advertising profile, fingerprint, or cross-site record. The build fails if an unapproved browser-storage call is added to ProjectPDF's own code, and the bundled document engines are pinned to this site's origin and configured to store nothing — the build also fails if that configuration is removed. The only persistent browser storage begins after you request the feature described below. The text-recognition engine downloads its language data each time you run OCR and does not keep it; the button below also removes any engine cache saved by earlier versions of this site.</p>
   <table>
     <thead><tr><th>Item</th><th>When it starts</th><th>Contents and purpose</th><th>Retention and control</th></tr></thead>
     <tbody>
@@ -32,16 +34,17 @@ const sourceBase = 'https://github.com/Bansi1701/ProjectPDF/blob/main/frontend/s
       ))}
     </tbody>
   </table>
-  <p>ProjectPDF does not show a cookie banner because there is no optional analytics, advertising, profiling, or third-party tracking choice to approve. If any such technology is proposed later, it must remain disabled until a person gives specific permission.</p>
+  <p>Every item above is optional. The site works without them: if you never make the choice, nothing is stored, and the Clear site data button below removes all of them at any time, for free.</p>
+  <p>ProjectPDF does not show a cookie banner because there is nothing a banner would control: the items above exist only to do something you explicitly asked for, and there is no analytics, advertising, profiling, or third-party tracking to accept or refuse. If any such technology is proposed later, it must remain disabled until a person gives specific permission.</p>
 
   <div class="data-controls">
-    <div><strong>Clear ProjectPDF data on this device</strong><p>Removes theme, preview-size and favourite preferences plus any unclaimed connected-workflow PDF.</p></div>
+    <div><strong>Clear ProjectPDF data on this device</strong><p>Removes theme, preview-size and favourite preferences, any unclaimed connected-workflow PDF, and any text-recognition engine cache saved by earlier visits.</p></div>
     <button type="button" data-clear-project-data>Clear site data</button>
     <p class="data-controls__status" data-clear-project-status role="status" aria-live="polite"></p>
   </div>
 
-  <h2>Complete script-initiated request audit</h2>
-  <p>This table is produced during the static build by scanning source files for <code>fetch</code> and <code>XMLHttpRequest</code> call sites. A new unlisted call fails the build. Page navigation and same-origin HTML, CSS, JavaScript, image, worker, and font asset loads are normal browser resource requests and are outside this call-site table.</p>
+  <h2>Script-initiated request audit</h2>
+  <p>This table is produced during the static build by scanning source files for <code>fetch</code>, <code>XMLHttpRequest</code>, <code>sendBeacon</code>, <code>WebSocket</code>, <code>EventSource</code>, and <code>importScripts</code> call sites. A new unlisted call in ProjectPDF's own code fails the build; bundled libraries are reviewed by hand and pinned to this site's origin. Page navigation and same-origin HTML, CSS, JavaScript, image, worker, and font asset loads are normal browser resource requests and are outside this call-site table.</p>
   <table>
     <thead><tr><th>Destination</th><th>When and what</th><th>Availability</th><th>Source</th></tr></thead>
     <tbody>
@@ -65,6 +68,11 @@ const sourceBase = 'https://github.com/Bansi1701/ProjectPDF/blob/main/frontend/s
   <h2>Children, sensitive documents, and requests</h2>
   <p>The service is not directed to children and is not a regulated records repository. Because ProjectPDF has no account or document database, it normally has no ProjectPDF-held document or profile to access, correct, export, or delete. Repository questions and privacy reports can be opened through the public <a href="https://github.com/Bansi1701/ProjectPDF/issues">GitHub issue tracker</a>; do not attach a sensitive document to a public issue.</p>
 
+  <h2>Your rights by region</h2>
+  <p>Laws in the EU, UK, and elsewhere give you rights to access, correct, export, delete, and object. ProjectPDF keeps no account, document, or profile about you, so there is normally nothing on ProjectPDF's side for those rights to act on — the data those rights protect stays in your browser, where you already control it directly. The hosting section above describes the connection data GitHub processes to deliver the site.</p>
+  <p>In India, data-protection law expects a working grievance channel. Today that channel is the public GitHub issue tracker linked above; if the rules come to require a named contact, one will be published here. Never put personal information in a public issue.</p>
+  <p>Quebec and Brazil require functions that identify, locate, or profile you to stay off until you turn them on. ProjectPDF has none to turn off: every stored item above starts only after your explicit action, and none of them identifies, locates, or profiles anyone.</p>
+
   <h2>Changes to this policy</h2>
   <p>New network or browser-storage capabilities must be approved and added to the audited manifest before the site can build. Policy changes are versioned in the same public Git history as the product code.</p>
 </LegalShell>
@@ -79,6 +87,14 @@ const sourceBase = 'https://github.com/Bansi1701/ProjectPDF/blob/main/frontend/s
     button.disabled = true;
     if (status) status.textContent = 'Clearing local ProjectPDF data…';
     clearPreferences();
+    try {
+      // Earlier releases let the OCR engine cache its language data. Delete
+      // that store too, so "clear" means everything — even data this version
+      // no longer writes.
+      indexedDB.deleteDatabase('keyval-store');
+    } catch {
+      /* Unsupported browser: nothing was ever cached there either. */
+    }
     try {
       await clearHandoffs();
       document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

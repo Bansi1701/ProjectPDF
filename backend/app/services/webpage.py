@@ -46,6 +46,17 @@ async def render(url: str, landscape: bool = False) -> RenderResult:
         return await asyncio.wait_for(_render(safe, landscape), timeout=HARD_TIMEOUT_S)
     except TimeoutError as exc:
         raise RenderError("That page took too long to render.") from exc
+    except RenderError:
+        raise
+    except Exception as exc:
+        # Playwright's own errors (its TimeoutError is not the builtin one,
+        # net::ERR_* failures, protocol errors) embed the full target URL in
+        # their messages. Left uncaught they become 500s with the submitted
+        # URL in the error log. `from None` on purpose: a chained cause would
+        # put the URL right back into any formatted traceback.
+        raise RenderError(
+            f"That page could not be fetched or rendered ({type(exc).__name__})."
+        ) from None
 
 
 async def _render(url: str, landscape: bool) -> RenderResult:

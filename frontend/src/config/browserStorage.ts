@@ -45,6 +45,6 @@ export const BROWSER_STORAGE_ITEMS: readonly BrowserStorageItem[] = [
     starts: 'Only after you choose “Continue with” another PDF tool.',
     contents: 'The result PDF, filename, media type, random handoff key and creation time.',
     purpose: 'Lets the next local tool claim the file without uploading it to a server.',
-    retention: 'Deleted when claimed. If abandoned, it becomes inaccessible after one hour and is removed the next time ProjectPDF opens; Clear site data removes it sooner.',
+    retention: 'Entries expire after one hour and expired entries are deleted whenever another workflow starts. Clear site data removes everything immediately.',
   },
 ] as const;
