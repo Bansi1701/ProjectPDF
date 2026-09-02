@@ -20,6 +20,16 @@ component turns the tool's entry in `src/content/tools/*.md` into static HTML
 `SoftwareApplication`, `HowTo`, `FAQPage` and `BreadcrumbList` schema. Adding
 a tool means adding its content file, or the audit stops the build.
 
+Long-form guides live in `src/content/guides/*.md` (frontmatter: title,
+description, summary, tools, keywords, updated, faqs — limits enforced by the
+collection schema) and render at `/guides/<slug>/` with TechArticle, FAQPage
+and breadcrumb schema, an Atom feed at `/guides/feed.xml`, and automatic
+"Further reading" links from every tool page they name. Competitor pages use
+`components/CompetitorPage.astro`; the rule there is that every statement about
+another service is its own, with the source linked, and a "when they are
+better" section is mandatory. Ready-to-paste launch posts are in
+[LAUNCH_POSTS.md](LAUNCH_POSTS.md).
+
 Generated at build time from the same config, so they cannot drift:
 
 | Path | Purpose |

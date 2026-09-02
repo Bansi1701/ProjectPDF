@@ -90,6 +90,10 @@ for (const file of files) {
   if (isToolPage && !html.includes('"FAQPage"')) {
     problems.push(`${label}: tool page without its guide content (no FAQ)`);
   }
+  const isGuidePage = segments.length === 2 && segments[0] === 'guides';
+  if (isGuidePage && !html.includes('"TechArticle"')) {
+    problems.push(`${label}: guide without TechArticle structured data`);
+  }
 }
 
 for (const location of sitemap) {

@@ -115,16 +115,21 @@ function pageLastModified(absoluteUrl) {
   if (basePrefix && route.startsWith(basePrefix)) route = route.slice(basePrefix.length);
   route = route.replace(/^\/+/, '').replace(/\/$/, '');
   const helpSlug = route.startsWith('help/') ? route.slice('help/'.length) : null;
+  const guideSlug = route.startsWith('guides/') && route !== 'guides' ? route.slice('guides/'.length) : null;
   const pages = helpSlug
     ? ['frontend/src/pages/help/[slug].astro']
-    : route
-      ? [`frontend/src/pages/${route}.astro`, `frontend/src/pages/${route}/index.astro`]
-      : ['frontend/src/pages/index.astro'];
+    : guideSlug
+      ? ['frontend/src/pages/guides/[slug].astro']
+      : route
+        ? [`frontend/src/pages/${route}.astro`, `frontend/src/pages/${route}/index.astro`]
+        : ['frontend/src/pages/index.astro'];
   const content = helpSlug
     ? `frontend/src/content/tools/${helpSlug}.md`
-    : route && !route.includes('/')
-      ? `frontend/src/content/tools/${route}.md`
-      : null;
+    : guideSlug
+      ? `frontend/src/content/guides/${guideSlug}.md`
+      : route && !route.includes('/')
+        ? `frontend/src/content/tools/${route}.md`
+        : null;
   const dates = [...pages.map(changedAt), content ? changedAt(content) : null].filter(Boolean).sort();
   return dates.at(-1);
 }

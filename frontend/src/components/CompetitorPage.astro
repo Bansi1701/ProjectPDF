@@ -1,0 +1,135 @@
+---
+/**
+ * One page per upload-based service people search for an alternative to.
+ *
+ * The rules are strict because the comparison is the argument: every claim
+ * about the other service is limited to what it states itself, with the
+ * source linked; the "when to stay" section is mandatory; and the mapping
+ * table sends people to the matching HatePDF tool rather than a pitch.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from './Masthead.astro';
+import HelpFooter from './HelpFooter.astro';
+import { SITE, TOOLS } from '../config/site';
+import { articleLd, breadcrumbLd, faqLd, type FaqItem } from '../lib/seo';
+
+interface Props {
+  name: string;
+  title: string;
+  description: string;
+  path: string;
+  /** How the service describes its own handling of files, with the source. */
+  theirModel: { statement: string; sourceUrl: string; sourceLabel: string }[];
+  /** Their tool → HatePDF tool slug. */
+  mapping: [string, string][];
+  whenTheyWin: string[];
+  faqs: FaqItem[];
+  keywords: string[];
+}
+
+const { name, title, description, path, theirModel, mapping, whenTheyWin, faqs, keywords } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const liveCount = TOOLS.filter((tool) => tool.status === 'live').length;
+const rows = mapping.map(([theirs, slug]) => ({ theirs, tool: TOOLS.find((tool) => tool.slug === slug && tool.status === 'live') }));
+
+const schemas = [
+  articleLd({ headline: title, description, path, keywords, about: `${name} alternative` }),
+  faqLd(faqs),
+  breadcrumbLd([
+    { name: 'Home', url: '/' },
+    { name: 'Compared with upload-based PDF sites', url: '/alternatives/' },
+    { name: `${name} alternative`, url: path },
+  ]),
+];
+---
+
+<BaseLayout {title} {description} {keywords} contentType="article">
+  <Masthead />
+  {schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} is:inline />)}
+  <main id="main" class="vs">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href={`${base}/`}>Home</a><span>/</span><a href={`${base}/alternatives/`}>Compared</a><span>/</span><strong>{name}</strong></nav>
+    <header>
+      <p class="eyebrow">{name} alternative</p>
+      <h1><slot name="heading" /></h1>
+      <p class="lede"><slot name="lede" /></p>
+    </header>
+
+    <section>
+      <h2>What {name} says about your files</h2>
+      <p>Everything below is {name}'s own description, linked to the page it appears on. Plans and wording change; check the source for the current version.</p>
+      <ul class="model">
+        {theirModel.map((item) => <li>{item.statement} <a href={item.sourceUrl} rel="nofollow noopener">{item.sourceLabel}</a></li>)}
+      </ul>
+    </section>
+
+    <section>
+      <h2>What {SITE.name} does instead</h2>
+      <p>{SITE.name} never receives the file. The document is opened in browser memory, a Web Worker performs the operation on your device, and the result is saved locally. There is no upload to encrypt, no server copy to delete on a timer, no account to protect, and no quota — because nothing is being spent on your behalf. Every finished job shows the number of document bytes sent, which is zero, and you can confirm it in your browser's network inspector.</p>
+    </section>
+
+    <section>
+      <h2>The same jobs, on your device</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th scope="col">On {name}</th><th scope="col">On {SITE.name}</th><th scope="col">Where it runs</th></tr></thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr>
+                <td>{row.theirs}</td>
+                <td>{row.tool ? <a href={`${base}/${row.tool.slug}/`}>{row.tool.searchName}</a> : '—'}</td>
+                <td>{row.tool ? 'Your browser' : 'Not offered'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>When {name} is the better choice</h2>
+      <ul>{whenTheyWin.map((item) => <li>{item}</li>)}</ul>
+    </section>
+
+    <section>
+      <h2>Questions people ask</h2>
+      <div class="faqs">{faqs.map((faq) => <details><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}</div>
+    </section>
+
+    <footer>
+      <div><h2>Try one job and watch the receipt</h2><p>{liveCount} tools, no upload, no account. <a href={`${base}/alternatives/`}>See the full architecture comparison</a>.</p></div>
+      <a class="primary" href={`${base}/#tools`}>Choose a tool</a>
+    </footer>
+  </main>
+  <HelpFooter />
+</BaseLayout>
+
+<style>
+  .vs { width: min(62rem, calc(100% - 2rem)); margin: 0 auto; padding: clamp(3rem, 8vw, 6rem) 0 3rem; }
+  .crumbs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; color: var(--muted); font-size: var(--step--1); }
+  .crumbs a { color: var(--ink-2); text-decoration: none; }
+  .crumbs strong { color: var(--ink); }
+  .eyebrow { margin: 0 0 0.6rem; color: var(--accent); font-size: var(--step--2); font-weight: var(--weight-bold); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+  h1 { max-width: 22ch; margin: 0; font-family: var(--font-display); font-size: var(--step-4); line-height: var(--leading-display); letter-spacing: var(--tracking-tight); text-wrap: balance; }
+  .lede { max-width: 50rem; color: var(--ink-2); font-size: var(--step-1); line-height: var(--leading-copy); }
+  section { margin-top: clamp(2.2rem, 5vw, 3.5rem); }
+  h2 { font-family: var(--font-display); font-size: var(--step-2); line-height: var(--leading-heading); }
+  p, li { color: var(--ink-2); line-height: var(--leading-copy); }
+  li + li { margin-top: 0.45rem; }
+  .model a, footer p a { color: var(--accent); }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
+  th, td { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  thead th { color: var(--muted); font-size: var(--step--2); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+  td a { color: var(--ink); font-weight: var(--weight-semibold); }
+  td a:hover { color: var(--accent); }
+  tr:last-child td { border-bottom: 0; }
+  .faqs details { padding: 0.8rem 0; border-bottom: 1px solid var(--line); }
+  .faqs summary { cursor: pointer; color: var(--ink); font-weight: var(--weight-semibold); }
+  .faqs summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 25%, transparent); outline-offset: 2px; }
+  .faqs p { margin: 0.6rem 0 0; }
+  footer { display: flex; justify-content: space-between; align-items: center; gap: 2rem; margin-top: clamp(2.5rem, 6vw, 4rem); padding-top: 2rem; border-top: 1px solid var(--line); }
+  footer h2 { margin: 0 0 0.3rem; }
+  footer p { margin: 0; }
+  .primary { flex: none; display: inline-flex; min-height: 2.9rem; align-items: center; padding: 0 1.2rem; border-radius: var(--radius); background: var(--accent); color: white; font-weight: var(--weight-bold); text-decoration: none; }
+  @media (max-width: 44rem) { footer { flex-direction: column; align-items: stretch; } .primary { justify-content: center; } }
+</style>

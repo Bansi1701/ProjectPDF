@@ -1,0 +1,57 @@
+---
+import CompetitorPage from '../components/CompetitorPage.astro';
+---
+<CompetitorPage
+  name="iLovePDF"
+  title="iLovePDF alternative that never uploads your file — HatePDF"
+  description="A free iLovePDF alternative for privacy: HatePDF does the same merge, split, compress, convert and sign jobs inside your browser — no upload, no account, no daily limit."
+  path="/ilovepdf-alternative/"
+  keywords={['iLovePDF alternative', 'free iLovePDF alternative', 'iLovePDF privacy', 'PDF tools without upload', 'merge pdf without uploading']}
+  theirModel={[
+    { statement: 'Files are uploaded to iLovePDF’s servers for processing and, according to its security page, deleted automatically after a fixed number of hours that depends on the account type.', sourceUrl: 'https://www.ilovepdf.com/help/security', sourceLabel: 'iLovePDF security page' },
+    { statement: 'iLovePDF states that it does not access, use or analyse the content of processed files, and that uploads travel over HTTPS.', sourceUrl: 'https://www.ilovepdf.com/help/privacy', sourceLabel: 'iLovePDF privacy policy' },
+    { statement: 'Free use is subject to task and file-size limits; registered and Premium accounts raise them and add features such as batch processing and the desktop and mobile apps.', sourceUrl: 'https://www.ilovepdf.com/pricing', sourceLabel: 'iLovePDF pricing' },
+  ]}
+  mapping={[
+    ['Merge PDF', 'merge-pdf'],
+    ['Split PDF', 'split-pdf'],
+    ['Compress PDF', 'compress-pdf'],
+    ['PDF to Word', 'pdf-to-word'],
+    ['Word to PDF', 'word-to-pdf'],
+    ['PDF to Excel', 'pdf-to-excel'],
+    ['Excel to PDF', 'excel-to-pdf'],
+    ['PowerPoint to PDF', 'powerpoint-to-pdf'],
+    ['PDF to JPG', 'pdf-to-jpg'],
+    ['JPG to PDF', 'jpg-to-pdf'],
+    ['Edit PDF', 'edit-pdf'],
+    ['Sign PDF', 'sign-pdf'],
+    ['Watermark', 'watermark-pdf'],
+    ['Rotate PDF', 'rotate-pdf'],
+    ['Page numbers', 'page-numbers'],
+    ['Organize PDF', 'organise-pdf'],
+    ['Unlock PDF', 'unlock-pdf'],
+    ['Protect PDF', 'protect-pdf'],
+    ['Repair PDF', 'repair-pdf'],
+    ['OCR PDF', 'ocr-pdf'],
+    ['PDF to PDF/A', 'pdf-a'],
+    ['Redact PDF', 'redact-pdf'],
+    ['Compare PDF', 'compare-pdf'],
+    ['Scan to PDF', 'scan-pdf'],
+    ['HTML to PDF', 'url-to-pdf'],
+  ]}
+  whenTheyWin={[
+    'You need certified digital signatures with audit trails, which require a signing service and a certificate authority.',
+    'You work from the iLovePDF desktop or mobile apps, or rely on its batch processing across many files at once.',
+    'Your files are larger than your device can comfortably hold in memory; a server with more of it will finish where a phone cannot.',
+    'You want a team workspace where processed documents are stored and shared, rather than a tool that keeps nothing.',
+  ]}
+  faqs={[
+    { question: 'Is HatePDF free like iLovePDF?', answer: 'Yes, and without the free-tier limits: there is no daily task quota, no file-count limit and no account, because nothing is processed on a server that has to be paid for. Your device does the work.' },
+    { question: 'Does iLovePDF keep my files?', answer: 'According to its own security page, iLovePDF stores uploads on its servers only long enough to process them and deletes them automatically after a number of hours that depends on the account type. HatePDF never receives the file, so there is nothing to keep or delete.' },
+    { question: 'Which iLovePDF tools does HatePDF not have?', answer: 'HTML-to-PDF rendering is planned but not live, because a browser cannot fetch another website. Certified digital signatures, desktop and mobile apps, and cloud workspaces are not offered — those genuinely need a server or an installed application.' },
+    { question: 'Can I switch a workflow from iLovePDF to HatePDF?', answer: 'The mapping table on this page pairs each common iLovePDF tool with the HatePDF tool that does the same job in the browser. Connected workflows on HatePDF also pass a result from one tool to the next without re-selecting the file.' },
+  ]}
+>
+  <Fragment slot="heading">The iLovePDF alternative for files you would rather not upload.</Fragment>
+  <Fragment slot="lede">iLovePDF is a well-run service that processes your PDF on its servers and deletes it afterwards. HatePDF does the same jobs — merge, split, compress, convert, sign, protect, redact — without the upload step at all. Here is exactly where the two differ, in their own words and ours.</Fragment>
+</CompetitorPage>

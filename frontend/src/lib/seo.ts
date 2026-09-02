@@ -21,6 +21,8 @@ export interface ArticleItem {
   path: string;
   keywords: string[];
   about: string;
+  /** ISO date; omitted for pages whose date is not a meaningful signal. */
+  dateModified?: string;
 }
 
 const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '');
@@ -125,6 +127,7 @@ export const articleLd = (article: ArticleItem) => ({
   inLanguage: 'en',
   isAccessibleForFree: true,
   keywords: article.keywords.join(', '),
+  ...(article.dateModified ? { dateModified: article.dateModified, datePublished: article.dateModified } : {}),
   about: {
     '@type': 'Thing',
     name: article.about,

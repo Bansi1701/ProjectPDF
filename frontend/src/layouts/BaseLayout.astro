@@ -48,6 +48,7 @@ const preferenceVersion = PREFERENCE_VERSION;
     <meta name="theme-color" content="#0b0f17" media="(prefers-color-scheme: dark)" />
 
     <link rel="icon" href={favicon} type="image/svg+xml" />
+    <link rel="alternate" type="application/atom+xml" title="HatePDF guides" href={`${import.meta.env.BASE_URL}/guides/feed.xml`.replace(/\/{2,}/g, '/')} />
     <link rel="preload" href={interFont} as="font" type="font/woff2" crossorigin="anonymous" />
     <link rel="preload" href={brandFont} as="font" type="font/woff2" crossorigin="anonymous" />
     <script is:inline define:vars={{ themeKey, legacyUsageKey, preferenceVersion }}>

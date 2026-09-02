@@ -1,0 +1,55 @@
+---
+import CompetitorPage from '../components/CompetitorPage.astro';
+---
+<CompetitorPage
+  name="Adobe Acrobat online"
+  title="Free Adobe Acrobat online alternative without sign-in — HatePDF"
+  description="Compress, convert, sign or edit a PDF without an Adobe account: HatePDF runs those jobs in your browser, keeps the file on your device, and never asks you to sign in."
+  path="/adobe-acrobat-online-alternative/"
+  keywords={['Adobe Acrobat online alternative', 'free Acrobat alternative', 'edit PDF without Adobe account', 'compress PDF without Adobe', 'PDF tools no sign in']}
+  theirModel={[
+    { statement: 'Adobe’s free online tools process the file on Adobe’s servers; if you are not signed in, Adobe says the file is deleted from its servers within a short time, and you must sign in to save, share or download further work.', sourceUrl: 'https://helpx.adobe.com/document-cloud/faq.html', sourceLabel: 'Adobe Document Cloud FAQ' },
+    { statement: 'Signed-in users keep files in Adobe cloud storage (2 GB free) until they delete them, subject to Adobe’s retention policy for inactive free accounts.', sourceUrl: 'https://helpx.adobe.com/document-cloud/faq.html', sourceLabel: 'Adobe Document Cloud FAQ' },
+    { statement: 'Many tools allow a limited number of free uses before an Acrobat subscription is required; Acrobat Pro also adds the desktop application and certified signing features.', sourceUrl: 'https://www.adobe.com/acrobat/online.html', sourceLabel: 'Adobe Acrobat online tools' },
+  ]}
+  mapping={[
+    ['Compress PDF', 'compress-pdf'],
+    ['PDF to Word', 'pdf-to-word'],
+    ['PDF to Excel', 'pdf-to-excel'],
+    ['Word to PDF', 'word-to-pdf'],
+    ['Excel to PDF', 'excel-to-pdf'],
+    ['PowerPoint to PDF', 'powerpoint-to-pdf'],
+    ['PDF to JPG', 'pdf-to-jpg'],
+    ['JPG to PDF', 'jpg-to-pdf'],
+    ['Merge PDFs', 'merge-pdf'],
+    ['Split PDF', 'split-pdf'],
+    ['Reorder pages', 'organise-pdf'],
+    ['Delete pages', 'delete-pages'],
+    ['Rotate pages', 'rotate-pdf'],
+    ['Crop pages', 'crop-pdf'],
+    ['Edit PDF', 'edit-pdf'],
+    ['Fill & Sign', 'pdf-forms'],
+    ['Add page numbers', 'page-numbers'],
+    ['Add watermark', 'watermark-pdf'],
+    ['Protect PDF', 'protect-pdf'],
+    ['Redact PDF', 'redact-pdf'],
+    ['Compare PDFs', 'compare-pdf'],
+    ['Convert to PDF/A', 'pdf-a'],
+    ['Request e-signatures', 'sign-pdf'],
+  ]}
+  whenTheyWin={[
+    'You need Acrobat Sign: certified, legally attributable e-signature requests with identity checks and audit reports.',
+    'You already use Acrobat Pro on the desktop and want the online tools to hand files to it, or need its preflight and print-production features.',
+    'You want your documents stored in Adobe cloud storage and available across devices and Adobe apps.',
+    'You rely on Adobe’s enterprise controls — organisation accounts, retention policies and compliance attestations.',
+  ]}
+  faqs={[
+    { question: 'Do I need an Adobe account to use HatePDF?', answer: 'No account of any kind. Adobe’s online tools require signing in to save or share results; HatePDF saves the result straight from your browser to your device.' },
+    { question: 'Are the Adobe online tools really free?', answer: 'Some tools are free to try, and Adobe requires sign-in to keep results; continued use of many tools needs an Acrobat subscription. HatePDF’s tools are free without limits because the processing happens on your device.' },
+    { question: 'Can HatePDF fill and sign a form like Fill & Sign?', answer: 'Yes: the Forms tool fills fields and can flatten the answers permanently, and the Sign tool draws, types or places a visible signature. What it does not do is create a certified digital signature — that needs a certificate authority and a timestamp service.' },
+    { question: 'Where do my files go with HatePDF?', answer: 'Nowhere. The file is read into browser memory, the operation runs on your device, and the result is saved locally. The completion receipt reports 0 document bytes sent.' },
+  ]}
+>
+  <Fragment slot="heading">The Acrobat online alternative that never asks you to sign in.</Fragment>
+  <Fragment slot="lede">Adobe's online tools are excellent and sit on top of a cloud: sign in, and your documents live in Adobe storage; stay signed out, and the file still passes through Adobe's servers. HatePDF keeps the file on your device for the same everyday jobs. Where Acrobat is genuinely stronger, this page says so.</Fragment>
+</CompetitorPage>

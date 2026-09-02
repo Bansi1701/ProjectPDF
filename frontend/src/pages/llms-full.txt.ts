@@ -67,5 +67,15 @@ export const GET: APIRoute = async () => {
     }
   }
 
+  /* The long-form guides follow, body and all: they are the pages written to
+     be quoted, so an assistant should not have to fetch them one by one. */
+  const guides: { id: string; data: unknown; body?: string }[] = await getCollection('guides');
+  if (guides.length) lines.push('# Long-form guides', '');
+  for (const guide of guides) {
+    const data = guide.data as { title: string; summary: string; faqs: { question: string; answer: string }[] };
+    lines.push(`## ${data.title}`, '', `URL: ${canonical(`/guides/${guide.id}/`)}`, '', data.summary, '', (guide.body ?? '').trim(), '');
+    for (const faq of data.faqs) lines.push(`**${faq.question}**`, '', faq.answer, '');
+  }
+
   return new Response(lines.join('\n'), { headers: { 'Content-Type': 'text/markdown; charset=utf-8' } });
 };

@@ -1,0 +1,54 @@
+---
+import CompetitorPage from '../components/CompetitorPage.astro';
+---
+<CompetitorPage
+  name="Smallpdf"
+  title="Smallpdf alternative with no upload and no account — HatePDF"
+  description="A free Smallpdf alternative for private documents: HatePDF compresses, converts, signs, protects and edits PDFs inside your browser, so the file never reaches a server."
+  path="/smallpdf-alternative/"
+  keywords={['Smallpdf alternative', 'free Smallpdf alternative', 'Smallpdf privacy', 'compress pdf without uploading', 'PDF tools no account']}
+  theirModel={[
+    { statement: 'Smallpdf processes uploaded files on its servers and states that they are deleted after one hour; documents in its e-signature flows are kept longer while a signature is pending.', sourceUrl: 'https://smallpdf.com/blog/is-smallpdf-safe', sourceLabel: 'Smallpdf: Is Smallpdf safe?' },
+    { statement: 'Uploads are protected in transit with TLS, processing happens on servers in Europe, and the company holds ISO 27001 certification.', sourceUrl: 'https://smallpdf.com/privacy', sourceLabel: 'Smallpdf privacy notice' },
+    { statement: 'The free plan limits how many tasks can be run per day; Pro removes the limits and adds features such as batch processing, OCR and the desktop app.', sourceUrl: 'https://smallpdf.com/pricing', sourceLabel: 'Smallpdf pricing' },
+  ]}
+  mapping={[
+    ['Compress PDF', 'compress-pdf'],
+    ['PDF Converter (Word, Excel, PPT)', 'pdf-to-word'],
+    ['Word to PDF', 'word-to-pdf'],
+    ['Excel to PDF', 'excel-to-pdf'],
+    ['PPT to PDF', 'powerpoint-to-pdf'],
+    ['PDF to JPG', 'pdf-to-jpg'],
+    ['JPG to PDF', 'jpg-to-pdf'],
+    ['Merge PDF', 'merge-pdf'],
+    ['Split PDF', 'split-pdf'],
+    ['Delete PDF pages', 'delete-pages'],
+    ['Rotate PDF', 'rotate-pdf'],
+    ['Edit PDF', 'edit-pdf'],
+    ['eSign PDF (visible signature)', 'sign-pdf'],
+    ['Protect PDF', 'protect-pdf'],
+    ['Unlock PDF', 'unlock-pdf'],
+    ['Page numbers', 'page-numbers'],
+    ['Watermark', 'watermark-pdf'],
+    ['Flatten PDF', 'flatten-pdf'],
+    ['PDF OCR', 'ocr-pdf'],
+    ['Redact PDF', 'redact-pdf'],
+    ['Crop PDF', 'crop-pdf'],
+    ['PDF Scanner (mobile app)', 'scan-pdf'],
+  ]}
+  whenTheyWin={[
+    'You send documents out for signature and need the request, reminder and audit-trail machinery that a hosted e-signature product provides.',
+    'You want the Smallpdf desktop app or mobile apps, or its integrations with cloud drives.',
+    'You run a team on a shared plan and want processed files stored where colleagues can find them.',
+    'Your files are very large; a server has more memory than a phone or an older laptop.',
+  ]}
+  faqs={[
+    { question: 'Does Smallpdf upload my PDF?', answer: 'Yes — that is how it works. Smallpdf states that files are encrypted in transit, processed on its servers in Europe and deleted after one hour. HatePDF does not upload the file at all; the operation runs inside your browser tab.' },
+    { question: 'Is HatePDF really free with no daily limit?', answer: 'Yes. Smallpdf limits free tasks per day because each task costs server time. HatePDF has no such cost: your device does the processing, so there is no quota and no account.' },
+    { question: 'Does HatePDF have OCR without a Pro plan?', answer: 'Yes. OCR runs in your browser using an engine downloaded from HatePDF’s own servers, and produces a searchable PDF and a text file. It recognises English and depends on scan quality, so check important text against the page.' },
+    { question: 'What does HatePDF not do that Smallpdf does?', answer: 'Hosted e-signature requests with audit trails, native desktop and mobile apps, cloud-drive integrations and shared team storage. Those need a server or an installed app by nature.' },
+  ]}
+>
+  <Fragment slot="heading">The Smallpdf alternative that does the work in your browser.</Fragment>
+  <Fragment slot="lede">Smallpdf is fast, polished and clear about deleting your upload after an hour. HatePDF removes the hour: the file never leaves your device, there is no account, and no daily task limit. The trade-offs are real too, and they are listed below.</Fragment>
+</CompetitorPage>

@@ -9,7 +9,7 @@
  * tools — as plain static HTML with matching structured data. No script, so
  * the zero-JS rule for SEO pages still holds.
  */
-import { getEntry } from 'astro:content';
+import { getCollection, getEntry } from 'astro:content';
 
 import { TOOLS, type Tool } from '../config/site';
 import { helpFaqs, helpGroupFor, helpLimitations, helpProfileFor, helpQuickAnswer } from '../lib/help';
@@ -35,6 +35,12 @@ const lower = tool.searchName.toLocaleLowerCase();
 const related = content.related
   .map((candidate) => TOOLS.find((item) => item.slug === candidate && item.status === 'live'))
   .filter((item): item is Tool => Boolean(item));
+// Long-form guides that use this tool — the cross-link that turns 39 tool
+// pages into the site's strongest internal linking.
+const reading = (await getCollection('guides'))
+  .filter((guide) => guide.data.tools.includes(slug))
+  .sort((a, b) => (a.data.tools[0] === slug ? -1 : b.data.tools[0] === slug ? 1 : 0))
+  .slice(0, 3);
 
 const schemas = [
   softwareAppLd(tool.searchName, tool.blurb, `/${slug}/`),
@@ -104,6 +110,20 @@ const schemas = [
       </ul>
 
       <a class="guide__more" href={`${base}/help/${slug}/`}>Read the full {tool.searchName} guide →</a>
+
+      {reading.length > 0 && (
+        <>
+          <h2>Further reading</h2>
+          <ul class="guide__related">
+            {reading.map((guide) => (
+              <li>
+                <a href={`${base}/guides/${guide.id}/`}>{guide.data.title}</a>
+              </li>
+            ))}
+            <li><a href={`${base}/alternatives/`}>How this compares with upload-based PDF sites</a></li>
+          </ul>
+        </>
+      )}
     </aside>
   </div>
 </section>

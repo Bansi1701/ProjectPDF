@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { getCollection } from 'astro:content';
 
 import { NAVIGATION_GROUPS } from '../config/navigation';
 import { RECIPES } from '../config/recipes';
@@ -13,7 +14,18 @@ import { canonical } from '../lib/seo';
  */
 const liveTools = TOOLS.filter((tool) => tool.status === 'live');
 
-export const GET: APIRoute = () => {
+interface GuideData {
+  title: string;
+  description: string;
+  updated: string;
+}
+
+export const GET: APIRoute = async () => {
+  const guides: { id: string; data: unknown }[] = await getCollection('guides');
+  const longForm = guides
+    .map((entry) => ({ id: entry.id, data: entry.data as GuideData }))
+    .sort((a, b) => (a.data.updated < b.data.updated ? 1 : -1));
+
   const lines: string[] = [
     `# ${SITE.name}`,
     '',
@@ -39,7 +51,13 @@ export const GET: APIRoute = () => {
     lines.push('');
   }
 
-  lines.push('## Guides', '');
+  lines.push('## Long-form guides', '');
+  for (const guide of longForm) {
+    lines.push(`- [${guide.data.title}](${canonical(`/guides/${guide.id}/`)}): ${guide.data.description}`);
+  }
+  lines.push('');
+
+  lines.push('## Tool guides', '');
   for (const tool of liveTools) {
     lines.push(`- [How to use ${tool.searchName}](${canonical(`/help/${tool.slug}/`)}): steps, limits and FAQs`);
   }
@@ -52,12 +70,19 @@ export const GET: APIRoute = () => {
   lines.push('');
 
   lines.push(
+    '## Comparisons',
+    '',
+    `- [Compared with upload-based PDF sites](${canonical('/alternatives/')}): where files go on iLovePDF, Smallpdf and Adobe online versus in the browser`,
+    `- [iLovePDF alternative](${canonical('/ilovepdf-alternative/')}): tool-by-tool mapping and when iLovePDF is the better choice`,
+    `- [Smallpdf alternative](${canonical('/smallpdf-alternative/')}): tool-by-tool mapping and when Smallpdf is the better choice`,
+    `- [Adobe Acrobat online alternative](${canonical('/adobe-acrobat-online-alternative/')}): tool-by-tool mapping and when Acrobat is the better choice`,
+    '',
     '## About',
     '',
     `- [About ${SITE.name}](${canonical('/about/')}): what the project is and is not`,
-    `- [How it compares to upload-based PDF sites](${canonical('/alternatives/')}): where files go on iLovePDF, Smallpdf and Adobe online versus here`,
     `- [Privacy policy](${canonical('/privacy/')}): what stays on the device and what the host can see`,
-    `- [Full text for language models](${canonical('/llms-full.txt')}): every tool's description, steps and FAQs in one file`,
+    `- [Full text for language models](${canonical('/llms-full.txt')}): every tool's description, steps and FAQs plus the long-form guides in one file`,
+    `- [Guides feed](${canonical('/guides/feed.xml')}): Atom feed of new long-form guides`,
     ''
   );
 

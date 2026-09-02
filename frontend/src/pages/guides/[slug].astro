@@ -1,0 +1,139 @@
+---
+import { getCollection, render, type CollectionEntry } from 'astro:content';
+
+import HelpFooter from '../../components/HelpFooter.astro';
+import Masthead from '../../components/Masthead.astro';
+import { TOOLS, type Tool } from '../../config/site';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { articleLd, breadcrumbLd, faqLd } from '../../lib/seo';
+
+interface Props {
+  entry: CollectionEntry<'guides'>;
+}
+
+export async function getStaticPaths() {
+  const entries = await getCollection('guides');
+  return entries.map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const guide = entry.data;
+const { Content } = await render(entry);
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const path = `/guides/${entry.id}/`;
+const tools = guide.tools
+  .map((slug) => TOOLS.find((tool) => tool.slug === slug && tool.status === 'live'))
+  .filter((tool): tool is Tool => Boolean(tool));
+const primary = tools[0];
+const others = (await getCollection('guides'))
+  .filter((candidate) => candidate.id !== entry.id && candidate.data.tools.some((slug) => guide.tools.includes(slug)))
+  .slice(0, 3);
+const updated = new Date(`${guide.updated}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+const schemas = [
+  articleLd({
+    headline: guide.title,
+    description: guide.description,
+    path,
+    keywords: guide.keywords,
+    about: primary?.searchName ?? 'PDF',
+    dateModified: guide.updated,
+  }),
+  faqLd(guide.faqs),
+  breadcrumbLd([
+    { name: 'Home', url: '/' },
+    { name: 'Guides', url: '/guides/' },
+    { name: guide.title, url: path },
+  ]),
+];
+---
+
+<BaseLayout title={`${guide.title} | HatePDF`} description={guide.description} imageSlug={primary?.slug} keywords={guide.keywords} contentType="article">
+  <Masthead />
+  {schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} is:inline />)}
+  <main id="main" class="guide-page">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href={`${base}/`}>Home</a><span>/</span><a href={`${base}/guides/`}>Guides</a><span>/</span><strong>{primary?.searchName ?? 'Guide'}</strong></nav>
+
+    <header class="guide-head">
+      <p class="eyebrow">Guide · updated {updated}</p>
+      <h1>{guide.title}</h1>
+      <p class="lede">{guide.summary}</p>
+      {tools.length > 0 && (
+        <p class="tools">
+          <span>Tools used:</span>
+          {tools.map((tool) => <a href={`${base}/${tool.slug}/`}>{tool.searchName}</a>)}
+        </p>
+      )}
+    </header>
+
+    <article class="prose">
+      <Content />
+    </article>
+
+    <section class="faqs" aria-labelledby="guide-faq">
+      <h2 id="guide-faq">Questions people ask</h2>
+      {guide.faqs.map((faq) => <details><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}
+    </section>
+
+    {primary && (
+      <aside class="cta">
+        <div>
+          <strong>Do it now, on this device</strong>
+          <p>{primary.blurb} Nothing is uploaded, and there is no account.</p>
+        </div>
+        <a href={`${base}/${primary.slug}/`}>Open {primary.searchName}</a>
+      </aside>
+    )}
+
+    {others.length > 0 && (
+      <section class="more" aria-labelledby="guide-more">
+        <h2 id="guide-more">Related guides</h2>
+        <ul>{others.map((other) => <li><a href={`${base}/guides/${other.id}/`}>{other.data.title}</a><span>{other.data.description}</span></li>)}</ul>
+      </section>
+    )}
+  </main>
+  <HelpFooter />
+</BaseLayout>
+
+<style>
+  .guide-page { width: min(46rem, calc(100% - 2rem)); margin: 0 auto; padding: clamp(2.5rem, 7vw, 5rem) 0 4rem; }
+  .crumbs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; color: var(--muted); font-size: var(--step--1); }
+  .crumbs a { color: var(--ink-2); text-decoration: none; }
+  .crumbs a:hover { color: var(--accent); }
+  .crumbs strong { color: var(--ink); }
+  .eyebrow { margin: 0 0 0.6rem; color: var(--accent); font-size: var(--step--2); font-weight: var(--weight-bold); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+  h1 { margin: 0; font-family: var(--font-display); font-size: var(--step-4); line-height: var(--leading-display); letter-spacing: var(--tracking-tight); text-wrap: balance; }
+  .lede { margin: 1rem 0 0.8rem; color: var(--ink); font-size: var(--step-1); line-height: var(--leading-copy); }
+  .tools { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0; color: var(--muted); font-size: var(--step--1); }
+  .tools a { padding: 0.2rem 0.6rem; border: 1px solid var(--line); border-radius: 99px; color: var(--ink); font-weight: var(--weight-semibold); text-decoration: none; }
+  .tools a:hover { border-color: var(--accent); color: var(--accent); }
+  .prose { margin-top: 2.2rem; }
+  .prose :global(h2) { margin: 2.2rem 0 0.6rem; font-family: var(--font-display); font-size: var(--step-2); line-height: var(--leading-heading); letter-spacing: var(--tracking-tight); }
+  .prose :global(h3) { margin: 1.6rem 0 0.4rem; font-size: var(--step-0); font-weight: var(--weight-bold); }
+  .prose :global(p), .prose :global(li) { color: var(--ink-2); line-height: var(--leading-copy); }
+  .prose :global(li + li) { margin-top: 0.35rem; }
+  .prose :global(strong) { color: var(--ink); }
+  .prose :global(a) { color: var(--accent); }
+  .prose :global(table) { width: 100%; margin: 1rem 0; border-collapse: collapse; font-size: var(--step--1); }
+  .prose :global(th), .prose :global(td) { padding: 0.55rem 0.7rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  .prose :global(th) { color: var(--muted); font-size: var(--step--2); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+  .prose :global(blockquote) { margin: 1.2rem 0; padding: 0.8rem 1.1rem; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--paper-raised)); }
+  .prose :global(blockquote p) { margin: 0; color: var(--ink); }
+  .prose :global(code) { padding: 0.1em 0.35em; border-radius: 4px; background: var(--paper-sunk); font-family: var(--font-mono); font-size: 0.9em; }
+  .faqs { margin-top: 2.5rem; }
+  .faqs h2, .more h2 { font-family: var(--font-display); font-size: var(--step-2); }
+  .faqs details { padding: 0.8rem 0; border-bottom: 1px solid var(--line); }
+  .faqs summary { cursor: pointer; color: var(--ink); font-weight: var(--weight-semibold); }
+  .faqs summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 25%, transparent); outline-offset: 2px; }
+  .faqs p { margin: 0.6rem 0 0; color: var(--ink-2); line-height: var(--leading-copy); }
+  .cta { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; margin: 2.5rem 0; padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--paper-raised); }
+  .cta strong { display: block; font-family: var(--font-display); font-size: var(--step-1); }
+  .cta p { margin: 0.3rem 0 0; color: var(--ink-2); }
+  .cta a { flex: none; display: inline-flex; min-height: 2.9rem; align-items: center; padding: 0 1.2rem; border-radius: var(--radius); background: var(--accent); color: white; font-weight: var(--weight-bold); text-decoration: none; }
+  .more ul { display: grid; gap: 0.8rem; margin: 0; padding: 0; list-style: none; }
+  .more li { display: grid; gap: 0.15rem; }
+  .more a { color: var(--ink); font-weight: var(--weight-semibold); text-decoration: none; }
+  .more a:hover { color: var(--accent); }
+  .more span { color: var(--muted); font-size: var(--step--1); line-height: var(--leading-compact); }
+  @media (max-width: 44rem) { .cta { flex-direction: column; align-items: stretch; } .cta a { justify-content: center; } }
+</style>
