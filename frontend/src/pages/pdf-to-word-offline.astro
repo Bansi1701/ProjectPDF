@@ -1,0 +1,16 @@
+---
+import IntentPage from '../components/IntentPage.astro';
+---
+<IntentPage
+  title="Convert PDF to Word without uploading the file"
+  description="Turn a PDF into an editable .docx on your own device. Text, tables and images are rebuilt in your browser, so a contract or CV never touches a conversion server."
+  toolSlug="pdf-to-word"
+  toolName="PDF to Word"
+  explanation="Online PDF-to-Word converters are the most common place people upload documents they would never email to a stranger. HatePDF reads the page geometry in your browser and writes a Word document from it locally: either a layout that looks like the PDF, or flowing editable text. No server sees the document, and there is no queue, quota or account."
+  steps={[
+    { title: 'Open the PDF here', text: 'Select the file. The browser reads its text, fonts, images and table rules into memory — nothing is transmitted.' },
+    { title: 'Pick the kind of Word file', text: 'Choose a faithful page reproduction for signing and sharing, or editable flowing text for rewriting.' },
+    { title: 'Save the .docx', text: 'Download the Word document and open it in Word, LibreOffice or Google Docs. Keep the original PDF until you have checked it.' },
+  ]}
+  limitation="The DOCX is reconstructed from what the page draws, not from the file that produced the PDF. Multi-column magazines, decorative layouts and scanned pages without a text layer will need editing or OCR first."
+/>

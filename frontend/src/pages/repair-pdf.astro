@@ -2,11 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout title="Repair a PDF — HatePDF" description="Rebuild a file that will not open. Recovers what survives and tells you what did not.">
   <Masthead />
   <main id="main">
     <PdfTool mode="repair" title="Repair a PDF" description="Rebuild a file that will not open. Recovers what survives and tells you what did not." />
+    <ToolGuide slug="repair-pdf" />
   </main>
 </BaseLayout>

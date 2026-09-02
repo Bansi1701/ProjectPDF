@@ -1,0 +1,47 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import { NAVIGATION_GROUPS } from '../config/navigation';
+import { SITE } from '../config/site';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const popular = ['merge-pdf', 'compress-pdf', 'pdf-to-word', 'split-pdf', 'sign-pdf', 'ocr-pdf'];
+const quick = NAVIGATION_GROUPS.flatMap((group) => group.tools).filter((tool) => popular.includes(tool.slug));
+---
+
+<BaseLayout
+  title={`Page not found — ${SITE.name}`}
+  description={`That address does not exist on ${SITE.name}. Every PDF tool is one click from here, and nothing you had open was uploaded anywhere.`}
+  noindex
+>
+  <Masthead />
+  <main id="main" class="missing">
+    <p class="eyebrow">404</p>
+    <h1>That page is not here.</h1>
+    <p class="lede">The link may be old, or the address has a typo. Nothing was lost on your side — {SITE.name} keeps no copy of your documents, so there was never a file here to lose.</p>
+    <div class="missing__actions">
+      <a class="primary" href={`${base}/`}>Go to the homepage</a>
+      <a href={`${base}/help/`}>Browse the Help Center</a>
+    </div>
+    <h2>Popular tools</h2>
+    <ul class="missing__tools">
+      {quick.map((tool) => <li><a href={`${base}/${tool.slug}/`}><strong>{tool.searchName}</strong><span>{tool.blurb}</span></a></li>)}
+    </ul>
+  </main>
+</BaseLayout>
+
+<style>
+  .missing { width: min(60rem, calc(100% - 2rem)); margin: 0 auto; padding: clamp(4rem, 10vw, 8rem) 0; }
+  .eyebrow { margin: 0 0 0.7rem; color: var(--accent); font-family: var(--font-mono); font-size: var(--step--1); font-weight: var(--weight-bold); letter-spacing: var(--tracking-label); }
+  h1 { margin: 0; font-family: var(--font-display); font-size: var(--step-5); line-height: var(--leading-display); letter-spacing: var(--tracking-tight); }
+  .lede { max-width: 48rem; color: var(--ink-2); font-size: var(--step-1); line-height: var(--leading-copy); }
+  .missing__actions { display: flex; flex-wrap: wrap; gap: 0.8rem; margin: 1.6rem 0 3rem; }
+  .missing__actions a { display: inline-flex; min-height: 2.9rem; align-items: center; padding: 0 1.2rem; border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); font-weight: var(--weight-bold); text-decoration: none; }
+  .missing__actions .primary { border-color: var(--accent); background: var(--accent); color: white; }
+  h2 { font-family: var(--font-display); font-size: var(--step-2); }
+  .missing__tools { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 0.8rem; margin: 0; padding: 0; list-style: none; }
+  .missing__tools a { display: grid; gap: 0.2rem; padding: 1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); color: inherit; text-decoration: none; }
+  .missing__tools a:hover { border-color: var(--accent); }
+  .missing__tools span { color: var(--muted); font-size: var(--step--1); line-height: var(--leading-compact); }
+  @media (max-width: 44rem) { h1 { font-size: var(--step-4); } }
+</style>

@@ -12,6 +12,22 @@ import sitemap, { ChangeFreqEnum } from '@astrojs/sitemap';
 const here = (path) => fileURLToPath(new URL(path, import.meta.url));
 
 /**
+ * Where the site is published.
+ *
+ * One variable moves the whole site between hosts: canonicals, sitemap,
+ * robots, schema, CNAME and every internal path derive from it. Unset, it is
+ * the GitHub Pages project site; set SITE_ORIGIN=https://hatepdf.com in the
+ * deploy workflow's repository variables and the build targets the domain.
+ */
+const DEFAULT_ORIGIN = 'https://bansi1701.github.io/ProjectPDF';
+const deployment = new URL(`${(process.env.SITE_ORIGIN || DEFAULT_ORIGIN).replace(/\/+$/, '')}/`);
+const site = deployment.origin;
+const base = deployment.pathname.replace(/\/+$/, '') || '/';
+const basePrefix = base === '/' ? '' : base;
+const homeUrl = `${site}${basePrefix}/`;
+const customDomain = !deployment.hostname.endsWith('.github.io');
+
+/**
  * Self-host the pdf.js support tables.
  *
  * pdf.js renders CJK text and non-embedded base-14 fonts as a *blank page*
@@ -49,6 +65,34 @@ function pdfjsAssets() {
   };
 }
 
+/**
+ * Files GitHub Pages and search engines expect at the published root.
+ *
+ * CNAME keeps the custom domain attached across deploys. The IndexNow key
+ * file proves ownership when the deploy workflow pings Bing (which feeds
+ * ChatGPT search) and its partners with the fresh sitemap.
+ */
+/** @returns {import('astro').AstroIntegration} */
+function publishedRootFiles() {
+  return {
+    name: 'published-root-files',
+    hooks: {
+      'astro:build:done': ({ dir, logger }) => {
+        const out = fileURLToPath(dir);
+        if (customDomain) {
+          writeFileSync(join(out, 'CNAME'), `${deployment.hostname}\n`);
+          logger.info(`CNAME → ${deployment.hostname}`);
+        }
+        const key = process.env.INDEXNOW_KEY;
+        if (key && /^[a-z0-9-]{8,128}$/i.test(key)) {
+          writeFileSync(join(out, `${key}.txt`), key);
+          logger.info('IndexNow key file written');
+        }
+      },
+    },
+  };
+}
+
 const repository = here('../');
 
 /** A real source date, not the build time that changes on every deploy. */
@@ -67,9 +111,9 @@ function changedAt(file) {
 
 /** @param {string} absoluteUrl */
 function pageLastModified(absoluteUrl) {
-  const route = new URL(absoluteUrl).pathname
-    .replace(/^\/ProjectPDF\/?/, '')
-    .replace(/\/$/, '');
+  let route = new URL(absoluteUrl).pathname;
+  if (basePrefix && route.startsWith(basePrefix)) route = route.slice(basePrefix.length);
+  route = route.replace(/^\/+/, '').replace(/\/$/, '');
   const helpSlug = route.startsWith('help/') ? route.slice('help/'.length) : null;
   const pages = helpSlug
     ? ['frontend/src/pages/help/[slug].astro']
@@ -85,27 +129,36 @@ function pageLastModified(absoluteUrl) {
   return dates.at(-1);
 }
 
-// GitHub Pages serves a project site from /<repo>/, so every absolute asset
-// path needs that prefix. Use import.meta.env.BASE_URL in components rather
-// than hardcoding "/" — it stays correct when this moves to a real domain.
+/* Tools that are not live are noindexed by the layout; listing them in the
+   sitemap would contradict that. Read from the same config the layout uses. */
+const siteSource = readFileSync(here('./src/config/site.ts'), 'utf8');
+const hiddenTools = [...siteSource.matchAll(/slug:\s*'([^']+)'[^}]*?status:\s*'(?:building|planned)'/g)].map(
+  (match) => match[1]
+);
+
 export default defineConfig({
   output: 'static',
-  site: 'https://bansi1701.github.io',
-  base: '/ProjectPDF',
+  site,
+  base,
   trailingSlash: 'ignore',
   integrations: [
     pdfjsAssets(),
+    publishedRootFiles(),
     sitemap({
-      filter: (page) => !page.includes('/og/') && !page.endsWith('/url-to-pdf/'),
+      filter: (page) => {
+        const pathname = new URL(page).pathname;
+        if (/\.[a-z0-9]+$/i.test(pathname)) return false; // robots, llms, og images, 404.html
+        if (pathname.includes('/og/')) return false;
+        if (/\/404\/?$/.test(pathname)) return false;
+        return !hiddenTools.some((slug) => pathname.endsWith(`/${slug}/`));
+      },
       serialize(item) {
         const lastmod = pageLastModified(item.url);
         return {
           ...item,
           ...(lastmod ? { lastmod } : {}),
-          changefreq: item.url.endsWith('/ProjectPDF/')
-            ? ChangeFreqEnum.WEEKLY
-            : ChangeFreqEnum.MONTHLY,
-          priority: item.url.endsWith('/ProjectPDF/') ? 1 : 0.8,
+          changefreq: item.url === homeUrl ? ChangeFreqEnum.WEEKLY : ChangeFreqEnum.MONTHLY,
+          priority: item.url === homeUrl ? 1 : 0.8,
         };
       },
     }),

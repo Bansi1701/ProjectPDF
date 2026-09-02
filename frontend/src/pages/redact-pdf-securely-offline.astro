@@ -1,0 +1,16 @@
+---
+import IntentPage from '../components/IntentPage.astro';
+---
+<IntentPage
+  title="Redact a PDF securely without sending it anywhere"
+  description="Remove sensitive text from a PDF on your own device. The content under each mark is deleted, not covered, and the file never leaves your browser."
+  toolSlug="redact-pdf"
+  toolName="Redact PDF"
+  explanation="Uploading a document to redact it means the unredacted version has already been shared once. HatePDF finds candidate text locally, lets you mark regions, then removes the underlying text and graphics from the page content itself and re-saves the file in your browser. A black rectangle drawn over text in an ordinary editor still leaves the words selectable; this does not."
+  steps={[
+    { title: 'Choose the document locally', text: 'Select the PDF. Text is indexed in the browser so you can search for what needs to go.' },
+    { title: 'Mark what must disappear', text: 'Search for terms, accept suggested matches such as card numbers or emails, and draw boxes over anything else. Every suggestion is yours to confirm or reject.' },
+    { title: 'Save the clean copy', text: 'Download the redacted PDF, then search it to confirm the text is gone. Keep the original somewhere safe and separate.' },
+  ]}
+  limitation="Redaction removes what is inside the marked areas of the page content. Text hidden in metadata, bookmarks, attachments or an image-only scan must be handled separately — run Metadata and OCR checks before you send the file."
+/>

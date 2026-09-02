@@ -1,0 +1,161 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Masthead from '../components/Masthead.astro';
+import { SITE, TOOLS } from '../config/site';
+import { articleLd, breadcrumbLd, faqLd } from '../lib/seo';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const liveCount = TOOLS.filter((tool) => tool.status === 'live').length;
+const path = '/alternatives/';
+const title = `iLovePDF, Smallpdf and Adobe online vs ${SITE.name}: where your PDF goes`;
+const description = `How ${SITE.name}, which processes PDFs in your browser, compares with upload-based services: where the file goes, what each side sees, limits, price, and when they win.`;
+
+/* Every row describes the two architectures, not a rival's feature list.
+   Claims about other services are limited to what their own policies state:
+   they process uploads on their servers and publish a retention window. */
+const rows: [string, string, string][] = [
+  ['Where the PDF is processed', 'In your browser, on your device', 'On the service’s servers, after upload'],
+  ['What the service can see', 'Nothing from the document — the receipt reports 0 bytes sent', 'The whole file, for as long as its policy keeps it'],
+  ['Retention', 'No copy exists to retain', 'Deleted after a retention window each service states in its privacy policy'],
+  ['Account', 'Never', 'Optional for basic use; needed for saved files, higher limits and paid features'],
+  ['Price and quotas', 'Free, no daily quota, no file count limit', 'Free tier with usage limits; paid plans lift them'],
+  ['Works once the page has loaded, with no connection', 'Yes, for every live tool', 'No — each operation requires the upload'],
+  ['Certified digital signatures', 'No — visible signatures only', 'Yes, on some services and plans'],
+  ['Native mobile and desktop apps', 'No — the browser is the app', 'Yes'],
+  ['Very large scans and heavy OCR', 'Limited by your device’s memory', 'Limited by plan, run on their hardware'],
+];
+
+const faqs = [
+  {
+    question: `Is ${SITE.name} a free alternative to iLovePDF or Smallpdf?`,
+    answer: `Yes for the everyday jobs: merging, splitting, compressing, converting Office files, signing, redacting, OCR and password protection are all free, without an account or a daily limit. The difference is architectural: those services upload your PDF to their servers to work on it, while ${SITE.name} does the work inside your browser and never receives the file.`,
+  },
+  {
+    question: `Does ${SITE.name} upload my PDF at all?`,
+    answer: 'No. The document is read into browser memory, a Web Worker performs the operation on your device, and the result is saved locally. Every finished job shows a receipt with the number of document bytes sent, which is zero. You can confirm it in your browser’s network inspector.',
+  },
+  {
+    question: 'When is an upload-based service the better choice?',
+    answer: 'When you need a certified digital signature backed by a certificate authority, a shared cloud workspace, native mobile apps, or processing of enormous files that exceed your device’s memory. Those genuinely need a server, and the established services do them well.',
+  },
+  {
+    question: `Can I use ${SITE.name} offline?`,
+    answer: 'Once a tool page has loaded and the document engine has been fetched for the job, the operation itself needs no connection. The site is not an installable offline app yet, so the first load of each session still requires internet access.',
+  },
+  {
+    question: `How many tools does ${SITE.name} have?`,
+    answer: `${liveCount} tools are live today across organizing, converting, editing and securing PDFs, and each one runs in the browser. One planned feature, rendering a public web page to PDF, will run on a server because a browser cannot fetch another site, and it involves no file of yours.`,
+  },
+];
+
+const schemas = [
+  articleLd({
+    headline: title,
+    description,
+    path,
+    keywords: ['iLovePDF alternative', 'Smallpdf alternative', 'PDF tools without upload', 'private PDF tools', 'browser-based PDF editor'],
+    about: 'Browser-based PDF processing versus server-side PDF services',
+  }),
+  faqLd(faqs),
+  breadcrumbLd([
+    { name: 'Home', url: '/' },
+    { name: 'Compared with upload-based PDF sites', url: path },
+  ]),
+];
+---
+
+<BaseLayout {title} {description} contentType="article">
+  <Masthead />
+  {schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} is:inline />)}
+  <main id="main" class="compare">
+    <header>
+      <p class="eyebrow">Compared honestly</p>
+      <h1>Looking for an iLovePDF alternative that never uploads your file?</h1>
+      <p class="lede">{SITE.name} is a free PDF toolkit that processes documents inside your browser instead of on a server. This page sets that architecture beside the upload-based services most people know — iLovePDF, Smallpdf and Adobe Acrobat online — and says plainly where each is the better choice.</p>
+    </header>
+
+    <section>
+      <h2>The one difference that matters</h2>
+      <p>An upload-based PDF service works like a print shop: you hand the document over, it is processed on their machines, and a copy is returned to you. Their privacy policies describe what happens to the copy they hold and for how long. {SITE.name} works like a tool on your own desk: the file is opened in browser memory, a Web Worker performs the operation on your device, and the result is written locally. There is no copy to describe a retention policy for, because none is ever made.</p>
+    </section>
+
+    <section>
+      <h2>Side by side</h2>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th scope="col">Question</th><th scope="col">{SITE.name}</th><th scope="col">Upload-based services</th></tr></thead>
+          <tbody>
+            {rows.map(([question, here, there]) => <tr><th scope="row">{question}</th><td>{here}</td><td>{there}</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+      <p class="sources">The right-hand column summarises the upload model as the services themselves describe it in their published policies: <a href="https://www.ilovepdf.com/privacy" rel="nofollow noopener">iLovePDF privacy</a>, <a href="https://smallpdf.com/privacy" rel="nofollow noopener">Smallpdf privacy</a>, <a href="https://www.adobe.com/privacy/policy.html" rel="nofollow noopener">Adobe privacy</a>. Plans and limits change; check each service for current terms.</p>
+    </section>
+
+    <section>
+      <h2>How to verify it yourself</h2>
+      <ol>
+        <li>Open any {SITE.name} tool, choose a file, and run the job.</li>
+        <li>Read the completion receipt: it lists the job duration and <strong>document bytes sent: 0</strong>.</li>
+        <li>For a stronger check, open your browser’s developer tools on the Network tab before choosing the file. The only requests are the site’s own scripts, fonts and engine files — never the document.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>When the upload-based service is the better choice</h2>
+      <ul>
+        <li><strong>Certified signatures.</strong> Signing so that tampering is detectable needs a timestamp authority and a revocation check, which are network services. {SITE.name} offers visible signatures only, and says so on the tool.</li>
+        <li><strong>Team workspaces and cloud storage.</strong> {SITE.name} stores nothing, which is the point — and also means it cannot be your shared document library.</li>
+        <li><strong>Enormous files.</strong> Your device’s memory is the ceiling. A server with more of it will finish a 2 GB scan that a phone cannot.</li>
+        <li><strong>Native apps.</strong> There is no {SITE.name} app to install; a current browser is the application.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Questions people ask</h2>
+      <div class="faqs">
+        {faqs.map((faq) => <details><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}
+      </div>
+    </section>
+
+    <footer>
+      <h2>Try the difference on a real file</h2>
+      <p>Start with the most common job and watch the receipt.</p>
+      <div class="actions">
+        <a class="primary" href={`${base}/merge-pdf/`}>Merge PDF</a>
+        <a href={`${base}/compress-pdf/`}>Compress PDF</a>
+        <a href={`${base}/pdf-to-word/`}>PDF to Word</a>
+        <a href={`${base}/#tools`}>All {liveCount} tools</a>
+      </div>
+    </footer>
+  </main>
+</BaseLayout>
+
+<style>
+  .compare { width: min(64rem, calc(100% - 2rem)); margin: 0 auto; padding: clamp(4rem, 10vw, 7rem) 0; }
+  .eyebrow { margin: 0 0 0.7rem; color: var(--accent); font-size: var(--step--2); font-weight: var(--weight-bold); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+  h1 { max-width: 20ch; margin: 0; font-family: var(--font-display); font-size: var(--step-5); line-height: var(--leading-display); letter-spacing: var(--tracking-tight); }
+  .lede { max-width: 52rem; color: var(--ink-2); font-size: var(--step-1); line-height: var(--leading-copy); }
+  section { margin-top: clamp(2.5rem, 6vw, 4rem); }
+  h2 { font-family: var(--font-display); font-size: var(--step-3); line-height: var(--leading-heading); }
+  p, li { color: var(--ink-2); line-height: var(--leading-copy); }
+  li + li { margin-top: 0.5rem; }
+  strong { color: var(--ink); }
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
+  th, td { padding: 0.75rem 0.9rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; line-height: var(--leading-compact); }
+  thead th { color: var(--muted); font-size: var(--step--2); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+  tbody th { color: var(--ink); font-weight: var(--weight-semibold); }
+  tbody td:first-of-type { color: var(--ink); }
+  tr:last-child th, tr:last-child td { border-bottom: 0; }
+  .sources { margin-top: 0.8rem; color: var(--muted); font-size: var(--step--1); }
+  .faqs details { padding: 0.8rem 0; border-bottom: 1px solid var(--line); }
+  .faqs summary { cursor: pointer; color: var(--ink); font-weight: var(--weight-semibold); }
+  .faqs summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 25%, transparent); outline-offset: 2px; }
+  .faqs p { margin: 0.6rem 0 0; }
+  footer { margin-top: clamp(3rem, 7vw, 5rem); padding-top: 2.5rem; border-top: 1px solid var(--line); }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+  .actions a { display: inline-flex; min-height: 2.9rem; align-items: center; padding: 0 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); font-weight: var(--weight-bold); text-decoration: none; }
+  .actions .primary { border-color: var(--accent); background: var(--accent); color: white; }
+  @media (max-width: 44rem) { h1 { font-size: var(--step-4); } }
+</style>

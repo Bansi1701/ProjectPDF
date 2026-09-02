@@ -2,11 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout title="Unlock a PDF — HatePDF" description="Remove a password you already know, or clear restrictions from a file that opens without one.">
   <Masthead />
   <main id="main">
     <PdfTool mode="unlock" title="Unlock a PDF" description="Remove a password you already know, or clear restrictions from a file that opens without one." />
+    <ToolGuide slug="unlock-pdf" />
   </main>
 </BaseLayout>

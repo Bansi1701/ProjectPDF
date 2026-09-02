@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 
 const description =
   'Plain text, a spreadsheet export or Markdown, typeset into a PDF here in this tab.';
@@ -16,5 +17,6 @@ const description =
       title="Text, CSV or Markdown to PDF"
       description={description}
     />
+    <ToolGuide slug="text-to-pdf" />
   </main>
 </BaseLayout>

@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 
 const description =
   'See what your file is quietly carrying — author, dates, the software that made it — then change or remove it.';
@@ -16,5 +17,6 @@ const description =
       title="PDF metadata"
       description={description}
     />
+    <ToolGuide slug="metadata-pdf" />
   </main>
 </BaseLayout>

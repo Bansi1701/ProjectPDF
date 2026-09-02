@@ -2,11 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout title="Protect a PDF — HatePDF" description="Encrypt with AES-256 in your browser. The password never leaves this device — which is the only way a password can stay private.">
   <Masthead />
   <main id="main">
     <PdfTool mode="protect" title="Protect a PDF" description="Encrypt with AES-256 in your browser. The password never leaves this device — which is the only way a password can stay private." />
+    <ToolGuide slug="protect-pdf" />
   </main>
 </BaseLayout>

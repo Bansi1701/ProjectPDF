@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 
 const description =
   'Rebuilds the text, headings and tables of a PDF into a .docx you can edit. Runs in this tab — the document is never uploaded.';
@@ -16,5 +17,6 @@ const description =
       title="PDF to Word"
       description={description}
     />
+    <ToolGuide slug="pdf-to-word" />
   </main>
 </BaseLayout>

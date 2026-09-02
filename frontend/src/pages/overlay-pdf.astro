@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 
 const description =
   'Lay one document over another — letterhead, a draft mark, a signature block. Neither file is uploaded.';
@@ -16,5 +17,6 @@ const description =
       title="Overlay two PDFs"
       description={description}
     />
+    <ToolGuide slug="overlay-pdf" />
   </main>
 </BaseLayout>

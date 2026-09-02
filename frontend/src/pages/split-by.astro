@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 
 const description =
   'Every N pages, into equal parts, under a size limit, or at every chapter. Runs in your browser.';
@@ -16,5 +17,6 @@ const description =
       title="Split by size or bookmark"
       description={description}
     />
+    <ToolGuide slug="split-by" />
   </main>
 </BaseLayout>

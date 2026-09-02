@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout
@@ -15,5 +16,6 @@ import PdfTool from '../components/PdfTool.astro';
       title="OCR a scanned PDF"
       description="Recognises the text in a scan and hands back both the plain text and a searchable copy of the original. The recognition engine runs here, on your machine."
     />
+    <ToolGuide slug="ocr-pdf" />
   </main>
 </BaseLayout>

@@ -1,0 +1,16 @@
+---
+import IntentPage from '../components/IntentPage.astro';
+---
+<IntentPage
+  title="Password-protect a PDF without uploading it"
+  description="Encrypt a PDF with AES-256 in your browser. The document and the password you type never leave your device, which is the only way a password can actually be private."
+  toolSlug="protect-pdf"
+  toolName="Protect PDF"
+  explanation="Sending a document and its new password to a website defeats the purpose of the password. HatePDF performs the encryption locally: the browser derives the keys, rewrites the file with AES-256, and applies the permission flags you chose. Nothing about the document or the password is transmitted, and there is no server copy that could be retained."
+  steps={[
+    { title: 'Select the PDF', text: 'Choose the file on your device. A preview appears without any network request.' },
+    { title: 'Set the password and permissions', text: 'Enter the password to open the file, and optionally restrict printing, copying and editing with a separate owner password.' },
+    { title: 'Save the protected copy', text: 'Download the encrypted PDF. Store the password somewhere safe — there is no recovery, on this site or anywhere else.' },
+  ]}
+  limitation="PDF permissions such as no-printing are honoured by well-behaved readers but are not cryptographic guarantees. Only the open password stops someone reading the file. A forgotten password cannot be recovered."
+/>

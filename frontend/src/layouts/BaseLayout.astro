@@ -16,9 +16,11 @@ interface Props {
   contentType?: 'website' | 'article';
   /** Kept for page-call compatibility; schema is derived from the shared tool config. */
   toolName?: string;
+  /** Pages that must never rank — the 404, for one. Unfinished tools are detected automatically. */
+  noindex?: boolean;
 }
 
-const { title, description, lang = 'en', imageSlug, keywords, contentType } = Astro.props;
+const { title, description, lang = 'en', imageSlug, keywords, contentType, noindex: forceNoindex = false } = Astro.props;
 
 // Respects the deployment base path (a GitHub Pages project site is served
 // from /ProjectPDF/, not /).
@@ -27,7 +29,7 @@ const interFont = `${import.meta.env.BASE_URL}/fonts/inter-latin.woff2`.replace(
 const brandFont = `${import.meta.env.BASE_URL}/fonts/plus-jakarta-sans-latin.woff2`.replace(/\/{2,}/g, '/');
 
 const pageSlug = Astro.url.pathname.split('/').filter(Boolean).at(-1) ?? '';
-const noindex = TOOLS.some((tool) => tool.slug === pageSlug && tool.status !== 'live');
+const noindex = forceNoindex || TOOLS.some((tool) => tool.slug === pageSlug && tool.status !== 'live');
 const themeKey = THEME_KEY;
 const legacyUsageKey = LEGACY_USAGE_KEY;
 const preferenceVersion = PREFERENCE_VERSION;

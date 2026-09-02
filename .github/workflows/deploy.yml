@@ -26,6 +26,9 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v6
+        with:
+          # Sitemap lastmod dates come from git history, not the build clock.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v6
         with:
@@ -37,6 +40,17 @@ jobs:
       - name: npm audit (advisories report only)
         run: npm audit --audit-level=high || echo "⚠️ npm audit reported high-severity findings. Continuing for deployment."
       - name: Build production site
+        # Repository variables (Settings → Secrets and variables → Actions →
+        # Variables). All optional. Set SITE_ORIGIN to https://hatepdf.com
+        # once DNS points at Pages and the whole site — canonicals, sitemap,
+        # robots, schema, CNAME — moves with it. INDEXNOW_KEY enables the
+        # post-deploy ping to Bing and partners; the verification values
+        # prove ownership to Search Console and Bing Webmaster Tools.
+        env:
+          SITE_ORIGIN: ${{ vars.SITE_ORIGIN }}
+          INDEXNOW_KEY: ${{ vars.INDEXNOW_KEY }}
+          PUBLIC_GOOGLE_SITE_VERIFICATION: ${{ vars.GOOGLE_SITE_VERIFICATION }}
+          PUBLIC_BING_SITE_VERIFICATION: ${{ vars.BING_SITE_VERIFICATION }}
         run: npm run build
 
       # Build the Pages payload explicitly. This is the same artifact shape
@@ -65,3 +79,21 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+      # Bing's index is what ChatGPT search reads, and Bing honours IndexNow
+      # within minutes; Google does not use it but crawls the sitemap on its
+      # own schedule. Only meaningful on the custom domain, where the key file
+      # sits at the site root.
+      - name: Submit fresh URLs to IndexNow
+        if: ${{ vars.SITE_ORIGIN != '' && vars.INDEXNOW_KEY != '' }}
+        env:
+          SITE_ORIGIN: ${{ vars.SITE_ORIGIN }}
+          INDEXNOW_KEY: ${{ vars.INDEXNOW_KEY }}
+        run: |
+          host="${SITE_ORIGIN#https://}"; host="${host%%/*}"
+          urls=$(curl -sf "${SITE_ORIGIN%/}/sitemap-0.xml" | grep -o '<loc>[^<]*' | sed 's/<loc>//' | jq -R . | jq -s .)
+          jq -n --arg host "$host" --arg key "$INDEXNOW_KEY" --argjson urls "$urls" \
+            '{host: $host, key: $key, keyLocation: ("https://" + $host + "/" + $key + ".txt"), urlList: $urls}' \
+            | curl -sS -X POST 'https://api.indexnow.org/indexnow' \
+                -H 'Content-Type: application/json; charset=utf-8' -d @- \
+            || echo "IndexNow submission failed; the sitemap still gets crawled normally."

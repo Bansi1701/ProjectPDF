@@ -1,0 +1,16 @@
+---
+import IntentPage from '../components/IntentPage.astro';
+---
+<IntentPage
+  title="OCR a scanned PDF without uploading it"
+  description="Make a scanned PDF searchable on your own device. The text-recognition engine runs inside your browser, so records, IDs and contracts never reach an OCR service."
+  toolSlug="ocr-pdf"
+  toolName="OCR PDF"
+  explanation="OCR is where privacy usually breaks: the documents people scan are exactly the ones they should not upload. HatePDF downloads the recognition engine and its language data from its own origin, runs them in a Web Worker on your device, and adds an invisible text layer over the original page images. You get a searchable PDF and a plain-text file, and the scan itself stays put."
+  steps={[
+    { title: 'Choose the scan', text: 'Select an image-only PDF. Pick a page range if you only need part of a long document — recognition is the slowest job on this site.' },
+    { title: 'Let the browser read it', text: 'Each page is rendered and recognised locally. Progress and a confidence figure are shown as it works.' },
+    { title: 'Save searchable output', text: 'Download the searchable PDF, the extracted text, or send the result on to Redact, Compress or Protect without re-selecting it.' },
+  ]}
+  limitation="Accuracy depends on scan quality, contrast, skew and language. English recognition is built in; handwriting and low-resolution photos of documents produce text that must be checked against the page."
+/>

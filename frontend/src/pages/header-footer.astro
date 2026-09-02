@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 
 const description =
   'Running heads and page numbers, including the fixed-prefix Bates numbering legal work needs.';
@@ -16,5 +17,6 @@ const description =
       title="Headers, footers and Bates numbering"
       description={description}
     />
+    <ToolGuide slug="header-footer" />
   </main>
 </BaseLayout>

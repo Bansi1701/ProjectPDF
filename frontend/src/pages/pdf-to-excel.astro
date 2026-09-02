@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 
 const description =
   'Pulls tables out of a PDF into a spreadsheet, and tells you how much of it was guesswork. Runs in this tab — nothing is uploaded.';
@@ -16,5 +17,6 @@ const description =
       title="PDF to Excel"
       description={description}
     />
+    <ToolGuide slug="pdf-to-excel" />
   </main>
 </BaseLayout>

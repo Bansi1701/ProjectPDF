@@ -1,0 +1,16 @@
+---
+import IntentPage from '../components/IntentPage.astro';
+---
+<IntentPage
+  title="Sign a PDF without uploading it"
+  description="Draw, type or place a signature on a PDF entirely in your browser. The document and your signature stay on your device — no e-signature account, no server copy."
+  toolSlug="sign-pdf"
+  toolName="Sign PDF"
+  explanation="E-signature services keep a copy of what you signed and of your signature. For the everyday case — a lease, a permission slip, a form that just needs your name on the line — HatePDF draws the signature onto the page locally and saves a new PDF. The original, the signature and the result exist only in your browser tab until you download the file."
+  steps={[
+    { title: 'Open the document', text: 'Select the PDF. Pages render locally so you can find the signature line.' },
+    { title: 'Add your signature', text: 'Draw it with a mouse, trackpad or finger, type it in a script face, or place a PNG of your real signature. Resize and drop it exactly where it belongs.' },
+    { title: 'Save the signed PDF', text: 'Download the signed copy, or pass it to Flatten so the signature can no longer be moved, then to Protect.' },
+  ]}
+  limitation="This is a visible signature mark, not a certificate-backed digital signature. It shows agreement the way ink does; it does not cryptographically prove identity or detect later tampering. For certified signatures, a timestamp authority and revocation checks are required, and those are network services by definition."
+/>

@@ -23,13 +23,25 @@ export interface ArticleItem {
   about: string;
 }
 
-export const SITE_ORIGIN = 'https://bansi1701.github.io/ProjectPDF';
+const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '');
+
+/**
+ * Where the site is deployed, base path included: "https://hatepdf.com" or
+ * "https://bansi1701.github.io/ProjectPDF".
+ *
+ * Both halves come from astro.config, which reads SITE_ORIGIN, so moving to a
+ * custom domain is one environment variable — not a hunt through canonicals,
+ * robots, sitemaps and schema for a hardcoded host.
+ */
+export const SITE_HOST = (import.meta.env.SITE ?? 'https://bansi1701.github.io').replace(/\/+$/, '');
+export const BASE_PATH = trimSlashes(import.meta.env.BASE_URL ?? '/');
+export const SITE_ORIGIN = BASE_PATH ? `${SITE_HOST}/${BASE_PATH}` : SITE_HOST;
 
 export const canonical = (path = '/'): string => {
-  const localPath = path
-    .replace(/^https?:\/\/[^/]+/i, '')
-    .replace(/^\/?ProjectPDF\/?/, '')
-    .replace(/^\/+/, '');
+  let localPath = path.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/+/, '');
+  if (BASE_PATH && (localPath === BASE_PATH || localPath.startsWith(`${BASE_PATH}/`))) {
+    localPath = localPath.slice(BASE_PATH.length).replace(/^\/+/, '');
+  }
   const [pathAndQuery, hash] = localPath.split('#', 2);
   const [pathname, query] = pathAndQuery.split('?', 2);
   const cleanPath = pathname.replace(/\/+$/, '');
@@ -39,6 +51,20 @@ export const canonical = (path = '/'): string => {
   const fragment = hash ? `#${hash}` : '';
   return `${SITE_ORIGIN}/${suffix}${search}${fragment}`;
 };
+
+const organizationRef = () => ({ '@id': `${SITE_ORIGIN}/#organization` });
+
+/** The one entity every other schema points back to. Emitted on the homepage. */
+export const organizationLd = () => ({
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  '@id': `${SITE_ORIGIN}/#organization`,
+  name: SITE.name,
+  url: `${SITE_ORIGIN}/`,
+  logo: canonical('/brand/pdfcraft-fold-mark.png'),
+  description: SITE.description,
+  sameAs: ['https://github.com/Bansi1701/ProjectPDF'],
+});
 
 export const softwareAppLd = (name: string, description: string, path: string) => ({
   '@context': 'https://schema.org',
@@ -53,6 +79,7 @@ export const softwareAppLd = (name: string, description: string, path: string) =
   isAccessibleForFree: true,
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   featureList: ['Runs in the browser', 'No file upload', 'No account required'],
+  publisher: organizationRef(),
 });
 
 export const howToLd = (name: string, steps: HowToStep[]) => ({
@@ -102,16 +129,8 @@ export const articleLd = (article: ArticleItem) => ({
     '@type': 'Thing',
     name: article.about,
   },
-  author: {
-    '@type': 'Organization',
-    name: SITE.name,
-    url: `${SITE_ORIGIN}/`,
-  },
-  publisher: {
-    '@type': 'Organization',
-    name: SITE.name,
-    url: `${SITE_ORIGIN}/`,
-  },
+  author: organizationRef(),
+  publisher: organizationRef(),
 });
 
 export const helpCollectionLd = (items: Array<{ name: string; path: string }>) => ({
@@ -132,17 +151,15 @@ export const helpCollectionLd = (items: Array<{ name: string; path: string }>) =
   },
 });
 
+/* No SearchAction: the site has no ?q= handler, and a sitelinks search box
+   that leads nowhere is worse for trust than none. */
 export const websiteLd = () => ({
   '@context': 'https://schema.org',
   '@type': 'WebSite',
+  '@id': `${SITE_ORIGIN}/#website`,
   name: SITE.name,
   url: `${SITE_ORIGIN}/`,
-  potentialAction: {
-    '@type': 'SearchAction',
-    target: {
-      '@type': 'EntryPoint',
-      urlTemplate: `${SITE_ORIGIN}/?q={search_term_string}`,
-    },
-    'query-input': 'required name=search_term_string',
-  },
+  description: SITE.description,
+  inLanguage: 'en',
+  publisher: organizationRef(),
 });

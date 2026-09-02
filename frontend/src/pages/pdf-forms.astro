@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout
@@ -15,5 +16,6 @@ import PdfTool from '../components/PdfTool.astro';
       title="Fill a PDF form"
       description="Reads the document's fields, lets you answer them, and writes the answers back. Optionally flattens so they can no longer be changed."
     />
+    <ToolGuide slug="pdf-forms" />
   </main>
 </BaseLayout>

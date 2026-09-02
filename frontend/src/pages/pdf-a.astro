@@ -2,11 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout title="Convert to PDF/A — HatePDF" description="Archival format, converted in your browser — and refused when the document cannot honestly claim it.">
   <Masthead />
   <main id="main">
     <PdfTool mode="pdf-a" title="Convert to PDF/A" description="Archival format, converted in your browser — and refused when the document cannot honestly claim it." />
+    <ToolGuide slug="pdf-a" />
   </main>
 </BaseLayout>

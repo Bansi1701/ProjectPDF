@@ -1,0 +1,144 @@
+---
+/**
+ * The part of a tool page a search engine or assistant can actually read.
+ *
+ * The tool UI above is a dropzone and controls; on its own it tells a crawler
+ * almost nothing, and the page that should rank for "merge pdf" was carrying
+ * less unique text than the navigation. This renders the same content the
+ * Help Center is built from — quick answer, steps, limits, FAQs, related
+ * tools — as plain static HTML with matching structured data. No script, so
+ * the zero-JS rule for SEO pages still holds.
+ */
+import { getEntry } from 'astro:content';
+
+import { TOOLS, type Tool } from '../config/site';
+import { helpFaqs, helpGroupFor, helpLimitations, helpProfileFor, helpQuickAnswer } from '../lib/help';
+import { breadcrumbLd, faqLd, howToLd, softwareAppLd } from '../lib/seo';
+
+interface Props {
+  slug: string;
+}
+
+const { slug } = Astro.props;
+const tool = TOOLS.find((candidate) => candidate.slug === slug && candidate.status === 'live');
+if (!tool) throw new Error(`ToolGuide: "${slug}" is not a live tool`);
+const entry = await getEntry('tools', slug);
+if (!entry) throw new Error(`ToolGuide: no help content for "${slug}" in src/content/tools`);
+
+const content = entry.data;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const group = helpGroupFor(tool);
+const profile = helpProfileFor(tool);
+const faqs = helpFaqs(tool, content);
+const limitations = helpLimitations(tool);
+const lower = tool.searchName.toLocaleLowerCase();
+const related = content.related
+  .map((candidate) => TOOLS.find((item) => item.slug === candidate && item.status === 'live'))
+  .filter((item): item is Tool => Boolean(item));
+
+const schemas = [
+  softwareAppLd(tool.searchName, tool.blurb, `/${slug}/`),
+  howToLd(`How to ${lower} in your browser`, content.howTo),
+  faqLd(faqs),
+  breadcrumbLd([
+    { name: 'Home', url: '/' },
+    { name: group.label, url: `/#${group.anchor}` },
+    { name: tool.searchName, url: `/${slug}/` },
+  ]),
+];
+---
+
+{schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} is:inline />)}
+
+<section class="guide wrap" aria-labelledby="guide-heading">
+  <div class="guide__grid">
+    <article class="guide__main">
+      <p class="guide__eyebrow">{group.label} · quick answer</p>
+      <h2 id="guide-heading">What {tool.searchName} does</h2>
+      <p class="guide__lede">{helpQuickAnswer(tool)}</p>
+      <p>{content.intro}</p>
+
+      <h2>How to {lower} in your browser</h2>
+      <ol class="guide__steps">
+        {content.howTo.map((step) => (
+          <li>
+            <strong>{step.name}</strong>
+            <span>{step.text}</span>
+          </li>
+        ))}
+      </ol>
+
+      <h2>Before you start</h2>
+      <ul>{profile.before.map((item) => <li>{item}</li>)}</ul>
+
+      <h2>Limits worth knowing</h2>
+      <ul>{limitations.map((item) => <li>{item}</li>)}</ul>
+
+      <h2>Frequently asked questions</h2>
+      <div class="guide__faqs">
+        {faqs.map((faq) => (
+          <details>
+            <summary>{faq.question}</summary>
+            <p>{faq.answer}</p>
+          </details>
+        ))}
+      </div>
+    </article>
+
+    <aside class="guide__aside">
+      <dl class="guide__facts" aria-label={`${tool.searchName} at a glance`}>
+        <div><dt>Runs</dt><dd>On this device</dd></div>
+        <div><dt>Upload</dt><dd>None</dd></div>
+        <div><dt>Account</dt><dd>Not needed</dd></div>
+        <div><dt>Price</dt><dd>Free</dd></div>
+      </dl>
+
+      <h2>Related tools</h2>
+      <ul class="guide__related">
+        {related.map((item) => (
+          <li>
+            <a href={`${base}/${item.slug}/`}>{item.searchName}</a>
+            <span>{item.blurb}</span>
+          </li>
+        ))}
+      </ul>
+
+      <a class="guide__more" href={`${base}/help/${slug}/`}>Read the full {tool.searchName} guide →</a>
+    </aside>
+  </div>
+</section>
+
+<style>
+  .guide { margin: clamp(3rem, 8vw, 6rem) auto clamp(4rem, 10vw, 7rem); }
+  .guide__grid { display: grid; grid-template-columns: minmax(0, 1fr) 20rem; gap: clamp(2rem, 5vw, 4rem); align-items: start; }
+  .guide__eyebrow { margin: 0 0 0.6rem; color: var(--accent); font-size: var(--step--2); font-weight: var(--weight-bold); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+  .guide__main h2 { margin: 2.2rem 0 0.7rem; font-family: var(--font-display); font-size: var(--step-2); line-height: var(--leading-heading); letter-spacing: var(--tracking-tight); }
+  .guide__main h2:first-of-type { margin-top: 0; }
+  .guide__main p, .guide__main li { color: var(--ink-2); line-height: var(--leading-copy); }
+  .guide__lede { color: var(--ink); font-size: var(--step-1); }
+  .guide__main > ul { padding-left: 1.2rem; }
+  .guide__main > ul li + li { margin-top: 0.4rem; }
+  .guide__steps { display: grid; gap: 0.8rem; margin: 0; padding: 0; list-style: none; counter-reset: guide-step; }
+  .guide__steps li { display: grid; grid-template-columns: 2.2rem 1fr; gap: 0.3rem 0.9rem; padding: 1rem 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); counter-increment: guide-step; }
+  .guide__steps li::before { content: counter(guide-step); grid-row: 1 / span 2; align-self: start; color: var(--accent); font-family: var(--font-mono); font-size: var(--step-1); font-weight: var(--weight-bold); }
+  .guide__steps strong { color: var(--ink); }
+  .guide__steps span { grid-column: 2; }
+  .guide__faqs details { padding: 0.8rem 0; border-bottom: 1px solid var(--line); }
+  .guide__faqs summary { cursor: pointer; color: var(--ink); font-weight: var(--weight-semibold); line-height: var(--leading-compact); }
+  .guide__faqs summary:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 25%, transparent); outline-offset: 2px; }
+  .guide__faqs p { margin: 0.6rem 0 0; }
+  .guide__aside { position: sticky; top: 1.5rem; display: grid; gap: 1.2rem; padding: 1.25rem; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper-raised); }
+  .guide__aside h2 { margin: 0; font-family: var(--font-display); font-size: var(--step-0); }
+  .guide__facts { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin: 0; }
+  .guide__facts div { display: grid; gap: 0.1rem; }
+  .guide__facts dt { color: var(--muted); font-size: var(--step--2); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-label); text-transform: uppercase; }
+  .guide__facts dd { margin: 0; color: var(--ink); font-weight: var(--weight-semibold); }
+  .guide__related { display: grid; gap: 0.7rem; margin: 0; padding: 0; list-style: none; }
+  .guide__related li { display: grid; gap: 0.1rem; }
+  .guide__related a { color: var(--ink); font-weight: var(--weight-semibold); text-decoration: none; }
+  .guide__related a:hover { color: var(--accent); }
+  .guide__related span { color: var(--muted); font-size: var(--step--1); line-height: var(--leading-compact); }
+  .guide__more { color: var(--accent); font-weight: var(--weight-bold); text-decoration: none; }
+  .guide__more:hover { text-decoration: underline; }
+  @media (max-width: 56rem) { .guide__grid { grid-template-columns: 1fr; } .guide__aside { position: static; } }
+</style>

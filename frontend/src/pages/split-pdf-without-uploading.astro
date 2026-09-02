@@ -1,0 +1,16 @@
+---
+import IntentPage from '../components/IntentPage.astro';
+---
+<IntentPage
+  title="Split a PDF without uploading it"
+  description="Cut a PDF into ranges, single pages or chapters inside your browser. The original never leaves your device, and each part downloads from the same tab."
+  toolSlug="split-pdf"
+  toolName="Split PDF"
+  explanation="Most split-PDF sites send the whole document to a server, cut it there, and hand back the pieces. HatePDF reads the file into browser memory, finds the page boundaries you asked for, and writes each new PDF locally. The completion receipt shows how many document bytes were sent — the number is zero."
+  steps={[
+    { title: 'Choose the PDF locally', text: 'Select one file. The page thumbnails appear without any request leaving the browser.' },
+    { title: 'Mark where to cut', text: 'Type page ranges, pick individual pages, or let the smart separators find chapters, bookmarks and blank divider pages.' },
+    { title: 'Save the parts', text: 'Download the pieces as separate PDFs or a single ZIP, or pass one part straight to Compress or Protect.' },
+  ]}
+  limitation="Smart separators rely on the PDF's text layer or bookmarks. A scanned document with no text layer can still be split by page number, but chapter detection needs OCR first."
+/>

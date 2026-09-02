@@ -2,9 +2,10 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 
 const description =
-  'Converts a PDF to greyscale by rewriting the colour where the file writes it down — so the text stays text, selectable and searchable, rather than being flattened into pictures.';
+  'Converts a PDF to greyscale by rewriting the colour where the file records it, so text stays selectable and searchable instead of being flattened into pictures.';
 ---
 
 <BaseLayout title="PDF to greyscale — HatePDF" description={description}>
@@ -16,5 +17,6 @@ const description =
       title="Convert a PDF to greyscale"
       description={description}
     />
+    <ToolGuide slug="grayscale-pdf" />
   </main>
 </BaseLayout>

@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 
 const description =
   'Finds where the content actually sits on each page and crops to it — the trim scanned books and papers need. Nothing is deleted: only the page box moves.';
@@ -16,5 +17,6 @@ const description =
       title="Trim the margins"
       description={description}
     />
+    <ToolGuide slug="auto-crop" />
   </main>
 </BaseLayout>

@@ -2,11 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout title="Compare two PDFs — HatePDF" description="Check whether two documents are the same. Both stay on your device.">
   <Masthead />
   <main id="main">
     <PdfTool mode="compare" title="Compare two PDFs" description="Check whether two documents are the same. Both stay on your device." multiple />
+    <ToolGuide slug="compare-pdf" />
   </main>
 </BaseLayout>

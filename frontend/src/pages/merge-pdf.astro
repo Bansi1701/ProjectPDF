@@ -2,11 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout title="Merge PDF files — HatePDF" description="Combine PDFs in the order you select them. Nothing is uploaded.">
   <Masthead />
   <main id="main">
     <PdfTool mode="merge" title="Merge PDF files" description="Combine PDFs in the order you select them. Nothing is uploaded." multiple />
+    <ToolGuide slug="merge-pdf" />
   </main>
 </BaseLayout>

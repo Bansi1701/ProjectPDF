@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import ScanTool from '../components/ScanTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout
@@ -9,5 +10,8 @@ import ScanTool from '../components/ScanTool.astro';
   description="Photograph pages with your camera and get a straightened, readable PDF. The camera feed never leaves your device — no frame is uploaded and nothing is kept."
 >
   <Masthead />
-  <main id="main"><ScanTool /></main>
+  <main id="main">
+    <ScanTool />
+    <ToolGuide slug="scan-pdf" />
+  </main>
 </BaseLayout>

@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 
 const description =
   'Pulls the original pictures out at their own resolution, rather than screenshotting the page.';
@@ -16,5 +17,6 @@ const description =
       title="Extract images from a PDF"
       description={description}
     />
+    <ToolGuide slug="extract-images" />
   </main>
 </BaseLayout>

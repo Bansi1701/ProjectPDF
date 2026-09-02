@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout
@@ -16,5 +17,6 @@ import PdfTool from '../components/PdfTool.astro';
       title="Compress PDF"
       description="Repacks the file and strips what nothing renders. Every page, every image and every character comes out byte-for-byte identical — only the container gets smaller."
     />
+    <ToolGuide slug="compress-pdf" />
   </main>
 </BaseLayout>

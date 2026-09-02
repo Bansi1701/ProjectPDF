@@ -1,6 +1,6 @@
 ---
 import { SITE, TOOLS } from '../config/site';
-import { canonical, websiteLd } from '../lib/seo';
+import { canonical, organizationLd, websiteLd } from '../lib/seo';
 
 interface Props {
   title: string;
@@ -18,17 +18,30 @@ const canonicalUrl = canonical(Astro.url.pathname);
 const shareSlug = imageSlug ?? tool?.slug ?? 'home';
 const shareImage = canonical(`/og/${shareSlug}.png`);
 const home = canonicalUrl === canonical('/');
-const schema = home ? websiteLd() : null;
+const schemas = home ? [websiteLd(), organizationLd()] : [];
+
+/* Tool pages ship terse one-line descriptions written for the UI. A search
+   snippet wants the differentiator too; append it only when there is room,
+   so the copy that was written stays first. */
+const USP = 'Free, no upload, no account — it runs in your browser.';
+const metaDescription = tool && description.length + USP.length < 160 ? `${description} ${USP}` : description;
+
+/* Ownership proofs for Search Console and Bing Webmaster Tools. Set as
+   repository variables so the deploy carries them; absent locally. */
+const googleVerification = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION || '';
+const bingVerification = import.meta.env.PUBLIC_BING_SITE_VERIFICATION || '';
 ---
 
 <title>{title}</title>
-<meta name="description" content={description} />
+<meta name="description" content={metaDescription} />
 {keywords.length > 0 && <meta name="keywords" content={keywords.join(', ')} />}
-{noindex && <meta name="robots" content="noindex, nofollow" />}
+{noindex ? <meta name="robots" content="noindex, nofollow" /> : <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />}
 <link rel="canonical" href={canonicalUrl} />
+{googleVerification && <meta name="google-site-verification" content={googleVerification} />}
+{bingVerification && <meta name="msvalidate.01" content={bingVerification} />}
 
 <meta property="og:title" content={title} />
-<meta property="og:description" content={description} />
+<meta property="og:description" content={metaDescription} />
 <meta property="og:type" content={contentType} />
 <meta property="og:url" content={canonicalUrl} />
 <meta property="og:site_name" content={SITE.name} />
@@ -41,8 +54,8 @@ const schema = home ? websiteLd() : null;
 
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content={title} />
-<meta name="twitter:description" content={description} />
+<meta name="twitter:description" content={metaDescription} />
 <meta name="twitter:image" content={shareImage} />
 <meta name="twitter:image:alt" content={`${title} — zero document uploads`} />
 
-{schema && <script type="application/ld+json" set:html={JSON.stringify(schema)} is:inline />}
+{schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} is:inline />)}

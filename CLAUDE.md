@@ -121,6 +121,12 @@ fetch it on first user interaction, or it tanks LCP on mobile.
 
 Every PDF operation runs in a Web Worker. Never block the main thread.
 
+**Every live tool page renders `<ToolGuide slug="…" />` below the tool** and has
+a content file in `src/content/tools/`. `scripts/audit-seo.mjs` fails the build
+without them, or when a page lacks a title, description, canonical or single
+`<h1>`. Absolute URLs come from `SITE_ORIGIN` via `lib/seo.ts` — never hardcode
+the host. See [Docs/SEO.md](Docs/SEO.md).
+
 ## Code style
 
 Python: `ruff` (line length 100). Docstrings where the *why* isn't obvious; skip

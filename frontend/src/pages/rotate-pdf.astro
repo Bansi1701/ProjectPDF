@@ -2,11 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout title="Rotate PDF — HatePDF" description="Turn every page. Lossless — only the page dictionary changes.">
   <Masthead />
   <main id="main">
     <PdfTool mode="rotate" title="Rotate PDF" description="Turn every page. Lossless — only the page dictionary changes." />
+    <ToolGuide slug="rotate-pdf" />
   </main>
 </BaseLayout>

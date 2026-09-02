@@ -2,11 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout title="Extract PDF pages — HatePDF" description="Pull a range of pages out into its own document. The original is untouched.">
   <Masthead />
   <main id="main">
     <PdfTool mode="extract" title="Extract PDF pages" description="Pull a range of pages out into its own document. The original is untouched." />
+    <ToolGuide slug="extract-pages" />
   </main>
 </BaseLayout>

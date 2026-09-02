@@ -2,11 +2,13 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
 import PdfTool from '../components/PdfTool.astro';
+import ToolGuide from '../components/ToolGuide.astro';
 ---
 
 <BaseLayout title="Add page numbers — HatePDF" description="Number every page, with an optional prefix.">
   <Masthead />
   <main id="main">
     <PdfTool mode="page-numbers" title="Add page numbers" description="Number every page, with an optional prefix." />
+    <ToolGuide slug="page-numbers" />
   </main>
 </BaseLayout>
