@@ -1,4 +1,4 @@
-# ProjectPDF
+# HatePDF
 
 Privacy-first PDF tools. Everything runs in the browser — files never reach a server.
 
@@ -20,7 +20,7 @@ All interface changes follow the shared [design language](Docs/DESIGN_LANGUAGE.m
 ## Layout
 
 ```
-ProjectPDF/
+ProjectPDF/           Repository name (the public product is HatePDF)
 ├── frontend/           Astro site — the product
 ├── backend/            FastAPI control plane — accounts, billing, limits
 ├── docker-compose.yml  Dev stack

@@ -12,7 +12,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    project_name: str = "ProjectPDF API"
+    project_name: str = "HatePDF API"
     version: str = "0.1.0"
     environment: str = "development"
     debug: bool = True

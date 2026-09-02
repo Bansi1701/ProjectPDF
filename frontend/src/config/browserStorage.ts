@@ -35,7 +35,7 @@ export const BROWSER_STORAGE_ITEMS: readonly BrowserStorageItem[] = [
     key: FAVOURITES_KEY,
     starts: 'Only after you mark a tool as a favourite.',
     contents: 'The public URL slugs of the tools you selected and an expiry time.',
-    purpose: 'Builds your local shortcut list. It is never transmitted to ProjectPDF.',
+    purpose: 'Builds your local shortcut list. It is never transmitted to HatePDF.',
     retention: 'Up to 12 months after your last change, or until you clear site data.',
   },
   {

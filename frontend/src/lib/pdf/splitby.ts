@@ -62,7 +62,7 @@ export interface SplitByOptions {
   parts?: number;
   /** `size` only: the size to aim at, in bytes. Approximate by nature — see the notes. */
   targetBytes?: number;
-  /** `size` only: run ProjectPDF's lossless optimizer over every piece. */
+  /** `size` only: run HatePDF's lossless optimizer over every piece. */
   optimize?: boolean;
   /** `blank` only: how much non-white ink a separator page may contain. */
   blankSensitivity?: 'strict' | 'balanced' | 'loose';

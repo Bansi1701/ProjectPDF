@@ -55,7 +55,7 @@ const html = `<!doctype html><meta charset="utf-8">
     <path d="M42 4v14a2 2 0 0 0 2 2h14" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="2.5" stroke-linejoin="round"/>
     <path d="M16 26h22M16 36h22M16 46h13" stroke="#e11d48" stroke-width="3.5" stroke-linecap="round"/>
   </svg>
-  <span class="name">ProjectPDF</span>
+  <span class="name">HatePDF</span>
 </div>
 
 <div>

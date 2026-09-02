@@ -117,8 +117,8 @@ export const articleLd = (article: ArticleItem) => ({
 export const helpCollectionLd = (items: Array<{ name: string; path: string }>) => ({
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
-  name: 'ProjectPDF Help Center',
-  description: 'Step-by-step guides and answers for every ProjectPDF tool.',
+  name: 'HatePDF Help Center',
+  description: 'Step-by-step guides and answers for every HatePDF tool.',
   url: canonical('/help/'),
   mainEntity: {
     '@type': 'ItemList',

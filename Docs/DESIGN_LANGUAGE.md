@@ -1,6 +1,6 @@
-# ProjectPDF Design Language
+# HatePDF Design Language
 
-This is the shared visual and interaction contract for ProjectPDF. Use it for every new page, component, tool, and marketing surface. If a feature needs to break a rule, document the reason in its pull request and update this file if the exception becomes a pattern.
+This is the shared visual and interaction contract for HatePDF. Use it for every new page, component, tool, and marketing surface. If a feature needs to break a rule, document the reason in its pull request and update this file if the exception becomes a pattern.
 
 ## 1. Product character
 
@@ -77,7 +77,7 @@ The approved palette is stable and must not be changed as part of typography or 
 
 - Keep navigation quiet and let the current tool or primary task lead.
 - The logo mark is used at 28–32px in the header, 48–64px for app/browser contexts, and 512px for source export. Keep clear space equal to one-quarter of the mark width.
-- Pair the mark with the wordmark **ProjectPDF** until a formal product rename is approved.
+- Pair the unchanged mark with the wordmark **HatePDF**.
 - Theme controls must respect the system preference by default and persist an explicit user choice.
 
 ### Cards

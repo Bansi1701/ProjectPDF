@@ -18,7 +18,7 @@ export interface Tool {
 }
 
 export const SITE = {
-  name: 'ProjectPDF',
+  name: 'HatePDF',
   tagline: 'Your file never leaves this page.',
   description:
     'PDF tools that run entirely in your browser. Nothing is uploaded, so there is nothing for us to store or leak.',

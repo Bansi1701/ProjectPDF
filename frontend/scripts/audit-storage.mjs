@@ -76,7 +76,7 @@ if (undocumented.length || staleRules.length || unpinned.length) {
 }
 
 if (calls.some((call) => /document\.cookie|cookieStore/.test(call.text))) {
-  throw new Error('ProjectPDF must not set browser cookies without an approved consent design.');
+  throw new Error('HatePDF must not set browser cookies without an approved consent design.');
 }
 
 console.log(`Storage audit: ${calls.length} approved call sites; no cookies, Cache API, or service worker storage; OCR engine options pinned.`);

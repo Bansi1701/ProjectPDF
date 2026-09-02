@@ -45,7 +45,7 @@ const related = content.related
   .filter((candidate): candidate is Tool => Boolean(candidate));
 const toolUrl = `${base}/${tool.slug}/`;
 const helpUrl = `/help/${tool.slug}/`;
-const title = `${tool.searchName} guide: how to use it privately | ProjectPDF`;
+const title = `${tool.searchName} guide: how to use it privately | HatePDF`;
 const heading = `How to use ${tool.searchName}`;
 
 const schemas = [
@@ -72,7 +72,7 @@ const schemas = [
       <div class="article-hero__icon"><ToolIcon slug={tool.slug} tone={group.tone} size="4.6rem" /></div>
       <p class="eyebrow">{group.label} guide</p>
       <h1>{heading}</h1>
-      <p class="standfirst">{description} Everything is explained for the browser-private ProjectPDF workflow.</p>
+      <p class="standfirst">{description} Everything is explained for the browser-private HatePDF workflow.</p>
       <div class="article-actions">
         <a class="primary" href={toolUrl}>Open {tool.searchName}</a>
         <a href={`${base}/help/`}>Browse all help</a>
@@ -131,7 +131,7 @@ const schemas = [
               <li><span>{String(index + 1).padStart(2, '0')}</span><div><h3>{step.name}</h3><p>{step.text}</p></div></li>
             ))}
           </ol>
-          <a class="inline-cta" href={toolUrl}>Start {tool.searchName} in ProjectPDF <span aria-hidden="true">→</span></a>
+          <a class="inline-cta" href={toolUrl}>Start {tool.searchName} in HatePDF <span aria-hidden="true">→</span></a>
         </section>
 
         <section id="tips">
@@ -167,12 +167,12 @@ const schemas = [
         <section class="privacy-answer">
           <p class="section-kicker">Privacy</p>
           <h2>Where does my document go?</h2>
-          <p>For this tool, the document stays in the browser tab. ProjectPDF can load same-origin support files such as its PDF engine, fonts, or OCR data, but the selected document bytes and filename are not sent with those requests.</p>
+          <p>For this tool, the document stays in the browser tab. HatePDF can load same-origin support files such as its PDF engine, fonts, or OCR data, but the selected document bytes and filename are not sent with those requests.</p>
         </section>
 
         <section class="related-guides">
           <p class="section-kicker">Keep working</p>
-          <h2>Related ProjectPDF guides</h2>
+          <h2>Related HatePDF guides</h2>
           <div>
             {related.map((item) => {
               const relatedGroup = helpGroupFor(item);

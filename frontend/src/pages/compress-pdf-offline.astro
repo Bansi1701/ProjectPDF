@@ -3,13 +3,13 @@ import IntentPage from '../components/IntentPage.astro';
 ---
 <IntentPage
   title="Compress a PDF offline in your browser"
-  description="Repack a PDF without uploading it. ProjectPDF preserves the rendered pages and removes only unused or inefficient container structure."
+  description="Repack a PDF without uploading it. HatePDF preserves the rendered pages and removes only unused or inefficient container structure."
   toolSlug="compress-pdf"
   toolName="Compress PDF"
   explanation="After the page is open, the PDF itself is processed locally. The compressor checks the result against the source before it offers the download and explains when a file is already efficient."
   steps={[
     { title: 'Choose the PDF', text: 'The file is opened from your device and stays in the current browser tab.' },
-    { title: 'Repack and verify', text: 'ProjectPDF removes safe overhead, then checks that pages still match.' },
+    { title: 'Repack and verify', text: 'HatePDF removes safe overhead, then checks that pages still match.' },
     { title: 'Read the receipt', text: 'See the before-and-after size, percentage, elapsed time, and zero document bytes sent.' },
   ]}
   limitation="This is lossless repacking, not aggressive image degradation. A scan made mostly of already-compressed photographs may shrink very little; that honest no-change result is safer than silently reducing legibility."

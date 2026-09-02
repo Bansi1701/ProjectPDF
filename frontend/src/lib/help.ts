@@ -127,7 +127,7 @@ const LIMITATIONS: Partial<Record<string, string[]>> = {
   'sign-pdf': ['A drawn, typed, or uploaded signature is a visible signature mark. It is not a certificate-backed digital signature, timestamp, or identity verification.'],
   'split-by': ['File-size targets are measured from generated pieces, but a single page that exceeds the target cannot be split into less than one page.'],
   'split-pdf': ['Smart separators depend on the PDF text layer, bookmarks, or rendered blank-page detection. Review every detected boundary.'],
-  'unlock-pdf': ['ProjectPDF can remove protection only when the document can be opened with the password or permissions you are authorized to use.'],
+  'unlock-pdf': ['HatePDF can remove protection only when the document can be opened with the password or permissions you are authorized to use.'],
   'word-to-pdf': ['A browser converter cannot reproduce every Word layout feature. Review page breaks, fonts, headers, footers, and floating objects.'],
 };
 
@@ -141,7 +141,7 @@ export function helpProfileFor(tool: Tool): HelpProfile {
 }
 
 export function helpQuickAnswer(tool: Tool): string {
-  return `${tool.searchName} is a browser-based ProjectPDF tool built for this task: ${tool.blurb} It runs on this device, creates a separate result, and does not require an account or document upload.`;
+  return `${tool.searchName} is a browser-based HatePDF tool built for this task: ${tool.blurb} It runs on this device, creates a separate result, and does not require an account or document upload.`;
 }
 
 export function helpArticleDescription(tool: Tool): string {
@@ -161,7 +161,7 @@ export function helpKeywords(tool: Tool): string[] {
     `${name} without account`,
     `${name} in browser`,
     ...profile.terms,
-    'ProjectPDF help',
+    'HatePDF help',
   ])];
 }
 
