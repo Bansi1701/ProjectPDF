@@ -11,8 +11,18 @@ import { canonical } from '../lib/seo';
  * the actual steps rather than paraphrase a snippet. Built from the same
  * content collection as the tool pages and the Help Center.
  */
+/* Declared here rather than taken from astro:content: CI type-checks before
+   astro build, when the generated collection types do not exist yet. */
+interface ToolContent {
+  intro: string;
+  howTo: { name: string; text: string }[];
+  faqs: { question: string; answer: string }[];
+  related: string[];
+}
+
 export const GET: APIRoute = async () => {
-  const entries = new Map((await getCollection('tools')).map((entry) => [entry.id, entry.data]));
+  const collection: { id: string; data: unknown }[] = await getCollection('tools');
+  const entries = new Map(collection.map((entry) => [entry.id, entry.data as ToolContent]));
   const liveTools = TOOLS.filter((tool) => tool.status === 'live');
 
   const lines: string[] = [
@@ -37,7 +47,7 @@ export const GET: APIRoute = async () => {
       '',
       '### Steps',
       '',
-      ...content.howTo.map((step, index) => `${index + 1}. **${step.name}** — ${step.text}`),
+      ...content.howTo.map((step: { name: string; text: string }, index: number) => `${index + 1}. **${step.name}** — ${step.text}`),
       '',
       '### Limits',
       '',
@@ -50,7 +60,7 @@ export const GET: APIRoute = async () => {
       lines.push(`**${faq.question}**`, '', faq.answer, '');
     }
     const related = content.related
-      .map((slug) => liveTools.find((candidate) => candidate.slug === slug))
+      .map((slug: string) => liveTools.find((candidate) => candidate.slug === slug))
       .filter((candidate): candidate is (typeof liveTools)[number] => Boolean(candidate));
     if (related.length) {
       lines.push(`Related tools: ${related.map((item) => `[${item.searchName}](${canonical(`/${item.slug}/`)})`).join(', ')}`, '');
