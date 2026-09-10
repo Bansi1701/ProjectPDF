@@ -71,3 +71,8 @@ frontend/.tmp-test/
 # Benchmark harness for the iLovePDF comparison. Generates its corpus into
 # /tmp; nothing here ships, and no fixture may enter the repo.
 frontend/_bench/
+
+# Registrar and host credentials, if one is ever created inside the repo by
+# mistake. The real file lives in $HOME, outside this tree.
+*godaddy*
+*.token
