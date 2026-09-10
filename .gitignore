@@ -76,4 +76,6 @@ frontend/_bench/
 # Registrar and host credentials, if one is ever created inside the repo by
 # mistake. The real file lives in $HOME, outside this tree.
 *godaddy*
+*cloudflare-token*
+*-token.env
 *.token
