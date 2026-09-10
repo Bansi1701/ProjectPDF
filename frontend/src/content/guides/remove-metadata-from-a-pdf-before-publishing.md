@@ -1,13 +1,13 @@
 ---
 title: "Remove metadata from a PDF before publishing it"
 description: "What a PDF's metadata reveals — author, software, template history, dates — where it hides in two separate places, and how to inspect and clear it on your device."
-summary: "A PDF carries descriptive metadata in two places: the Info dictionary and an XMP packet, and they can disagree. Before publishing, inspect both, replace the author and title with what you want the world to see, and remove the rest. HatePDF shows the current values and rewrites them in your browser."
+summary: "A PDF carries descriptive metadata in two places: the Info dictionary and an XMP packet, and they can disagree. Before publishing, inspect both, replace the author and title with what you want the world to see, and remove the rest. Filozy shows the current values and rewrites them in your browser."
 tools: ["metadata-pdf", "redact-pdf", "flatten-pdf"]
 keywords: ["remove pdf metadata", "pdf metadata author name", "clean pdf before publishing", "pdf xmp metadata", "edit pdf metadata online", "anonymise pdf"]
 updated: "2026-09-01"
 faqs:
   - question: "I cleared the author field but a tool still shows a name. Where is it?"
-    answer: "In the other place. PDFs keep metadata in the Info dictionary and in an XMP packet, and many editors update only one. Readers often prefer XMP. Clear both — HatePDF reads both and lets you replace or remove the values it finds."
+    answer: "In the other place. PDFs keep metadata in the Info dictionary and in an XMP packet, and many editors update only one. Readers often prefer XMP. Clear both — Filozy reads both and lets you replace or remove the values it finds."
   - question: "Does the filename count as metadata?"
     answer: "Not inside the file, but it travels with it and is often more revealing than anything in the header: 'Draft3_JSmith_FINAL_reviewed.pdf'. Rename before you publish."
   - question: "Can metadata removal make a document anonymous?"

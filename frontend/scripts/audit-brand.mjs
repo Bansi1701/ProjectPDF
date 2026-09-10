@@ -24,13 +24,25 @@ for (const file of files) {
     .replaceAll('https://bansi1701.github.io/ProjectPDF', '')
     .replaceAll('https://github.com/Bansi1701/ProjectPDF', '')
     .replaceAll('/ProjectPDF/', '');
-  if (withoutRepositoryPaths.includes('ProjectPDF')) {
+  // Lowercase legacy storage keys and logo filenames are compatibility IDs,
+  // not product labels. Keep them intact for existing visitors.
+  if (/ProjectPDF|Project PDF|HatePDF|HATEPDF|Hate PDF|PDFCraft/.test(withoutRepositoryPaths)) {
     problems.push(`${relative(dist, file)} still exposes the previous product name`);
+  }
+  if (!/<title>[^<]*Filozy[^<]*<\/title>/.test(html)) {
+    problems.push(`${relative(dist, file)} is missing Filozy in the page title`);
+  }
+}
+
+for (const resource of ['llms.txt', 'llms-full.txt', 'guides/feed.xml']) {
+  const content = await readFile(join(dist, resource), 'utf8');
+  if (!content.includes('Filozy') || /HatePDF|Hate PDF|PDFCraft/i.test(content)) {
+    problems.push(`${resource} has missing or outdated public branding`);
   }
 }
 
 const home = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8');
-if (!home.includes('HatePDF')) problems.push('homepage is missing the HatePDF wordmark');
+if (!home.includes('Filozy')) problems.push('homepage is missing the Filozy wordmark');
 if (!home.includes('brand/pdfcraft-fold-mark.png')) problems.push('homepage no longer uses the approved logo asset');
 
 const privacy = await readFile(new URL('../dist/privacy/index.html', import.meta.url), 'utf8');
@@ -48,4 +60,4 @@ for (const internalDetail of [
 }
 
 if (problems.length) throw new Error(problems.join('\n'));
-console.log(`Brand audit: ${files.length} HTML pages use HatePDF, retain the approved logo, and keep internal privacy details private.`);
+console.log(`Brand audit: ${files.length} HTML pages use Filozy, retain the approved logo, and keep internal privacy details private.`);

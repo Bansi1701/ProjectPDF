@@ -48,7 +48,7 @@ const schemas = [
 ];
 ---
 
-<BaseLayout title={`${guide.title} | HatePDF`} description={guide.description} imageSlug={primary?.slug} keywords={guide.keywords} contentType="article">
+<BaseLayout title={`${guide.title} | Filozy`} description={guide.description} imageSlug={primary?.slug} keywords={guide.keywords} contentType="article">
   <Masthead />
   {schemas.map((schema) => <script type="application/ld+json" set:html={JSON.stringify(schema)} is:inline />)}
   <main id="main" class="guide-page">

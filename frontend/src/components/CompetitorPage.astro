@@ -5,7 +5,7 @@
  * The rules are strict because the comparison is the argument: every claim
  * about the other service is limited to what it states itself, with the
  * source linked; the "when to stay" section is mandatory; and the mapping
- * table sends people to the matching HatePDF tool rather than a pitch.
+ * table sends people to the matching Filozy tool rather than a pitch.
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from './Masthead.astro';
@@ -20,7 +20,7 @@ interface Props {
   path: string;
   /** How the service describes its own handling of files, with the source. */
   theirModel: { statement: string; sourceUrl: string; sourceLabel: string }[];
-  /** Their tool → HatePDF tool slug. */
+  /** Their tool → Filozy tool slug. */
   mapping: [string, string][];
   whenTheyWin: string[];
   faqs: FaqItem[];

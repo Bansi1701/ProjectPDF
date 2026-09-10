@@ -4,7 +4,7 @@ import '../styles/global.css';
 import Seo from '../components/Seo.astro';
 import ProofCounter from '../components/ProofCounter.astro';
 import SpeedNote from '../components/SpeedNote.astro';
-import { TOOLS } from '../config/site';
+import { SITE, TOOLS } from '../config/site';
 import { LEGACY_USAGE_KEY, PREFERENCE_VERSION, THEME_KEY } from '../lib/browserPreferences';
 
 interface Props {
@@ -21,6 +21,7 @@ interface Props {
 }
 
 const { title, description, lang = 'en', imageSlug, keywords, contentType, noindex: forceNoindex = false } = Astro.props;
+const brandedTitle = title.includes(SITE.name) ? title : `${title} — ${SITE.name}`;
 
 // Respects the deployment base path (a GitHub Pages project site is served
 // from /ProjectPDF/, not /).
@@ -42,13 +43,13 @@ const preferenceVersion = PREFERENCE_VERSION;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
 
-    <Seo {title} {description} {imageSlug} {noindex} {keywords} {contentType} />
+    <Seo title={brandedTitle} {description} {imageSlug} {noindex} {keywords} {contentType} />
 
     <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0b0f17" media="(prefers-color-scheme: dark)" />
 
     <link rel="icon" href={favicon} type="image/svg+xml" />
-    <link rel="alternate" type="application/atom+xml" title="HatePDF guides" href={`${import.meta.env.BASE_URL}/guides/feed.xml`.replace(/\/{2,}/g, '/')} />
+    <link rel="alternate" type="application/atom+xml" title={`${SITE.name} guides`} href={`${import.meta.env.BASE_URL}/guides/feed.xml`.replace(/\/{2,}/g, '/')} />
     <link rel="preload" href={interFont} as="font" type="font/woff2" crossorigin="anonymous" />
     <link rel="preload" href={brandFont} as="font" type="font/woff2" crossorigin="anonymous" />
     <script is:inline define:vars={{ themeKey, legacyUsageKey, preferenceVersion }}>

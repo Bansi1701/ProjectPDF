@@ -24,6 +24,7 @@ const node = (type: string, style: Record<string, unknown>, children: TreeNode[]
 const fontRoot = join(process.cwd(), 'node_modules', 'pdfjs-dist', 'standard_fonts');
 const regular = readFileSync(join(fontRoot, 'LiberationSans-Regular.ttf'));
 const bold = readFileSync(join(fontRoot, 'LiberationSans-Bold.ttf'));
+const brandMark = `data:image/png;base64,${readFileSync(join(process.cwd(), 'public', 'brand', 'pdfcraft-fold-mark.png')).toString('base64')}`;
 
 export const getStaticPaths: GetStaticPaths = () => [
   { params: { slug: 'home' }, props: { name: 'Free PDF tools', description: SITE.description } satisfies OgProps },
@@ -45,11 +46,8 @@ export const GET: APIRoute<OgProps> = async ({ props }) => {
     fontFamily: 'Liberation Sans',
   }, [
     node('div', { display: 'flex', alignItems: 'center', justifyContent: 'space-between' }, [
-      node('div', { display: 'flex', alignItems: 'center', gap: '16px', fontSize: '25px', fontWeight: 700 }, [
-        node('div', {
-          width: '42px', height: '48px', borderRadius: '10px', backgroundColor: '#f8fafc',
-          borderBottomRightRadius: '20px', boxShadow: '0 12px 32px rgba(251,113,133,.22)',
-        }, ''),
+      node('div', { display: 'flex', alignItems: 'center', gap: '16px', fontSize: '32px', fontWeight: 700 }, [
+        { type: 'img', props: { src: brandMark, width: 48, height: 48, style: { borderRadius: '12px' } } },
         node('span', {}, SITE.name),
       ]),
       node('span', { color: '#94a3b8', fontSize: '18px' }, 'PRIVATE BY CONSTRUCTION'),

@@ -1,7 +1,7 @@
 ---
 title: "Split a scanned book into chapters without uploading it"
 description: "Seven ways to cut a long PDF into parts — bookmarks, chapter words, blank separator sheets, ranges, every N pages, equal parts, size targets — and which suits a scan."
-summary: "Split by bookmarks when the PDF has an outline, by page-start words when it has a text layer, and by blank separator sheets or fixed page ranges when it is a raw scan. HatePDF finds the boundaries in your browser and lets you review each one before it writes the parts."
+summary: "Split by bookmarks when the PDF has an outline, by page-start words when it has a text layer, and by blank separator sheets or fixed page ranges when it is a raw scan. Filozy finds the boundaries in your browser and lets you review each one before it writes the parts."
 tools: ["split-pdf", "split-by", "ocr-pdf"]
 keywords: ["split pdf into chapters", "split scanned pdf", "split pdf by bookmarks", "split pdf every n pages", "split pdf by size", "split pdf without uploading"]
 updated: "2026-09-01"
@@ -11,7 +11,7 @@ faqs:
   - question: "Can I split a scan by chapter titles?"
     answer: "Only if the scan has a text layer. Run OCR PDF first; then the page-start-word mode can find pages whose first line begins with 'Chapter', 'Part' or whatever your book uses."
   - question: "Why isn't the size split exact?"
-    answer: "Pages in a PDF share fonts and images, so a part's size depends on which pages travel together. HatePDF measures each candidate part rather than estimating, gets as close as it can, and tells you when a single page alone exceeds the target."
+    answer: "Pages in a PDF share fonts and images, so a part's size depends on which pages travel together. Filozy measures each candidate part rather than estimating, gets as close as it can, and tells you when a single page alone exceeds the target."
 ---
 
 A scanned book is a single 400-page file, and nobody wants a 400-page file: not the reviewer who needs chapter six, not the e-reader that chokes on it, not the portal with a 10 MB limit. Splitting it well depends on one question — does the document know where its chapters are? — and the answer decides which of the methods below to use.
@@ -39,7 +39,7 @@ Give it the word a chapter's first line begins with — *Chapter*, *Part*, *Sect
 
 ### By blank separator sheets
 
-Photocopy pilers and scanning services insert a blank page between documents. HatePDF renders each page at low resolution and detects the near-empty ones, splitting there. Works on bare scans with no text layer at all. Review the detected boundaries: a nearly blank final page of a chapter can look like a separator.
+Photocopy pilers and scanning services insert a blank page between documents. Filozy renders each page at low resolution and detects the near-empty ones, splitting there. Works on bare scans with no text layer at all. Review the detected boundaries: a nearly blank final page of a chapter can look like a separator.
 
 ### By custom ranges
 

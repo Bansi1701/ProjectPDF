@@ -1,7 +1,7 @@
 ---
 title: "PDF/A for archives: what conformance requires and why fonts matter"
 description: "What the PDF/A archival standard demands, why many converters produce files that fail validation, how to fix the usual font problem, and how to check a result."
-summary: "PDF/A is a PDF that carries everything needed to display it identically for decades: every font embedded, no encryption, no scripts, colours defined, metadata in XMP. A converter that cannot embed a font has no honest way to produce PDF/A, which is why HatePDF refuses such files instead of labelling them conformant."
+summary: "PDF/A is a PDF that carries everything needed to display it identically for decades: every font embedded, no encryption, no scripts, colours defined, metadata in XMP. A converter that cannot embed a font has no honest way to produce PDF/A, which is why Filozy refuses such files instead of labelling them conformant."
 tools: ["pdf-a", "metadata-pdf", "flatten-pdf"]
 keywords: ["convert pdf to pdf/a", "what is pdf/a", "pdf/a conformance", "pdf/a fonts not embedded", "pdf/a validation verapdf", "archival pdf"]
 updated: "2026-09-01"
@@ -57,4 +57,4 @@ Re-export, then convert. If you no longer have the source and the fonts are not 
 
 ## Why validation stays outside the browser
 
-A complete PDF/A validator checks hundreds of rules across the whole file, and the only implementation the archival community trusts is veraPDF, which is Java. HatePDF can convert honestly and refuse dishonestly, but it does not claim to validate. Treat the veraPDF report as the deliverable; the PDF is the thing it describes.
+A complete PDF/A validator checks hundreds of rules across the whole file, and the only implementation the archival community trusts is veraPDF, which is Java. Filozy can convert honestly and refuse dishonestly, but it does not claim to validate. Treat the veraPDF report as the deliverable; the PDF is the thing it describes.

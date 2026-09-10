@@ -1,11 +1,11 @@
-# HatePDF
+# Filozy
 
-**HatePDF** — free PDF tools that run entirely in your browser. Merge, split,
+**Filozy** — free PDF tools that run entirely in your browser. Merge, split,
 compress, convert (Word, Excel, PowerPoint, images), OCR, redact, sign, watermark
 and encrypt PDFs with nothing uploaded: the file is processed on your device and
 each job reports **0 document bytes sent**. No account, no limits, no cookies, no
 trackers. **Live: [bansi1701.github.io/ProjectPDF](https://bansi1701.github.io/ProjectPDF/)**
-(moving to hatepdf.com).
+(moving to `https://example.com` as a placeholder for the future custom domain).
 
 How it holds that promise: every operation runs in a Web Worker on pdf.js,
 pdf-lib and self-hosted WASM engines; the build fails if an undocumented
@@ -32,7 +32,7 @@ All interface changes follow the shared [design language](Docs/DESIGN_LANGUAGE.m
 ## Layout
 
 ```
-ProjectPDF/           Repository name (the public product is HatePDF)
+ProjectPDF/           Repository name (the public product is Filozy)
 ├── frontend/           Astro site — the product
 ├── backend/            FastAPI control plane — accounts, billing, limits
 ├── docker-compose.yml  Dev stack

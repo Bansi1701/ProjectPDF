@@ -14,7 +14,7 @@ const toolName = (slug: string) => TOOLS.find((tool) => tool.slug === slug)?.sea
 const collectionSchema = {
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
-  name: 'HatePDF Guides',
+  name: 'Filozy Guides',
   description: 'Long-form guides to real PDF tasks — redaction, encryption, OCR, archiving, conversion — done in the browser without uploading.',
   url: canonical('/guides/'),
   mainEntity: {
@@ -31,7 +31,7 @@ const collectionSchema = {
 ---
 
 <BaseLayout
-  title="PDF guides for real tasks, done privately | HatePDF"
+  title="PDF guides for real tasks, done privately | Filozy"
   description="Long-form guides to redaction, encryption, OCR, PDF/A, compression and conversion — how each job works, what to check, and how to do it in your browser without uploading."
   keywords={['PDF guides', 'how to redact a PDF', 'how to password protect a PDF', 'PDF/A explained', 'OCR scanned PDF', 'private PDF tools']}
 >
@@ -43,7 +43,7 @@ const collectionSchema = {
       <nav class="crumbs" aria-label="Breadcrumb"><a href={`${base}/`}>Home</a><span>/</span><strong>Guides</strong></nav>
       <p class="eyebrow">Guides</p>
       <h1>The job, explained — then done on your device.</h1>
-      <p class="lede">Each guide covers one real task end to end: what the format actually does, the mistakes that leak information or break files, and the exact steps in HatePDF. Short guides for every individual tool live in the <a href={`${base}/help/`}>Help Center</a>.</p>
+      <p class="lede">Each guide covers one real task end to end: what the format actually does, the mistakes that leak information or break files, and the exact steps in Filozy. Short guides for every individual tool live in the <a href={`${base}/help/`}>Help Center</a>.</p>
     </header>
     <ul class="list">
       {guides.map((guide) => (
@@ -56,7 +56,7 @@ const collectionSchema = {
         </li>
       ))}
     </ul>
-    <p class="feed">Follow new guides: <a href={`${base}/guides/feed.xml`}>Atom feed</a> · <a href={`${base}/alternatives/`}>How HatePDF compares with upload-based PDF sites</a></p>
+    <p class="feed">Follow new guides: <a href={`${base}/guides/feed.xml`}>Atom feed</a> · <a href={`${base}/alternatives/`}>How Filozy compares with upload-based PDF sites</a></p>
   </main>
   <HelpFooter />
 </BaseLayout>

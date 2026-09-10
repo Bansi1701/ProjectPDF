@@ -1,6 +1,8 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import Masthead from '../components/Masthead.astro';
+import Logo from '../components/Logo.astro';
+import Wordmark from '../components/Wordmark.astro';
 import Lens from '../components/Lens.astro';
 import ToolIcon from '../components/ToolIcon.astro';
 import { SERVER_ONLY_REASONS, SITE, TOOLS } from '../config/site';
@@ -58,7 +60,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
         <span class="brand-watermark brand-watermark--three"><img src={brandMark} alt="" /></span>
       </div>
       <div class="hero__copy">
-        <p class="eyebrow"><span class="dot"></span>Private document workspace</p>
+        <p class="eyebrow"><span class="dot"></span>{SITE.name} · Private document workspace</p>
 
         <h1>Private PDF tools.<br />No upload. No account.</h1>
 
@@ -309,7 +311,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
       </div>
 
       <div class="footer__base">
-        <span class="footer__brand">{SITE.name}</span>
+        <a class="footer__brand" href={`${baseUrl}`} aria-label={`${SITE.name} home`}><Logo size="2.4rem" /><Wordmark /></a>
         <span class="footer__colophon">
           Appearance follows your system · Built so that we couldn't read your documents
           even if we wanted to.
@@ -1429,8 +1431,10 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
   }
 
   .footer__brand {
-    font-weight: 600;
-    letter-spacing: -0.02em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.65rem;
+    text-decoration: none;
   }
 
   .footer__colophon {

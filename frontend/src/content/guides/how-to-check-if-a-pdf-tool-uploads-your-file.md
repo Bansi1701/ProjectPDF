@@ -47,7 +47,7 @@ A tool that processes the PDF in your browser produces a different picture. Ther
 - They come from the same site you are on, and their sizes are fixed regardless of your file. The engine is the same size whether you merge a one-page letter or a 300-page scan.
 - Nothing of the document's size appears at any step, including download. The download itself is not a request at all: the browser is saving bytes it already has.
 
-On HatePDF you can cross-check the Network panel against the tool's own receipt. Every finished job reports the number of **document bytes sent**, and the figure is 0. The receipt is written by the page, so the panel is the independent witness; they should agree.
+On Filozy you can cross-check the Network panel against the tool's own receipt. Every finished job reports the number of **document bytes sent**, and the figure is 0. The receipt is written by the page, so the panel is the independent witness; they should agree.
 
 ## Four things that fool people
 
@@ -57,7 +57,7 @@ On HatePDF you can cross-check the Network panel against the tool's own receipt.
 
 **"Client-side" in the marketing, uploads in the panel.** Some services do part of the work locally (a preview, say) and upload for the real operation. The panel does not care what the page says; watch it through the whole job.
 
-**The page loaded a lot before you picked a file.** That is not an upload. Loading an engine early is a performance choice, not a privacy one. HatePDF deliberately waits until you choose a file before fetching its engines, so the panel stays almost empty until you act — but a site that loads early is not thereby uploading.
+**The page loaded a lot before you picked a file.** That is not an upload. Loading an engine early is a performance choice, not a privacy one. Filozy deliberately waits until you choose a file before fetching its engines, so the panel stays almost empty until you act — but a site that loads early is not thereby uploading.
 
 ## Try it on this site
 

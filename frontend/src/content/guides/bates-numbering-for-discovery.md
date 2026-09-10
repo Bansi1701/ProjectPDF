@@ -1,7 +1,7 @@
 ---
 title: "Bates numbering for discovery, done on your own machine"
 description: "What Bates numbers are, the rules they follow, how to keep a sequence continuous across batches, and how to stamp them in your browser without uploading."
-summary: "Bates numbers are unique, sequential labels stamped on every page of a document production, with a prefix, zero-padding and no gaps or restarts across batches. HatePDF applies them locally, with a start value so the next batch continues where the last one stopped."
+summary: "Bates numbers are unique, sequential labels stamped on every page of a document production, with a prefix, zero-padding and no gaps or restarts across batches. Filozy applies them locally, with a start value so the next batch continues where the last one stopped."
 tools: ["header-footer", "ocr-pdf", "protect-pdf"]
 keywords: ["bates numbering", "bates stamp pdf", "add bates numbers to pdf", "bates numbering online free", "bates numbers without uploading", "document production numbering"]
 updated: "2026-09-01"

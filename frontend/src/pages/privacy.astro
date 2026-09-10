@@ -11,24 +11,24 @@ auditedNetworkRequests();
   title="Privacy policy"
   eyebrow="Privacy"
   updated="September 1, 2026"
-  description="How HatePDF handles documents, device preferences and basic website connection information."
+  description="How Filozy handles documents, device preferences and basic website connection information."
 >
-  <div class="callout"><strong>In short</strong><p>HatePDF's live document tools process your files in your browser. We do not receive, store, analyse or sell the contents of those documents.</p></div>
+  <div class="callout"><strong>In short</strong><p>Filozy's live document tools process your files in your browser. We do not receive, store, analyse or sell the contents of those documents.</p></div>
 
   <h2>Documents you choose</h2>
-  <p>For tools marked as running on your device, the selected file, filename and finished result remain in your browser. HatePDF does not create an account or keep a server copy of those documents. Unsaved work can be lost when you close the tab, clear site data or leave the page.</p>
+  <p>For tools marked as running on your device, the selected file, filename and finished result remain in your browser. Filozy does not create an account or keep a server copy of those documents. Unsaved work can be lost when you close the tab, clear site data or leave the page.</p>
 
   <h2>Public web-page conversion</h2>
   <p>If a web-page-to-PDF feature is available and you use it, the public URL you enter must be sent to a server so that page can be retrieved. Do not enter a private, authenticated or confidential address. Your own PDF documents are not involved in that request.</p>
 
   <h2>Cookies, analytics and advertising</h2>
-  <p>HatePDF does not currently use cookies, advertising trackers, analytics profiles, browser fingerprinting or cross-site tracking. We do not sell or share personal information, do not use it for targeted advertising, and do not count which tools you use. A Global Privacy Control signal asks a site to stop selling or sharing your data; there is nothing to stop, so every visitor — with or without the signal — already gets that treatment. The build fails if an undocumented network request or browser-storage call is added to HatePDF's own code, and the bundled document engines are pinned to this site's origin and configured to store nothing. If advertising or analytics is ever proposed, it must stay off until you give specific permission.</p>
+  <p>Filozy does not currently use cookies, advertising trackers, analytics profiles, browser fingerprinting or cross-site tracking. We do not sell or share personal information, do not use it for targeted advertising, and do not count which tools you use. A Global Privacy Control signal asks a site to stop selling or sharing your data; there is nothing to stop, so every visitor — with or without the signal — already gets that treatment. The build fails if an undocumented network request or browser-storage call is added to Filozy's own code, and the bundled document engines are pinned to this site's origin and configured to store nothing. If advertising or analytics is ever proposed, it must stay off until you give specific permission.</p>
 
   <h2>Preferences saved on your device</h2>
   <p>If you choose a colour theme, preview size or favourite tools, that preference can be saved on your device for up to 12 months. When you continue a PDF into another local tool, the temporary handoff copy expires after one hour, and expired copies are deleted whenever another workflow starts; the button below removes everything immediately. The text-recognition engine downloads its language data each time you run OCR and does not keep it. Every item here is optional and starts only after your explicit choice — if you never make one, nothing is stored. None of it is used for advertising or profiling.</p>
 
   <div class="data-controls">
-    <div><strong>Clear HatePDF data on this device</strong><p>Removes saved appearance and favourite preferences, any unclaimed local workflow file, and any text-recognition engine cache saved by earlier visits.</p></div>
+    <div><strong>Clear Filozy data on this device</strong><p>Removes saved appearance and favourite preferences, any unclaimed local workflow file, and any text-recognition engine cache saved by earlier visits.</p></div>
     <button type="button" data-clear-project-data>Clear site data</button>
     <p class="data-controls__status" data-clear-project-status role="status" aria-live="polite"></p>
   </div>
@@ -37,13 +37,13 @@ auditedNetworkRequests();
   <p>The site is hosted by GitHub Pages. GitHub may receive ordinary connection information, such as your IP address, requested page, browser headers and access time, when it delivers the website. That request does not include the contents of a document you selected for a local tool. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a> explains its processing.</p>
 
   <h2>External links</h2>
-  <p>If you follow a link to another website, that site's privacy policy applies. HatePDF does not control external services.</p>
+  <p>If you follow a link to another website, that site's privacy policy applies. Filozy does not control external services.</p>
 
   <h2>Children and sensitive information</h2>
   <p>The service is not directed to children and is not a regulated document repository. Do not post a confidential document, password or personal information in a public support report.</p>
 
   <h2>Your rights by region</h2>
-  <p>Laws in the EU, UK and elsewhere give you rights to access, correct, export, delete and object. HatePDF keeps no account, document or profile about you, so there is normally nothing on our side for those rights to act on — that data stays in your browser, where you already control it directly. In India, data-protection law expects a working grievance channel: today that is the public issue tracker below, and if the rules come to require a named contact, one will be published here. Quebec and Brazil require functions that identify, locate or profile you to stay off until you turn them on; HatePDF has none to turn on.</p>
+  <p>Laws in the EU, UK and elsewhere give you rights to access, correct, export, delete and object. Filozy keeps no account, document or profile about you, so there is normally nothing on our side for those rights to act on — that data stays in your browser, where you already control it directly. In India, data-protection law expects a working grievance channel: today that is the public issue tracker below, and if the rules come to require a named contact, one will be published here. Quebec and Brazil require functions that identify, locate or profile you to stay off until you turn them on; Filozy has none to turn on.</p>
 
   <h2>Questions and changes</h2>
   <p>Privacy questions can be submitted through the public <a href="https://github.com/Bansi1701/ProjectPDF/issues">GitHub issue tracker</a>. Do not attach sensitive material. We will update the date above when this policy changes materially.</p>
@@ -57,7 +57,7 @@ auditedNetworkRequests();
   const status = document.querySelector<HTMLElement>('[data-clear-project-status]');
   button?.addEventListener('click', async () => {
     button.disabled = true;
-    if (status) status.textContent = 'Clearing local HatePDF data…';
+    if (status) status.textContent = 'Clearing local Filozy data…';
     clearPreferences();
     try {
       // Earlier releases let the OCR engine cache its language data. Delete
@@ -71,9 +71,9 @@ auditedNetworkRequests();
       await clearHandoffs();
       document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       window.dispatchEvent(new Event('projectpdf:preferences-cleared'));
-      if (status) status.textContent = 'HatePDF preferences and temporary handoffs were cleared from this browser.';
+      if (status) status.textContent = 'Filozy preferences and temporary handoffs were cleared from this browser.';
     } catch (error) {
-      if (status) status.textContent = error instanceof Error ? error.message : 'Temporary handoffs could not be cleared. Close other HatePDF tabs and try again.';
+      if (status) status.textContent = error instanceof Error ? error.message : 'Temporary handoffs could not be cleared. Close other Filozy tabs and try again.';
     } finally {
       button.disabled = false;
     }

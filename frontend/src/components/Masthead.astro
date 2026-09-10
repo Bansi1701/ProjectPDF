@@ -1,6 +1,7 @@
 ---
 import Lens from './Lens.astro';
 import Logo from './Logo.astro';
+import Wordmark from './Wordmark.astro';
 import ToolIcon from './ToolIcon.astro';
 import { SITE } from '../config/site';
 import {
@@ -28,7 +29,7 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
   <Lens variant="rail" as="header" class="rail">
     <a class="brand" href={`${base}/`} aria-label={`${SITE.name} home`}>
       <Logo size="2.65rem" />
-      <span>{SITE.name}</span>
+      <Wordmark />
     </a>
 
     <nav class="quick-nav" aria-label="Popular PDF tools">
@@ -253,9 +254,12 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
     .header-search { grid-template-columns: 2.65rem 0 0; width: 2.75rem; min-width: 2.75rem; min-height: 2.75rem; }
     .header-search input { width: 0; opacity: 0; pointer-events: none; }
     .header-search > kbd { opacity: 0; }
-    .header-search:focus-within { position: absolute; right: 3rem; grid-template-columns: 2.65rem minmax(6rem, 1fr) auto; width: min(17rem, calc(100vw - 8.25rem)); }
-    .header-search:focus-within input { width: 100%; opacity: 1; pointer-events: auto; }
-    .header-search:focus-within > kbd { opacity: 1; }
+    .header-search:has(input:focus, .header-search__results:focus-within) { position: absolute; right: 3rem; grid-template-columns: 2.65rem minmax(6rem, 1fr) auto; width: min(17rem, calc(100vw - 8.25rem)); }
+    .header-search:has(input:focus, .header-search__results:focus-within) input { width: 100%; opacity: 1; pointer-events: auto; }
+    .header-search:has(input:focus, .header-search__results:focus-within) > kbd { opacity: 1; }
+    /* The expanded input ends before the theme button. Anchor results to the
+       action rail instead so their left edge stays inside a narrow screen. */
+    .header-search__results { right: -3rem; width: min(24rem, calc(100vw - 3.5rem)); }
     .all-panel { position: fixed; top: 4.65rem; right: 0.5rem; bottom: max(0.5rem, env(safe-area-inset-bottom)); left: 0.5rem; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; width: auto; max-height: none; padding: 1rem; overflow: hidden; transform: none; }
     .all-panel__head { padding: 0.1rem 0.05rem 0.85rem; }
     .all-panel__head > div { display: grid; grid-template-columns: 1fr; gap: 0.2rem; }
@@ -277,7 +281,7 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
     .all-panel__foot { padding-top: 0.75rem; }
     .all-panel__foot nav { gap: 0.8rem; }
   }
-  @media (max-width: 28em) { .brand span { display: none; } .mobile-group ul { grid-template-columns: 1fr; } .privacy-note { font-size: 0; } .privacy-note::after { content: 'Files stay here'; font-size: var(--step--2); } }
+  @media (max-width: 28em) { .mobile-group ul { grid-template-columns: 1fr; } .privacy-note { font-size: 0; } .privacy-note::after { content: 'Files stay here'; font-size: var(--step--2); } }
   @media (prefers-reduced-motion: reduce) { .caret, .menu-tool, .header-search, .header-search__glyph { transition: none; } }
   @media (forced-colors: active) { .menu-surface { background: Canvas; } .mobile-group__dot, .privacy-note i { forced-color-adjust: none; } }
 </style>
@@ -341,6 +345,11 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
   });
   headerSearchTrigger?.addEventListener('click', () => headerSearchInput?.focus());
   headerSearchInput?.addEventListener('input', filterHeaderSearch);
+  headerSearch?.addEventListener('focusout', () => {
+    queueMicrotask(() => {
+      if (!headerSearch.contains(document.activeElement)) closeHeaderSearch();
+    });
+  });
   headerSearchInput?.addEventListener('focus', () => {
     if (headerSearchInput.value.trim()) filterHeaderSearch();
   });

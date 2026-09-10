@@ -1,15 +1,15 @@
 ---
 title: "OCR a scanned contract on your own computer"
 description: "Turn a scanned PDF into a searchable document without sending it to an OCR service: what affects accuracy, the steps, what to check afterwards, and honest limits."
-summary: "OCR adds an invisible text layer to a scanned page so it can be searched and copied. On HatePDF the recognition engine runs in your browser, so the scan never leaves your device. Accuracy depends on resolution, contrast and skew; verify names, dates and totals against the page before relying on them."
+summary: "OCR adds an invisible text layer to a scanned page so it can be searched and copied. On Filozy the recognition engine runs in your browser, so the scan never leaves your device. Accuracy depends on resolution, contrast and skew; verify names, dates and totals against the page before relying on them."
 tools: ["ocr-pdf", "auto-crop", "redact-pdf"]
 keywords: ["ocr scanned pdf", "make scanned pdf searchable", "ocr pdf offline", "ocr without uploading", "searchable pdf from scan", "ocr accuracy tips"]
 updated: "2026-09-01"
 faqs:
   - question: "Does OCR change how the page looks?"
     answer: "No. The scanned image stays exactly as it was. OCR adds an invisible layer of text positioned over the words in the picture, which is what lets you search and select them. Print it and it looks identical."
-  - question: "Which languages does HatePDF's OCR recognise?"
-    answer: "English. The engine's language data is served from HatePDF's own servers when you run the tool, and only English is included today. Documents in other languages will be recognised poorly."
+  - question: "Which languages does Filozy's OCR recognise?"
+    answer: "English. The engine's language data is served from Filozy's own servers when you run the tool, and only English is included today. Documents in other languages will be recognised poorly."
   - question: "How long does it take?"
     answer: "Roughly a second per page on a laptop and several seconds per page on a phone, after a one-time download of the engine for the session. The first page is the slowest. Keep the tab in the foreground on mobile so the browser does not pause the work."
 ---
@@ -35,14 +35,14 @@ OCR is statistics, and its confidence rises and falls with the input:
 - **Contrast and cleanliness.** Grey text on grey paper, coffee rings, and the shadow of a fold all cost characters.
 - **Skew.** A page scanned at an angle confuses line detection. Straighten it first.
 - **Typeface.** Clean printed text recognises well. Stylised fonts less so. Handwriting, honestly, is a gamble.
-- **Language.** HatePDF's engine recognises English. Other languages will come out garbled.
+- **Language.** Filozy's engine recognises English. Other languages will come out garbled.
 
 You cannot fix a bad scan with a better algorithm. Rescanning at 300 DPI, flat, in good light, is worth more than any setting.
 
 ## Step by step
 
 1. **Trim and straighten first.** Open the scan in [Auto crop](/auto-crop/) to remove scanner borders and uneven margins. Clean edges help the engine find the text block.
-2. Open [OCR PDF](/ocr-pdf/) and choose the trimmed file. The recognition engine is downloaded from HatePDF's own servers at this point — it is program code, not your document going the other way.
+2. Open [OCR PDF](/ocr-pdf/) and choose the trimmed file. The recognition engine is downloaded from Filozy's own servers at this point — it is program code, not your document going the other way.
 3. Run the tool. Progress and a **confidence figure** are shown as it works; a low figure on a page is a hint to look closely at that page later.
 4. Save the searchable PDF, and the text file if you want it.
 5. **Verify before you rely on it.** Search the result for a clause you know is there. Compare every number, date, party name and defined term you will act on against the page image. OCR errors cluster in exactly those places: *0* and *O*, *1* and *l*, decimal points, currency symbols.

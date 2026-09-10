@@ -1,10 +1,10 @@
-# PDFCraft Design Language
+# Filozy Design Language
 
-The shared interface system for PDFCraft. Use this document and the accompanying PDFCraft Design Language reference for every new page, component, and tool.
+The shared interface system for Filozy. Use this document and the accompanying Filozy Design Language reference for every new page, component, and tool.
 
 ## Product direction
 
-PDFCraft is a private document studio: calm, precise, and visibly browser-side. It must not resemble a dense, generic file-conversion dashboard. Use white or deep-slate space, strong typography, restrained rose actions, document previews, and honest processing disclosures.
+Filozy is a private document studio: calm, precise, and visibly browser-side. It must not resemble a dense, generic file-conversion dashboard. Use white or deep-slate space, strong typography, restrained rose actions, document previews, and honest processing disclosures.
 
 ## Tokens
 
@@ -28,7 +28,7 @@ Use semantic CSS variables in shared styles; do not place raw colours or one-off
 
 ## Page rules
 
-1. Header: logo and wordmark left; category navigation centred; theme control and sign-in right.
+1. Header: logo and wordmark left; category navigation centred; theme control and sign-in right. Use the shared `frontend/src/components/Wordmark.astro` beside the unchanged mark. It provides the Filozy wordmark in the existing Plus Jakarta Sans 700 role at `--step-2`; keep the name visible on small and mobile screens.
 2. Home: strong search-first hero, then a responsive bento grid of tools.
 3. Tool cards: category marker, meaningful icon, title, outcome-oriented description, and a restrained 4px hover lift.
 4. Tool workflow: explain -> choose files -> show page thumbnails -> select operation settings -> preview result -> download.

@@ -1,7 +1,7 @@
 ---
 title: "Shrink a PDF under a 2 MB, 5 MB or 10 MB upload limit"
 description: "What makes a PDF large, the lossless step to try first, when to lower image resolution and by how much, and how to split as a last resort — without uploading."
-summary: "A PDF's size is nearly always its images. Start lossless — rewrite the structure and drop unused objects — then reduce image resolution to 150 DPI for screen reading or 110 DPI for the smallest file, and split the document if the limit still cannot be met. HatePDF reports the real byte change."
+summary: "A PDF's size is nearly always its images. Start lossless — rewrite the structure and drop unused objects — then reduce image resolution to 150 DPI for screen reading or 110 DPI for the smallest file, and split the document if the limit still cannot be met. Filozy reports the real byte change."
 tools: ["compress-pdf", "flatten-pdf", "split-by"]
 keywords: ["compress pdf under 2mb", "reduce pdf size for upload", "shrink pdf file size", "compress pdf without losing quality", "pdf too large to upload", "compress pdf offline"]
 updated: "2026-09-01"

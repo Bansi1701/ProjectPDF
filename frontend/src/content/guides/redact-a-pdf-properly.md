@@ -9,7 +9,7 @@ faqs:
   - question: "Why can people still copy the text under my black box?"
     answer: "Because the box was drawn on top of the page, not into it. A PDF page is a list of drawing instructions; adding a filled rectangle appends one more instruction, and the text instructions before it are untouched. Anyone who selects the region, searches the file, or removes the rectangle gets the original words."
   - question: "Is redacting a scanned PDF different?"
-    answer: "A scan is a picture, so the text you see is pixels, and any searchable text layer added by OCR is a second copy. Redaction has to remove both: the pixels under the mark and the hidden text. HatePDF runs OCR locally so it can find the words in a scan, then removes the marked content and checks the page for leftover text."
+    answer: "A scan is a picture, so the text you see is pixels, and any searchable text layer added by OCR is a second copy. Redaction has to remove both: the pixels under the mark and the hidden text. Filozy runs OCR locally so it can find the words in a scan, then removes the marked content and checks the page for leftover text."
   - question: "Does redaction remove the document's metadata too?"
     answer: "No â€” metadata lives outside the pages. After redacting, open the file in the Metadata tool and clear the author, title, subject and keywords, and remove any bookmarks or attachments that repeat what you redacted."
 ---
@@ -47,7 +47,7 @@ A scanned document is a picture of a page. If it has ever been run through OCR â
 
 Metadata (author, title, subject, keywords, creator, dates), bookmarks that quote headings, comments and sticky notes, form-field values, and attached files. None of these are on the page, so no page tool touches them. They need a separate pass.
 
-## How HatePDF redacts
+## How Filozy redacts
 
 The [Redact PDF](/redact-pdf/) tool works on all of this, on your device:
 

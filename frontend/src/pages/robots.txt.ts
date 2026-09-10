@@ -37,7 +37,7 @@ const AI_AGENTS = [
 export const GET: APIRoute = () =>
   new Response(
     [
-      '# HatePDF welcomes search engines and AI assistants alike.',
+      '# Filozy welcomes search engines and AI assistants alike.',
       '# Every page here is public, static and tracker-free.',
       '',
       'User-agent: *',

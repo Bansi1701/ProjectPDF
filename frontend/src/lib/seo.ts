@@ -28,7 +28,7 @@ export interface ArticleItem {
 const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '');
 
 /**
- * Where the site is deployed, base path included: "https://hatepdf.com" or
+ * Where the site is deployed, base path included: "https://example.com" or
  * "https://bansi1701.github.io/ProjectPDF".
  *
  * Both halves come from astro.config, which reads SITE_ORIGIN, so moving to a
@@ -139,8 +139,8 @@ export const articleLd = (article: ArticleItem) => ({
 export const helpCollectionLd = (items: Array<{ name: string; path: string }>) => ({
   '@context': 'https://schema.org',
   '@type': 'CollectionPage',
-  name: 'HatePDF Help Center',
-  description: 'Step-by-step guides and answers for every HatePDF tool.',
+  name: 'Filozy Help Center',
+  description: 'Step-by-step guides and answers for every Filozy tool.',
   url: canonical('/help/'),
   mainEntity: {
     '@type': 'ItemList',

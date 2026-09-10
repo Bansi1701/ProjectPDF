@@ -1,0 +1,16 @@
+---
+import { SITE } from '../config/site';
+---
+
+<span class="wordmark" data-wordmark>{SITE.name}</span>
+
+<style>
+  .wordmark {
+    display: inline-block;
+    flex-shrink: 0;
+    color: var(--ink);
+    font: var(--weight-bold) var(--step-2)/1.2 var(--font-display);
+    letter-spacing: var(--tracking-tight);
+    white-space: nowrap;
+  }
+</style>

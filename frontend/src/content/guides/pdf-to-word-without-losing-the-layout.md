@@ -1,7 +1,7 @@
 ---
 title: "PDF to Word without losing the layout: faithful vs editable"
 description: "Why PDF to Word is hard, the difference between a faithful page reproduction and flowing editable text, which to choose for which job, and what to check afterwards."
-summary: "A PDF stores positioned characters, not paragraphs, so every converter has to guess the structure. HatePDF offers two conversions: 'Looks like the PDF' reproduces each line where it sits, for sharing and signing; 'Editable text' rebuilds paragraphs, headings, lists and tables for rewriting. Both run in your browser."
+summary: "A PDF stores positioned characters, not paragraphs, so every converter has to guess the structure. Filozy offers two conversions: 'Looks like the PDF' reproduces each line where it sits, for sharing and signing; 'Editable text' rebuilds paragraphs, headings, lists and tables for rewriting. Both run in your browser."
 tools: ["pdf-to-word", "ocr-pdf", "word-to-pdf"]
 keywords: ["pdf to word without losing formatting", "convert pdf to docx", "pdf to word offline", "pdf to word no upload", "editable pdf to word", "pdf to word layout"]
 updated: "2026-09-01"
