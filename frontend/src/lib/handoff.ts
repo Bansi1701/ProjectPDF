@@ -11,8 +11,8 @@
  * the file and re-picked it. Two rules keep that honest:
  *
  *   1. A handoff is deleted the moment it is claimed.
- *   2. Anything left behind — a closed tab, a back button — is purged after
- *      TTL_MS, and every open sweeps the store.
+ *   2. Anything left behind expires after TTL_MS. The next open removes it;
+ *      a closed browser cannot run a background cleanup timer.
  *
  * Nothing is written unless someone clicks "continue with", so this never
  * stores a document on its own initiative.
@@ -37,16 +37,21 @@ function open(): Promise<IDBDatabase> {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'key' });
     };
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      request.result.onversionchange = () => request.result.close();
+      resolve(request.result);
+    };
     request.onerror = () => reject(request.error);
   });
 }
 
 function tx<T>(db: IDBDatabase, mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
-    const request = run(db.transaction(STORE, mode).objectStore(STORE));
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    const transaction = db.transaction(STORE, mode);
+    const request = run(transaction.objectStore(STORE));
+    transaction.oncomplete = () => resolve(request.result);
+    transaction.onerror = () => reject(transaction.error ?? new Error('Local file storage failed.'));
+    transaction.onabort = () => reject(transaction.error ?? new Error('Local file storage was interrupted.'));
   });
 }
 
@@ -55,40 +60,59 @@ async function sweep(db: IDBDatabase): Promise<void> {
   const all = await tx<Stashed[]>(db, 'readonly', (store) => store.getAll() as IDBRequest<Stashed[]>);
   const stale = all.filter((entry) => Date.now() - entry.at > TTL_MS);
   if (stale.length === 0) return;
-  const store = db.transaction(STORE, 'readwrite').objectStore(STORE);
-  for (const entry of stale) store.delete(entry.key);
+  await tx(db, 'readwrite', (store) => {
+    for (const entry of stale.slice(0, -1)) store.delete(entry.key);
+    return store.delete(stale[stale.length - 1].key);
+  });
 }
 
 /** Returns a key the next page can claim the file with, or null if unavailable. */
 export async function stash(file: File | Blob, name: string): Promise<string | null> {
   if (typeof indexedDB === 'undefined') return null;
+  let db: IDBDatabase | undefined;
   try {
-    const db = await open();
+    db = await open();
     await sweep(db);
     const key = `h${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
     await tx(db, 'readwrite', (store) =>
       store.put({ key, name, type: file.type || 'application/pdf', blob: file, at: Date.now() } satisfies Stashed)
     );
-    db.close();
     return key;
   } catch {
     return null;
+  } finally {
+    db?.close();
   }
 }
 
 /** Claims and immediately deletes a handoff. */
 export async function claim(key: string): Promise<File | null> {
   if (typeof indexedDB === 'undefined') return null;
+  let db: IDBDatabase | undefined;
   try {
-    const db = await open();
+    db = await open();
     await sweep(db);
-    const entry = await tx<Stashed | undefined>(db, 'readonly', (store) => store.get(key) as IDBRequest<Stashed | undefined>);
-    if (entry) await tx(db, 'readwrite', (store) => store.delete(key));
-    db.close();
+    // Serialize read + delete together: two tabs must not claim the same PDF.
+    const entry = await new Promise<Stashed | undefined>((resolve, reject) => {
+      const transaction = db!.transaction(STORE, 'readwrite');
+      const store = transaction.objectStore(STORE);
+      const request = store.get(key) as IDBRequest<Stashed | undefined>;
+      let found: Stashed | undefined;
+      request.onsuccess = () => {
+        const candidate = request.result;
+        if (candidate && Date.now() - candidate.at <= TTL_MS) found = candidate;
+        if (candidate) store.delete(key);
+      };
+      transaction.oncomplete = () => resolve(found);
+      transaction.onerror = () => reject(transaction.error ?? new Error('Could not open the local handoff.'));
+      transaction.onabort = () => reject(transaction.error ?? new Error('The local handoff was interrupted.'));
+    });
     if (!entry) return null;
     return new File([entry.blob], entry.name, { type: entry.type });
   } catch {
     return null;
+  } finally {
+    db?.close();
   }
 }
 

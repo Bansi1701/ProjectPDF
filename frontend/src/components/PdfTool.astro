@@ -150,7 +150,7 @@ const dropTitle = takesExcel
             A browser cannot fetch someone else's page — the security rules that protect you
             from other sites also stop us reading them. So we fetch it. No document of yours
             is involved: you give us a public address, and we render what anyone could see.
-            Nothing is stored.
+            Do not enter a private or confidential URL.
           </span>
         </aside>
 
@@ -205,11 +205,14 @@ const dropTitle = takesExcel
 
     {
       mode === 'split' && (
+        <>
         <label class="field">
           <span>Page groups</span>
           <input data-ranges value="1" placeholder="1-3, 4-6, 9" />
           <small>Each comma-separated group becomes its own PDF.</small>
         </label>
+        <p class="preview__note">Need equal parts, a file-size target, bookmarks or smart separators? <a href={`${base}/split-by/`}>Open advanced splitting</a>.</p>
+        </>
       )
     }
 
@@ -541,14 +544,14 @@ const dropTitle = takesExcel
     }
 
     <div class="workspace__actions">
-      <button class="btn btn--primary" data-run type="button">{action}</button>
+      <button class="btn btn--primary" data-run type="button" disabled>{action}</button>
       <button class="btn btn--quiet" data-clear type="button">Clear</button>
     </div>
 
-    <p class="status" data-status role="status" aria-live="polite"></p>
+    <p class="status" data-status role="status" aria-live="polite" aria-atomic="true"></p>
   </div>
 
-  <section class="result" data-result hidden aria-live="polite">
+  <section class="result" data-result hidden aria-live="polite" role="region" aria-label="Finished file" tabindex="-1">
     <div class="result__headline">
       <span class="result__pct" data-pct></span>
       <span class="result__sizes" data-sizes></span>
@@ -566,7 +569,7 @@ const dropTitle = takesExcel
     <p class="result__receipt" data-receipt></p>
   </section>
 
-  <p class="error" data-error hidden role="alert"></p>
+  <p class="error" data-error hidden role="alert" tabindex="-1"></p>
 
   <SaveDialog />
 
@@ -577,7 +580,8 @@ const dropTitle = takesExcel
 </section>
 
 <script>
-  import type { WorkerRequest, WorkerResponse } from '../lib/pdf/types';
+  import type { WorkerRequest, WorkerResponse, WorkerProgress } from '../lib/pdf/types';
+  import { receiveWorkflow, appendWorkflowAction } from '../lib/workflow';
   import { PREVIEW_SIZE_KEY, readPreference, writePreference } from '../lib/browserPreferences';
 
   const root = document.querySelector<HTMLElement>('[data-pdf-tool]');
@@ -612,10 +616,15 @@ const dropTitle = takesExcel
     const fileBar = q<HTMLElement>('[data-file-bar]');
     const fileBarLabel = q('[data-file-bar-label]');
     const changeFileBtn = q<HTMLButtonElement>('[data-change-file]');
+    const runLabel = runBtn.textContent ?? 'Run tool';
 
     let files: File[] = [];
     let worker: Worker | null = null;
     let jobId = 0;
+    let nextRequestId = 0;
+    let selectionId = 0;
+    let busy = false;
+    let lastProgress = -1;
     let urls: string[] = [];
     let previewUrls: string[] = [];
     /** Id of the in-flight page-size probe, so its answer is never shown as a result. */
@@ -664,7 +673,7 @@ const dropTitle = takesExcel
     // document actually contains an edit.
     editor?.addEventListener('editorchange', (event) => {
       const count = Number((event as CustomEvent<{ count?: number }>).detail?.count ?? 0);
-      runBtn.disabled = count === 0;
+      runBtn.disabled = busy || count === 0;
     });
 
     /** Identifies the grid's open documents across messages, unlike a job id. */
@@ -814,7 +823,18 @@ const dropTitle = takesExcel
     function ensureWorker(): Worker {
       if (!worker) {
         worker = new Worker(new URL('../lib/pdf/worker.ts', import.meta.url), { type: 'module' });
-        worker.onmessage = (e: MessageEvent<WorkerResponse>) => onDone(e.data);
+        worker.onmessage = (e: MessageEvent<WorkerResponse | WorkerProgress>) => {
+          if ('progress' in e.data) {
+            const { id, progress } = e.data;
+            if (id !== jobId || !busy || progress.total <= 0) return;
+            const percent = Math.max(0, Math.min(100, Math.round(progress.done / progress.total * 100)));
+            if (percent === lastProgress) return;
+            lastProgress = percent;
+            status.textContent = `${progress.label ?? 'Working on this device'} · ${percent}%`;
+            return;
+          }
+          onDone(e.data);
+        };
         worker.onerror = () => fail('The engine failed to start.');
       }
       return worker;
@@ -825,11 +845,21 @@ const dropTitle = takesExcel
       urls = [];
     }
 
+    function setBusy(value: boolean) {
+      busy = value;
+      root!.setAttribute('aria-busy', String(value));
+      runBtn.textContent = value ? 'Working…' : runLabel;
+      runBtn.disabled = value || (mode !== 'url-to-pdf' && !files.length)
+        || Boolean(editor && editor.getEdits().length === 0);
+    }
+
     function fail(message: string) {
+      result.hidden = true;
       errorEl.textContent = message;
       errorEl.hidden = false;
-      runBtn.disabled = false;
+      setBusy(false);
       status.textContent = '';
+      errorEl.focus({ preventScroll: true });
     }
 
     const usable = (file: File) => {
@@ -877,10 +907,11 @@ const dropTitle = takesExcel
     }
 
     async function probe(file: File) {
-      probeId = ++jobId;
+      const id = probeId = ++nextRequestId;
       const bytes = await file.arrayBuffer();
+      if (id !== probeId) return;
       ensureWorker().postMessage(
-        { id: probeId, op: mode, files: [{ name: file.name, bytes }], probe: true },
+        { id, op: mode, files: [{ name: file.name, bytes }], probe: true },
         [bytes]
       );
     }
@@ -890,10 +921,11 @@ const dropTitle = takesExcel
     const previewable = !NON_PDF_INPUT.has(mode) && !editor && !cropStage;
 
     async function preview(file: File) {
-      previewId = ++jobId;
+      const id = previewId = ++nextRequestId;
       const bytes = await file.arrayBuffer();
+      if (id !== previewId) return;
       ensureWorker().postMessage(
-        { id: previewId, op: mode, files: [{ name: file.name, bytes }], preview: true },
+        { id, op: mode, files: [{ name: file.name, bytes }], preview: true },
         [bytes]
       );
     }
@@ -973,6 +1005,10 @@ const dropTitle = takesExcel
     }
 
     function showFiles(next: File[]) {
+      selectionId += 1;
+      jobId = ++nextRequestId;
+      probeId = previewId = -1;
+      lastProgress = -1;
       const kept = next.filter(usable);
 
       files = takesMany ? kept : kept.slice(0, 1);
@@ -999,6 +1035,8 @@ const dropTitle = takesExcel
       // The dropzone is only useful before a file is picked — once one is,
       // showing it alongside the file list and preview just eats space.
       const hasFiles = files.length > 0;
+      setBusy(false);
+      runBtn.disabled = !hasFiles || Boolean(editor);
       fileUi.hidden = hasFiles;
       fileBar.hidden = !hasFiles;
       if (hasFiles) {
@@ -1023,6 +1061,15 @@ const dropTitle = takesExcel
       // lets you act on what you see.
       if (grid) void openGrid();
       else if (previewable && files[0]) void preview(files[0]);
+      if (kept.length < next.length) {
+        const formats = takesImages ? 'JPG, PNG or WebP images' : takesText ? 'text, CSV or Markdown files'
+          : mode === 'word-to-pdf' ? 'DOCX files' : mode === 'excel-to-pdf' ? 'XLSX files'
+          : mode === 'powerpoint-to-pdf' ? 'PPTX files' : 'PDF files';
+        errorEl.textContent = hasFiles
+          ? `${next.length - kept.length} unsupported file(s) skipped. This tool accepts ${formats}.`
+          : `Choose ${formats} to use this tool.`;
+        errorEl.hidden = false;
+      }
     }
 
     changeFileBtn.addEventListener('click', () => input.click());
@@ -1089,7 +1136,7 @@ const dropTitle = takesExcel
       }
 
       if (id !== jobId) return;
-      runBtn.disabled = false;
+      setBusy(false);
       status.textContent = '';
 
       if (!res.ok) {
@@ -1200,7 +1247,19 @@ const dropTitle = takesExcel
       }
 
       receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
+      appendWorkflowAction(downloads, res.files);
+      const restart = document.createElement('button');
+      restart.type = 'button';
+      restart.className = 'btn btn--quiet';
+      restart.textContent = 'Start over';
+      restart.addEventListener('click', () => {
+        input.value = '';
+        showFiles([]);
+        input.focus();
+      });
+      downloads.append(restart);
       result.hidden = false;
+      result.focus({ preventScroll: true });
     }
 
     function renderMetadata(report: import('../lib/pdf/metadata').MetadataReport) {
@@ -1247,88 +1306,7 @@ const dropTitle = takesExcel
     // The URL tool has no file to pick, so the dropzone and worker are unused.
     if (mode === 'url-to-pdf') {
       fileUi.hidden = true;
-
-      /**
-     * Hands the grid a way to talk to the worker.
-     *
-     * The file bytes are copied rather than transferred here: the grid keeps
-     * its documents open for the whole session, and the run afterwards needs
-     * the same bytes again. Transferring would detach them and the export
-     * would find an empty buffer.
-     */
-    async function openGrid(): Promise<void> {
-      if (!grid) return;
-
-      // Whatever was open belongs to the file that just went away. Releasing
-      // first matters: the worker holds a parsed document per session, and
-      // swapping files without closing would keep every one of them alive.
-      await grid.release();
-      if (files.length === 0) return;
-
-      gridSession += 1;
-
-      const payload = await Promise.all(
-        files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
-      );
-
-      // Until the grid has its pages, running would silently fall back to the
-      // typed box and give a different answer for the same click. Better to
-      // wait the moment it takes than to be non-deterministic.
-      runBtn.disabled = true;
-
-      grid.attach({
-        request(message) {
-          return new Promise<OpResult>((resolve) => {
-            const id = ++jobId;
-            gridWaiting.set(id, resolve);
-            ensureWorker().postMessage({
-              id,
-              op: mode,
-              sessionId: gridSession,
-              // Only opening needs the bytes; later messages name the session.
-              files: message.session === 'open' ? payload : [],
-              ...message,
-            });
-          });
-        },
-      });
-
-      const failure = await grid.load();
       runBtn.disabled = false;
-
-      if (failure) {
-        // The grid failing is not the tool failing — the typed box still works.
-        grid.hidden = true;
-        return;
-      }
-
-      syncRangesFromGrid();
-    }
-
-    const rangesInput = q<HTMLInputElement>('[data-ranges]');
-    const orderInput = q<HTMLInputElement>('[data-order]');
-
-    /** Grid edited → mirror it into whichever text box this tool shows. */
-    function syncRangesFromGrid() {
-      if (!grid) return;
-      if (rangesInput) rangesInput.value = grid.getRanges();
-      if (orderInput) {
-        orderInput.value = grid
-          .getPlan()
-          .map((entry) => entry.page)
-          .join(', ');
-      }
-    }
-
-    if (grid) {
-      grid.addEventListener('gridchange', syncRangesFromGrid);
-
-      // Text box edited → mirror it into the grid. Both edit one plan, so
-      // neither can quietly disagree with the other.
-      rangesInput?.addEventListener('input', () => {
-        if (document.activeElement === rangesInput) grid.applyRanges(rangesInput.value);
-      });
-    }
 
     runBtn.addEventListener('click', async () => {
         const url = root.querySelector<HTMLInputElement>('[data-url]')?.value?.trim() ?? '';
@@ -1428,18 +1406,21 @@ const dropTitle = takesExcel
      */
     async function openGrid(): Promise<void> {
       if (!grid) return;
+      const selected = selectionId;
+      runBtn.disabled = true;
 
       // Whatever was open belongs to the file that just went away. Releasing
       // first matters: the worker holds a parsed document per session, and
       // swapping files without closing would keep every one of them alive.
       await grid.release();
-      if (files.length === 0) return;
+      if (files.length === 0 || selected !== selectionId) return;
 
       gridSession += 1;
 
       const payload = await Promise.all(
         files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
       );
+      if (selected !== selectionId) return;
 
       // Until the grid has its pages, running would silently fall back to the
       // typed box and give a different answer for the same click. Better to
@@ -1449,7 +1430,7 @@ const dropTitle = takesExcel
       grid.attach({
         request(message) {
           return new Promise<OpResult>((resolve) => {
-            const id = ++jobId;
+            const id = ++nextRequestId;
             gridWaiting.set(id, resolve);
             ensureWorker().postMessage({
               id,
@@ -1464,7 +1445,8 @@ const dropTitle = takesExcel
       });
 
       const failure = await grid.load();
-      runBtn.disabled = false;
+      if (selected !== selectionId) return;
+      setBusy(false);
 
       if (failure) {
         // The grid failing is not the tool failing — the typed box still works.
@@ -1501,16 +1483,23 @@ const dropTitle = takesExcel
     }
 
     runBtn.addEventListener('click', async () => {
-      if (!files.length) return;
+      if (!files.length || busy) return;
 
-      runBtn.disabled = true;
+      const id = jobId = ++nextRequestId;
+      lastProgress = -1;
+      setBusy(true);
       errorEl.hidden = true;
       result.hidden = true;
       status.textContent = 'Working on this device…';
 
-      const payload = await Promise.all(
-        files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() }))
-      );
+      let payload: { name: string; bytes: ArrayBuffer }[];
+      try {
+        payload = await Promise.all(files.map(async (file) => ({ name: file.name, bytes: await file.arrayBuffer() })));
+      } catch {
+        if (id === jobId) fail('The file could not be read. Choose it again and retry.');
+        return;
+      }
+      if (id !== jobId) return;
 
       const picked = (name: string) =>
         root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
@@ -1551,7 +1540,7 @@ const dropTitle = takesExcel
       const bates = root.querySelector<HTMLInputElement>('[data-bates]')?.value?.trim() ?? '';
 
       const request: WorkerRequest = {
-        id: ++jobId,
+        id,
         op: mode,
         files: payload,
         ranges: root.querySelector<HTMLInputElement>('[data-ranges]')?.value,
@@ -1633,6 +1622,7 @@ const dropTitle = takesExcel
       // Transfer, don't copy — a 50 MB file should not exist twice in memory.
       ensureWorker().postMessage(request, payload.map((f) => f.bytes));
     });
+    void receiveWorkflow(root, (file) => showFiles([file]), () => selectionId === 0, fail);
   }
 </script>
 

@@ -56,7 +56,7 @@ const schemas = [
 
     <section>
       <h2>What {name} says about your files</h2>
-      <p>Everything below is {name}'s own description, linked to the page it appears on. Plans and wording change; check the source for the current version.</p>
+      <p>These summaries link to {name}'s published information. Plans, features and wording change; check the linked sources before choosing a service.</p>
       <ul class="model">
         {theirModel.map((item) => <li>{item.statement} <a href={item.sourceUrl} rel="nofollow noopener">{item.sourceLabel}</a></li>)}
       </ul>
@@ -64,11 +64,12 @@ const schemas = [
 
     <section>
       <h2>What {SITE.name} does instead</h2>
-      <p>{SITE.name} never receives the file. The document is opened in browser memory, a Web Worker performs the operation on your device, and the result is saved locally. There is no upload to encrypt, no server copy to delete on a timer, no account to protect, and no quota — because nothing is being spent on your behalf. Every finished job shows the number of document bytes sent, which is zero, and you can confirm it in your browser's network inspector.</p>
+      <p>{SITE.name}'s document tools process the files on your device and save the results locally, without uploading your document to our server. Capacity depends on your browser, available memory and the selected operation. Multi-step workflows can temporarily store a result in your browser to carry it to the next tool; see the <a href={`${base}/privacy/`}>privacy policy</a> for cleanup details. The website and supporting engine files still require ordinary web requests.</p>
     </section>
 
     <section>
-      <h2>The same jobs, on your device</h2>
+      <h2>Tools for similar tasks</h2>
+      <p>This table compares task categories, not identical features or output fidelity. Review the tool's limitations and check your exported document.</p>
       <div class="tablewrap">
         <table>
           <thead><tr><th scope="col">On {name}</th><th scope="col">On {SITE.name}</th><th scope="col">Where it runs</th></tr></thead>

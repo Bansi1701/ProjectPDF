@@ -5,13 +5,13 @@ import PdfTool from '../components/PdfTool.astro';
 import ToolGuide from '../components/ToolGuide.astro';
 ---
 
-<BaseLayout title="Split PDF — Filozy" description="Split by ranges, selected pages, file size, bookmarks, blank sheets or page-start words.">
+<BaseLayout title="Split PDF — Filozy" description="Split a PDF using visible page cuts or custom page groups. Open advanced splitting for size targets and smart separators.">
   <Masthead />
   <main id="main">
     <PdfTool
       mode="split"
       title="Split PDF"
-      description="Ranges, pages, size limits and smart separators — all processed in your browser."
+      description="Choose where to cut in the page preview, or enter custom page groups — all processed in your browser."
     />
     <ToolGuide slug="split-pdf" />
   </main>

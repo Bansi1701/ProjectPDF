@@ -1,0 +1,13 @@
+---
+// Trusted, already-rendered article HTML only. Apply the deployment base to
+// root-relative anchors at build time; external URLs and escaped code examples
+// stay untouched. This avoids browser-only link repair and new parser packages.
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const content = await Astro.slots.render('default');
+const linkedContent = base ? content.replace(
+  /(<a\b[^>]*?\bhref=)(["'])(\/(?!\/)[^"']*)\2/gi,
+  (_match: string, before: string, quote: string, path: string) =>
+    `${before}${quote}${path === base || path.startsWith(`${base}/`) ? path : `${base}${path}`}${quote}`,
+) : content;
+---
+<Fragment set:html={linkedContent} />

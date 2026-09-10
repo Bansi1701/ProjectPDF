@@ -4,10 +4,12 @@ import LegalShell from '../components/LegalShell.astro';
 <LegalShell
   title="Terms for using Filozy"
   eyebrow="Terms"
-  updated="August 27, 2026"
+  updated="September 9, 2026"
   description="Plain-language conditions for a free, browser-based PDF utility. These terms explain responsibilities and limits; they do not turn Filozy into a document custodian."
 >
   <div class="callout"><strong>Summary, not a substitute</strong><p>Use Filozy only with documents you have the right to process. Keep your own originals. Review every output before relying on it. The software is provided without a service guarantee.</p></div>
+  <p>Operator: Filozy.</p>
+  <p>Contact: <a href="mailto:admin.filozy@gmail.com">admin.filozy@gmail.com</a>. For information about personal data and privacy requests, read our <a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/privacy/`}>privacy policy</a>.</p>
 
   <h2>Acceptance and eligibility</h2>
   <p>By using Filozy, you agree to these terms. If you do not agree, do not use the service. You must be able to form a binding agreement where you live, or use the service under the supervision of someone who can.</p>
@@ -28,11 +30,10 @@ import LegalShell from '../components/LegalShell.astro';
   <p>Filozy is provided “as is” and “as available,” without warranties of accuracy, fitness, non-infringement, merchantability, availability, or lossless results to the fullest extent permitted by law. It is not legal, compliance, archival, accessibility, security, or records-management advice.</p>
 
   <h2>Limitation of liability</h2>
-  <p>To the fullest extent permitted by law, Filozy's maintainers are not liable for indirect, incidental, special, consequential, exemplary, or lost-data damages arising from use or inability to use the service. Where liability cannot be excluded, it is limited to the amount you paid to use Filozy in the twelve months before the claim, which is currently zero.</p>
+  <p>To the fullest extent permitted by law, Filozy's maintainers are not liable for indirect, incidental, special, consequential, exemplary, or lost-data damages arising from use or inability to use the service. Nothing in these terms excludes rights or liabilities that cannot lawfully be excluded.</p>
 
   <h2>Open-source and third-party software</h2>
   <p>Filozy includes third-party open-source libraries governed by their own licenses. External links and browser or operating-system behavior are controlled by their respective providers.</p>
+  <p><a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/licenses/`}>Read the software and font notices.</a></p>
 
-  <h2>Questions</h2>
-  <p>Use the public <a href="https://github.com/Bansi1701/ProjectPDF/issues">GitHub issue tracker</a> for product or terms questions. Never attach a confidential PDF or password to a public report.</p>
 </LegalShell>

@@ -1,8 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 
 const outputRoot = "dist";
-const basePath = "/ProjectPDF/";
+const deployment = new URL(`${(process.env.SITE_ORIGIN || 'https://bansi1701.github.io/ProjectPDF').replace(/\/+$/, '')}/`);
+const basePath = deployment.pathname;
 const htmlFiles = [];
 
 function collectHtml(directory) {
@@ -21,15 +22,22 @@ if (!existsSync(outputRoot)) {
 collectHtml(outputRoot);
 
 const brokenLinks = [];
-const hrefPattern = /href=["']([^"'#?]+)["']/g;
+const hrefPattern = /href=["']([^"']+)["']/g;
 
 for (const htmlFile of htmlFiles) {
   const html = readFileSync(htmlFile, "utf8");
+  const pageUrl = new URL(relative(outputRoot, htmlFile).replaceAll('\\', '/').replace(/index\.html$/, ''), deployment);
   for (const match of html.matchAll(hrefPattern)) {
     const href = match[1];
-    if (!href.startsWith(basePath)) continue;
+    if (href.startsWith('#')) continue;
+    const target = new URL(href.replaceAll('&amp;', '&'), pageUrl);
+    if (target.origin !== deployment.origin) continue;
+    if (!target.pathname.startsWith(basePath)) {
+      brokenLinks.push(`${htmlFile} -> ${href} (outside the deployment base)`);
+      continue;
+    }
 
-    const relativeTarget = href.slice(basePath.length);
+    const relativeTarget = decodeURIComponent(target.pathname.slice(basePath.length));
     if (!relativeTarget) continue;
 
     const cleanTarget = relativeTarget.replace(/\/$/, "");

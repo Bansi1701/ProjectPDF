@@ -1,0 +1,22 @@
+---
+import LegalShell from '../components/LegalShell.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const notices = [
+  ['PDF document engine (@cantoo/pdf-lib)', 'licenses/pdf-lib.txt'],
+  ['PDF preview engine (PDF.js)', 'licenses/pdfjs.txt'],
+  ['Text recognition (Tesseract.js)', 'licenses/tesseract.txt'],
+  ['Text-recognition core', 'licenses/tesseract-core.txt'],
+  ['ZIP compression (fflate)', 'licenses/fflate.txt'],
+  ['Font subsetting (HarfBuzz)', 'licenses/harfbuzz.txt'],
+  ['Inter typeface', 'fonts/OFL-Inter.txt'],
+  ['Plus Jakarta Sans typeface', 'fonts/OFL-Plus-Jakarta-Sans.txt'],
+];
+---
+<LegalShell title="Software and font notices" eyebrow="Licenses" updated="September 9, 2026" description="Open-source software and font notices for Filozy's browser-based document tools.">
+  <p>Filozy uses open-source document engines and typefaces. Their authors retain the rights described in the notices below. Those licenses do not grant rights to documents you choose to process.</p>
+  <h2>Browser engines and fonts</h2>
+  <ul>{notices.map(([label, path]) => <li><a href={`${base}/${path}`}>{label}</a></li>)}</ul>
+  <p>Additional PDF.js component notices are distributed with its font, character-map, image-decoding and colour-profile support files.</p>
+  <h2>Documents and third-party names</h2>
+  <p>Only process files you own or have permission to use. Filozy does not provide third-party documents or grant permission to reproduce their content. Product names used in comparisons belong to their respective owners and do not imply endorsement or affiliation.</p>
+</LegalShell>

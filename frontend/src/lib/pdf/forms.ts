@@ -174,11 +174,11 @@ export async function fillForm(
         if (value) field.check();
         else field.uncheck();
       } else if (field instanceof PDFDropdown) {
-        if (value) field.select(value);
+        if (value) field.select(value); else field.clear();
       } else if (field instanceof PDFRadioGroup) {
-        if (value) field.select(value);
+        if (value) field.select(value); else field.clear();
       } else if (field instanceof PDFOptionList) {
-        if (value) field.select(value);
+        if (value) field.select(value); else field.clear();
       } else {
         skipped.push(name);
         continue;

@@ -1335,14 +1335,13 @@ const related = content
     /**
      * Offer the file picker as a way through.
      *
-     * Appended rather than always present, because a permanent "or pick a file"
-     * next to a camera button is noise for the nine people in ten whose camera
-     * works. It is built once and reused.
+     * Photos are also a first-class input: no camera permission is needed to
+     * straighten a page someone has already photographed. Built once and reused.
      */
     let picker: HTMLInputElement | null = null;
     let pickerBtn: HTMLButtonElement | null = null;
 
-    function offerPicker(label: string): void {
+    function offerPicker(label: string, noCamera = true): void {
       if (!picker) {
         picker = document.createElement('input');
         picker.type = 'file';
@@ -1369,7 +1368,7 @@ const related = content
         // what the space is really for instead of leaving a panel that waits
         // for something that is never coming.
         const idle = root.querySelector('[data-scan-idle]');
-        if (idle) {
+        if (idle && noCamera) {
           const heading = idle.querySelector('p');
           const note = idle.querySelector('.scan__idle-note');
           if (heading) heading.textContent = 'No camera here.';
@@ -1381,6 +1380,7 @@ const related = content
       }
       if (pickerBtn) pickerBtn.textContent = label;
     }
+    offerPicker('Choose existing photos', false);
 
     /* ---------------------------------------------------------------- *
      * Camera lifecycle

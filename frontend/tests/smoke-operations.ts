@@ -170,6 +170,29 @@ const signaturePng = Uint8Array.from(
 }
 
 {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage();
+  const form = doc.getForm();
+  const dropdown = form.createDropdown('Choice');
+  dropdown.addOptions(['One', 'Two']);
+  dropdown.select('One');
+  dropdown.addToPage(page, { x: 30, y: 30, width: 150, height: 25 });
+  const radio = form.createRadioGroup('Radio');
+  radio.addOptionToPage('One', page, { x: 30, y: 80, width: 20, height: 20 });
+  radio.select('One');
+  const list = form.createOptionList('List');
+  list.addOptions(['One', 'Two']);
+  list.select('One');
+  list.addToPage(page, { x: 30, y: 120, width: 150, height: 50 });
+  const out = success(await fillForm([input('choices.pdf', await doc.save())], { Choice: '', Radio: '', List: '' }, false), 'clear choices');
+  const reopened = (await PDFDocument.load(out.files[0].bytes)).getForm();
+  assert.deepEqual(reopened.getDropdown('Choice').getSelected(), []);
+  assert.equal(reopened.getRadioGroup('Radio').getSelected(), undefined);
+  assert.deepEqual(reopened.getOptionList('List').getSelected(), []);
+  pass('clearing dropdown, radio and list choices persists in the exported PDF');
+}
+
+{
   const signed = success(await signPdf([alpha], bufferOf(signaturePng), 2, 'bottom-right', 120), 'sign');
   assert.equal(await pageCount(signed.files[0].bytes), 3);
   pass('visual signature is placed on the selected page');
@@ -181,6 +204,12 @@ const signaturePng = Uint8Array.from(
   const unlocked = success(await unlock([input('protected.pdf', protectedPdf.files[0].bytes)], 'Correct-Horse-42!'), 'unlock');
   assert.equal(await pageCount(unlocked.files[0].bytes), 3);
   pass('protect and unlock round-trip with the user password');
+  const locked = input('protected.pdf', protectedPdf.files[0].bytes);
+  const cropped = await crop([locked], { x: 0.1, y: 0.1, width: 0.8, height: 0.8 }, [1]);
+  const composed = await compose([locked], [{ file: 0, page: 1, rotate: 0 }], [], 'protected');
+  assert.equal(cropped.ok, false, 'Crop must require unlocking first');
+  assert.equal(composed.ok, false, 'Page composition must require unlocking first');
+  pass('crop and page composition refuse password-protected input');
 }
 
 {
@@ -220,7 +249,7 @@ const signaturePng = Uint8Array.from(
   pass('repair output reopens successfully');
 }
 
-assert.equal(checks.length, 17);
+assert.equal(checks.length, 19);
 process.stdout.write(`Operation smoke: ${checks.length} groups passed.\n`);
 }
 

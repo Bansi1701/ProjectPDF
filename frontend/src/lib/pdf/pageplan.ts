@@ -48,7 +48,7 @@ export async function compose(
   const sources: PDFDocument[] = [];
   for (const file of files) {
     try {
-      sources.push(await PDFDocument.load(file.bytes, { ignoreEncryption: true }));
+      sources.push(await PDFDocument.load(file.bytes));
     } catch {
       return {
         ok: false,

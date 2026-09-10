@@ -12,6 +12,13 @@ import { dirname, resolve } from 'node:path';
 // harfbuzzjs restricts its `exports` map, so resolve through node_modules
 // directly rather than require.resolve.
 const assets = [
+  // Preserve upstream notices alongside the browser-delivered engines.
+  ['node_modules/@cantoo/pdf-lib/LICENSE.md', 'public/licenses/pdf-lib.txt'],
+  ['node_modules/pdfjs-dist/LICENSE', 'public/licenses/pdfjs.txt'],
+  ['node_modules/tesseract.js/LICENSE.md', 'public/licenses/tesseract.txt'],
+  ['node_modules/tesseract.js-core/LICENSE', 'public/licenses/tesseract-core.txt'],
+  ['node_modules/fflate/LICENSE', 'public/licenses/fflate.txt'],
+  ['node_modules/harfbuzzjs/LICENSE', 'public/licenses/harfbuzz.txt'],
   ['node_modules/harfbuzzjs/dist/harfbuzz-subset.wasm', 'public/wasm/harfbuzz-subset.wasm'],
   // tesseract.js otherwise fetches these from a public CDN, which would tell a
   // third party that someone opened the OCR tool. Every core variant is copied:

@@ -3,9 +3,14 @@
   "type": "module",
   "version": "0.0.1",
   "private": true,
+  "overrides": {
+    "satori": {
+      "fflate": "0.7.5"
+    }
+  },
   "scripts": {
     "dev": "node scripts/copy-wasm.mjs && astro dev",
-    "build": "astro sync && tsc --noEmit --pretty false && node scripts/audit-tools.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-brand.mjs && node scripts/audit-seo.mjs",
+    "build": "astro sync && tsc --noEmit --pretty false && node scripts/audit-tools.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-links.mjs && node scripts/audit-brand.mjs && node scripts/audit-seo.mjs && node scripts/audit-ad-readiness.mjs",
     "preview": "astro preview",
     "assets": "node scripts/copy-wasm.mjs",
     "audit:icons": "node scripts/audit-icons.mjs",
@@ -17,11 +22,12 @@
     "audit:browser-operations": "node scripts/audit-browser-operations.mjs",
     "test:operations": "node scripts/run-operation-smoke.mjs",
     "audit:storage": "node scripts/audit-storage.mjs",
+    "audit:ads": "node scripts/audit-ad-readiness.mjs",
     "audit:bundles": "node scripts/audit-bundles.mjs",
     "audit:brand": "node scripts/audit-brand.mjs",
     "audit:links": "node scripts/audit-links.mjs",
     "typecheck": "astro sync && tsc --noEmit --pretty false",
-    "check": "astro sync && tsc --noEmit --pretty false && node scripts/audit-tools.mjs && node scripts/audit-icons.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/run-operation-smoke.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-links.mjs && node scripts/audit-brand.mjs && node scripts/audit-seo.mjs",
+    "check": "astro sync && tsc --noEmit --pretty false && node scripts/audit-tools.mjs && node scripts/audit-icons.mjs && node scripts/audit-typography.mjs && node scripts/audit-actions.mjs && node scripts/audit-storage.mjs && node scripts/run-operation-smoke.mjs && node scripts/copy-wasm.mjs && astro build && node scripts/audit-bundles.mjs && node scripts/audit-links.mjs && node scripts/audit-brand.mjs && node scripts/audit-seo.mjs && node scripts/audit-ad-readiness.mjs",
     "audit:seo": "node scripts/audit-seo.mjs"
   },
   "dependencies": {

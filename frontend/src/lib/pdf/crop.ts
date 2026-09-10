@@ -195,7 +195,7 @@ export async function crop(files: InputFile[], box: CropBox, pages?: number[]): 
 
   let pdf: PDFDocument;
   try {
-    pdf = await PDFDocument.load(file.bytes, { ignoreEncryption: true });
+    pdf = await PDFDocument.load(file.bytes);
   } catch {
     return {
       ok: false,

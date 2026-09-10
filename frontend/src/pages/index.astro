@@ -11,7 +11,7 @@ import { NAVIGATION_GROUPS } from '../config/navigation';
 const steps = [
   { n: '1', title: 'You pick a file', body: 'The browser hands the tool a copy in memory. No request is made.' },
   { n: '2', title: 'Your CPU does the work', body: 'A Web Worker runs the operation off the main thread, so the page stays responsive.' },
-  { n: '3', title: 'You save the result', body: 'Close the tab and every trace of it is gone. There was never a second copy.' },
+  { n: '3', title: 'You save the result', body: 'Download the finished file, or continue into the next tool with a temporary copy on this device.' },
 ];
 
 /* What a completed job is allowed to log. Mirrors the repo's logging rule:
@@ -25,7 +25,7 @@ const crossings: [string, string][] = [
 
 const promises = [
   { figure: '0', label: 'bytes uploaded' },
-  { figure: '0', label: 'files stored' },
+  { figure: '0', label: 'server copies of your documents' },
   { figure: '0', label: 'accounts required' },
 ];
 
@@ -254,8 +254,8 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
           route your file somewhere and hope you don't check.
         </p>
         <p class="limits__closing">
-          These are labelled wherever they appear. The file is deleted the moment the job
-          finishes — and it is the only time a file of yours leaves your machine at all.
+          Features that are not ready are clearly marked. The live local tools do not send
+          your documents to a server. Public web-page conversion is separate and would send the URL you enter.
         </p>
       </div>
 
@@ -277,7 +277,7 @@ const brandMark = `${baseUrl}brand/pdfcraft-fold-mark.png`;
         <h2 class="close__line">Pick a file. Shape the result.<br />Keep it private.</h2>
         <p class="close__note">
           Every local tool keeps the document in the browser tab. When you save, you take the
-          result with you — nothing is left behind.
+          result with you. Continuing a workflow uses a temporary local copy you can clear at any time.
         </p>
       </div>
     </section>

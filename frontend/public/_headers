@@ -4,9 +4,9 @@
 # Caching turns on one distinction: a filename that changes when its bytes
 # change can be cached forever; one that keeps its name cannot. Vite hashes
 # everything under /_astro, so those are immutable. The engine payloads keep
-# fixed names across a dependency bump, so they get a month instead — long
-# enough to spare a returning OCR user ~30 MB, short enough that an upgrade
-# actually reaches people.
+# fixed names across a dependency bump, so they revalidate before reuse.
+# Unchanged files can still return a small 304 response. A security upgrade
+# must not leave an old worker or engine cached for a month.
 #
 # No Cross-Origin-Opener-Policy or Cross-Origin-Embedder-Policy here, ever:
 # cross-origin isolation is banned repo-wide (see CLAUDE.md). It would buy
@@ -23,15 +23,15 @@
 /_astro/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Fixed names, changed only by a dependency bump.
+# Fixed-name engines must pick up compatible/security updates immediately.
 /tesseract/*
-  Cache-Control: public, max-age=2592000
+  Cache-Control: public, max-age=0, must-revalidate
 /tessdata/*
   Cache-Control: public, max-age=2592000
 /pdfjs/*
-  Cache-Control: public, max-age=2592000
+  Cache-Control: public, max-age=0, must-revalidate
 /wasm/*
-  Cache-Control: public, max-age=2592000
+  Cache-Control: public, max-age=0, must-revalidate
 /fonts/*
   Cache-Control: public, max-age=2592000
 /brand/*

@@ -62,17 +62,18 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       editor. People have lost cases that way.
     </p>
     <p>
-      This rebuilds every page from pixels instead. There is no text layer left to leak,
-      because there is no text layer at all. The cost is that the result is images: not
-      searchable, and a larger file. That is the price of the guarantee, and the result is
-      checked before you get it — if any text can still be extracted, you get an error rather
-      than a file.
+      Marked pages are rebuilt as images, with the marked areas removed from those pixels.
+      Those pages lose their searchable text layer and may increase the file size. Pages
+      without marks are preserved. The tool checks that no text can be extracted from the
+      rebuilt pages before offering a download. Review every page and any document metadata
+      before sharing: information outside your marks is not automatically removed.
     </p>
   </section>
 </section>
 
 <script>
-  import type { RedactionBox, WorkerResponse } from '../lib/pdf/types';
+  import type { RedactionBox, WorkerResponse, WorkerProgress } from '../lib/pdf/types';
+  import { receiveWorkflow, appendWorkflowAction } from '../lib/workflow';
 
   const root = document.querySelector<HTMLElement>('[data-redact]');
 
@@ -112,6 +113,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     let file: File | null = null;
     let worker: Worker | null = null;
     let jobId = 0;
+    let selectionId = 0;
     let urls: string[] = [];
     /** Fractions of the page, so they survive any rendering scale. */
     let boxes: RedactionBox[] = [];
@@ -122,7 +124,14 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     function ensureWorker(): Worker {
       if (!worker) {
         worker = new Worker(new URL('../lib/pdf/worker.ts', import.meta.url), { type: 'module' });
-        worker.onmessage = (e: MessageEvent<WorkerResponse>) => onDone(e.data);
+        worker.onmessage = (e: MessageEvent<WorkerResponse | WorkerProgress>) => {
+          if ('progress' in e.data) {
+            const { id, progress } = e.data;
+            if (id === jobId && progress.total > 0) status.textContent = `${progress.label ?? 'Redacting'} · ${Math.round(progress.done / progress.total * 100)}%`;
+            return;
+          }
+          onDone(e.data);
+        };
         worker.onerror = () => fail('The engine failed to start.');
       }
       return worker;
@@ -150,8 +159,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
      * worker for no benefit. The redaction itself still runs in the worker.
      */
     async function showPages(chosen: File) {
+      if (chosen.type !== 'application/pdf' && !/\.pdf$/i.test(chosen.name)) return fail('Choose a PDF file to mark for redaction.');
+      const selected = ++selectionId;
+      jobId += 1;
       file = chosen;
       boxes = [];
+      refresh();
       errorEl.hidden = true;
       result.hidden = true;
       stage.hidden = false;
@@ -178,6 +191,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
       try {
         for (let n = 1; n <= doc.numPages; n += 1) {
+          if (selected !== selectionId) return;
           const page = await doc.getPage(n);
           const viewport = page.getViewport({ scale: 1.4 });
 
@@ -190,6 +204,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
           canvas.height = Math.floor(viewport.height);
           const ctx = canvas.getContext('2d');
           if (ctx) await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+          if (selected !== selectionId) return;
 
           const marks = document.createElement('div');
           marks.className = 'page__marks';
@@ -336,12 +351,13 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       );
 
       receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
+      appendWorkflowAction(downloads, res.files);
       result.hidden = false;
     }
 
     input.addEventListener('change', () => {
       const chosen = input.files?.[0];
-      if (chosen) void showPages(chosen);
+      if (chosen) void openFile(chosen);
     });
 
     for (const event of ['dragenter', 'dragover'] as const) {
@@ -358,27 +374,35 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     }
     drop.addEventListener('drop', (e) => {
       const chosen = e.dataTransfer?.files?.[0];
-      if (chosen) void showPages(chosen);
+      if (chosen) void openFile(chosen);
     });
 
     clearBtn.addEventListener('click', () => {
-      if (file) void showPages(file);
+      if (file) void openFile(file);
     });
 
     runBtn.addEventListener('click', async () => {
       if (!file || boxes.length === 0) return;
+      const id = ++jobId;
       runBtn.disabled = true;
       errorEl.hidden = true;
       result.hidden = true;
       status.textContent = 'Rebuilding the pages on this device…';
 
-      const bytes = await file.arrayBuffer();
-      jobId += 1;
+      let bytes: ArrayBuffer;
+      try { bytes = await file.arrayBuffer(); }
+      catch { if (id === jobId) fail('The PDF could not be read. Choose it again.'); return; }
+      if (id !== jobId) return;
       ensureWorker().postMessage(
-        { id: jobId, op: 'redact', files: [{ name: file.name, bytes }], boxes },
+        { id, op: 'redact', files: [{ name: file.name, bytes }], boxes },
         [bytes]
       );
     });
+    async function openFile(chosen: File) {
+      try { await showPages(chosen); }
+      catch { fail('This PDF could not open. Choose a readable PDF, or unlock it first if it needs a password.'); }
+    }
+    void receiveWorkflow(root, openFile, () => selectionId === 0, fail);
   }
 </script>
 
@@ -417,15 +441,15 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
   .pages { display: grid; gap: 1rem; max-height: 34rem; overflow-y: auto; padding: 0.75rem; background: var(--paper-sunk); border: 1px solid var(--line); border-radius: var(--radius); }
 
-  .page { position: relative; line-height: 0; touch-action: none; cursor: crosshair; box-shadow: var(--shadow-paper); }
-  .page canvas { width: 100%; height: auto; display: block; }
-  .page__marks { position: absolute; inset: 0; }
+  .pages :global(.page) { position: relative; line-height: 0; touch-action: none; cursor: crosshair; box-shadow: var(--shadow-paper); }
+  .pages :global(.page canvas) { width: 100%; height: auto; display: block; }
+  .pages :global(.page__marks) { position: absolute; inset: 0; }
 
-  .mark {
+  .pages :global(.mark) {
     position: absolute; background: #000;
     outline: 1.5px solid var(--seal); outline-offset: 1px; cursor: pointer;
   }
-  .mark--drawing { background: rgb(0 0 0 / 0.55); pointer-events: none; }
+  .pages :global(.mark--drawing) { background: rgb(0 0 0 / 0.55); pointer-events: none; }
 
   .stage__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
   .stage__count { font-size: var(--step--1); color: var(--muted); }
@@ -440,7 +464,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   .result__pct { font-size: var(--step-2); font-weight: 600; letter-spacing: -0.03em; color: var(--ok); }
   .result__sizes { font-family: var(--font-mono); font-size: var(--step--1); color: var(--ink-2); }
   .result__notes { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.35rem; font-size: var(--step--1); color: var(--ink-2); }
-  .result__actions { display: flex; gap: 0.6rem; }
+  .result__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
   .result__receipt { font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted); padding-top: 0.75rem; border-top: 1px solid var(--line); }
 
   .error {
@@ -485,12 +509,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       min-height: 2.75rem;
     }
 
-    .page {
+    .pages :global(.page) {
       touch-action: none;
     }
 
-    .mark,
-    .mark--drawing {
+    .pages :global(.mark),
+    .pages :global(.mark--drawing) {
       border-width: 2px;
     }
 
@@ -504,5 +528,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     .status {
       gap: 0.65rem;
     }
+    .result__actions :global(.btn) { width: 100%; justify-content: center; min-height: 2.75rem; }
   }
 </style>

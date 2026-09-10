@@ -88,7 +88,7 @@ const crumbs = [
       </p>
       <p>
         You remain in control: download at any step, leave the recipe, or use each tool on its own. A handoff abandoned in
-        a closed tab expires automatically.
+        a closed tab expires after one hour and is deleted the next time a workflow opens, or when you clear site data.
       </p>
     </section>
   </main>
@@ -109,7 +109,7 @@ const crumbs = [
     let chosen: File | null = null;
 
     function choose(file: File | undefined) {
-      if (!file || file.type !== 'application/pdf') {
+      if (!file || (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name))) {
         chosen = null;
         if (start) start.disabled = true;
         if (status) status.textContent = file ? 'Choose a PDF file to start this recipe.' : '';
@@ -139,6 +139,11 @@ const crumbs = [
       if (status) status.textContent = 'Preparing the private handoff…';
       const { stash } = await import('../lib/handoff');
       const key = await stash(chosen, chosen.name);
+      if (!key) {
+        start.disabled = false;
+        if (status) status.textContent = 'Local storage is unavailable. Open the first tool below and choose your PDF there.';
+        return;
+      }
       const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       const destination = `${base}/${page.dataset.firstStep}/`;
       const params = new URLSearchParams({ recipe: page.dataset.recipe ?? '', step: '1' });

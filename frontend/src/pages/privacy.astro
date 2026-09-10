@@ -6,14 +6,22 @@ import { auditedNetworkRequests } from '../lib/networkAudit';
 // must not be: executing the audit here keeps an undocumented network call
 // in our own code failing the build.
 auditedNetworkRequests();
+// The deployment guide selects Cloudflare Pages for filozy.com; the github.io
+// build remains the GitHub Pages preview. Update this with any hosting move.
+const cloudflareHosting = Astro.site?.hostname === 'filozy.com';
 ---
 <LegalShell
   title="Privacy policy"
   eyebrow="Privacy"
-  updated="September 1, 2026"
+  updated="September 9, 2026"
   description="How Filozy handles documents, device preferences and basic website connection information."
 >
   <div class="callout"><strong>In short</strong><p>Filozy's live document tools process your files in your browser. We do not receive, store, analyse or sell the contents of those documents.</p></div>
+
+  <h2>Who operates Filozy</h2>
+  <p>Operator: Filozy.</p>
+  <p>For privacy questions or requests, email <a href="mailto:admin.filozy@gmail.com">admin.filozy@gmail.com</a>. Please do not include document contents, passwords or identity documents unless they are specifically needed and requested.</p>
+  <p>If you email us, we receive your email address and the information you send so we can respond and handle your request. Email is separate from the local PDF tools and is handled through Gmail; <a href="https://policies.google.com/privacy">Google's privacy policy</a> explains that service's processing. Correspondence is kept only as needed to handle the request and meet applicable legal obligations, not for advertising or profiling.</p>
 
   <h2>Documents you choose</h2>
   <p>For tools marked as running on your device, the selected file, filename and finished result remain in your browser. Filozy does not create an account or keep a server copy of those documents. Unsaved work can be lost when you close the tab, clear site data or leave the page.</p>
@@ -22,31 +30,33 @@ auditedNetworkRequests();
   <p>If a web-page-to-PDF feature is available and you use it, the public URL you enter must be sent to a server so that page can be retrieved. Do not enter a private, authenticated or confidential address. Your own PDF documents are not involved in that request.</p>
 
   <h2>Cookies, analytics and advertising</h2>
-  <p>Filozy does not currently use cookies, advertising trackers, analytics profiles, browser fingerprinting or cross-site tracking. We do not sell or share personal information, do not use it for targeted advertising, and do not count which tools you use. A Global Privacy Control signal asks a site to stop selling or sharing your data; there is nothing to stop, so every visitor — with or without the signal — already gets that treatment. The build fails if an undocumented network request or browser-storage call is added to Filozy's own code, and the bundled document engines are pinned to this site's origin and configured to store nothing. If advertising or analytics is ever proposed, it must stay off until you give specific permission.</p>
+  <p>Advertising is not active. The site includes an AdSense ownership-verification tag only; it does not load Google's ad script or send visitor information to Google. We will update this policy and configure the required privacy choices before enabling advertising.</p>
+  <p>Filozy does not currently set cookies or use advertising trackers, analytics profiles, browser fingerprinting or cross-site tracking. We do not sell personal information or share it for targeted advertising, and we do not record which tools you use. These defaults apply to every visitor, including visitors who send a Global Privacy Control signal.</p>
 
   <h2>Preferences saved on your device</h2>
-  <p>If you choose a colour theme, preview size or favourite tools, that preference can be saved on your device for up to 12 months. When you continue a PDF into another local tool, the temporary handoff copy expires after one hour, and expired copies are deleted whenever another workflow starts; the button below removes everything immediately. The text-recognition engine downloads its language data each time you run OCR and does not keep it. Every item here is optional and starts only after your explicit choice — if you never make one, nothing is stored. None of it is used for advertising or profiling.</p>
+  <p>If you choose a colour theme, preview size or favourite tools, that preference can be saved on your device for up to 12 months. Starting or continuing a workflow temporarily saves a copy of your PDF in this browser so the next tool can open it. The copy is deleted when claimed. Unclaimed copies expire after one hour and are removed the next time a workflow opens, or when you clear site data below. Expiry cannot delete data while your browser is closed. These preferences and workflow copies are not used for advertising or profiling.</p>
+  <p>The OCR tool requests language files from this website when needed, without sending your document or recognized text. Like other websites, site files may remain in your browser's ordinary cache. Use your browser's site-data settings to clear that cache.</p>
 
   <div class="data-controls">
-    <div><strong>Clear Filozy data on this device</strong><p>Removes saved appearance and favourite preferences, any unclaimed local workflow file, and any text-recognition engine cache saved by earlier visits.</p></div>
+    <div><strong>Clear Filozy data on this device</strong><p>Removes saved preferences, unclaimed workflow files and the older OCR language cache. Close other Filozy tabs if asked. Downloaded files and your browser's ordinary website cache are not removed.</p></div>
     <button type="button" data-clear-project-data>Clear site data</button>
     <p class="data-controls__status" data-clear-project-status role="status" aria-live="polite"></p>
   </div>
 
   <h2>Website hosting</h2>
-  <p>The site is hosted by GitHub Pages. GitHub may receive ordinary connection information, such as your IP address, requested page, browser headers and access time, when it delivers the website. That request does not include the contents of a document you selected for a local tool. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub's privacy statement</a> explains its processing.</p>
+  <p>The site is hosted by {cloudflareHosting ? 'Cloudflare Pages' : 'GitHub Pages'}. The hosting provider may receive ordinary connection information, such as your IP address, requested page, browser headers and access time, when it delivers the website. That request does not include the contents of a document you selected for a local tool. <a href={cloudflareHosting ? 'https://www.cloudflare.com/privacypolicy/' : 'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement'}>{cloudflareHosting ? 'Cloudflare' : 'GitHub'}'s privacy statement</a> explains its processing.</p>
 
   <h2>External links</h2>
   <p>If you follow a link to another website, that site's privacy policy applies. Filozy does not control external services.</p>
 
   <h2>Children and sensitive information</h2>
-  <p>The service is not directed to children and is not a regulated document repository. Do not post a confidential document, password or personal information in a public support report.</p>
+  <p>The service is not directed to children and is not a regulated document repository. Keep your original files and avoid sharing confidential documents or passwords in public.</p>
 
-  <h2>Your rights by region</h2>
-  <p>Laws in the EU, UK and elsewhere give you rights to access, correct, export, delete and object. Filozy keeps no account, document or profile about you, so there is normally nothing on our side for those rights to act on — that data stays in your browser, where you already control it directly. In India, data-protection law expects a working grievance channel: today that is the public issue tracker below, and if the rules come to require a named contact, one will be published here. Quebec and Brazil require functions that identify, locate or profile you to stay off until you turn them on; Filozy has none to turn on.</p>
+  <h2>Your choices and rights</h2>
+  <p>You control the documents and preferences kept in your browser and can remove them using the controls above or your browser settings. Depending on the law that applies and the information processed, you may have rights to access, correct, delete or receive personal information, object to or restrict its use, and complain to a data-protection authority. Connection information processed by the hosting provider is covered by its privacy statement.</p>
 
-  <h2>Questions and changes</h2>
-  <p>Privacy questions can be submitted through the public <a href="https://github.com/Bansi1701/ProjectPDF/issues">GitHub issue tracker</a>. Do not attach sensitive material. We will update the date above when this policy changes materially.</p>
+  <h2>Policy changes</h2>
+  <p>We will update the date above when this policy changes materially.</p>
 </LegalShell>
 
 <script>
@@ -58,22 +68,23 @@ auditedNetworkRequests();
   button?.addEventListener('click', async () => {
     button.disabled = true;
     if (status) status.textContent = 'Clearing local Filozy data…';
-    clearPreferences();
     try {
+      clearPreferences();
       // Earlier releases let the OCR engine cache its language data. Delete
       // that store too, so "clear" means everything — even data this version
       // no longer writes.
-      indexedDB.deleteDatabase('keyval-store');
-    } catch {
-      /* Unsupported browser: nothing was ever cached there either. */
-    }
-    try {
+      if (typeof indexedDB !== 'undefined') await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.deleteDatabase('keyval-store');
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(new Error('The older OCR cache could not be cleared.'));
+        request.onblocked = () => reject(new Error('Close other Filozy tabs, then try again.'));
+      });
       await clearHandoffs();
       document.documentElement.dataset.theme = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       window.dispatchEvent(new Event('projectpdf:preferences-cleared'));
       if (status) status.textContent = 'Filozy preferences and temporary handoffs were cleared from this browser.';
-    } catch (error) {
-      if (status) status.textContent = error instanceof Error ? error.message : 'Temporary handoffs could not be cleared. Close other Filozy tabs and try again.';
+    } catch {
+      if (status) status.textContent = 'Some data could not be cleared. Close other Filozy tabs and try again, or use your browser’s site-data settings.';
     } finally {
       button.disabled = false;
     }
@@ -85,7 +96,8 @@ auditedNetworkRequests();
   .data-controls strong { color: var(--ink); }
   .data-controls p { margin: 0.25rem 0 0; }
   .data-controls button { min-height: 2.75rem; padding: 0 1rem; border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--line)); border-radius: var(--radius); background: var(--accent); color: white; font: 700 var(--step--1)/1 var(--font-sans); cursor: pointer; }
-  .data-controls button:hover { background: var(--accent-strong); }
+  .data-controls button:hover { filter: brightness(0.92); }
+  :global([data-theme='dark']) .data-controls button { color: var(--paper); }
   .data-controls button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 25%, transparent); outline-offset: 2px; }
   .data-controls button:disabled { cursor: wait; opacity: 0.65; }
   .data-controls__status { grid-column: 1 / -1; min-height: 1.5em; color: var(--ink-2); font-size: var(--step--1); }

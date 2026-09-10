@@ -61,7 +61,6 @@ export function writePreference<T>(key: string, value: T): boolean {
 
 /** Removes every Filozy preference, including the retired usage counter. */
 export function clearPreferences(): void {
-  try {
-    for (const key of [...PREFERENCE_KEYS, LEGACY_USAGE_KEY]) remove(key);
-  } catch {}
+  // Let the caller report failure instead of claiming data was cleared.
+  for (const key of [...PREFERENCE_KEYS, LEGACY_USAGE_KEY]) remove(key);
 }

@@ -63,6 +63,7 @@ Docs/*.pdf
 frontend/public/tesseract/
 frontend/public/pdfjs/
 frontend/public/wasm/
+frontend/public/licenses/
 frontend/.tmp-test/
 
 # NOT ignored: frontend/public/tessdata/ — the OCR language data is fetched

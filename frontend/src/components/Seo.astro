@@ -14,7 +14,7 @@ interface Props {
 const { title, description, imageSlug, noindex = false, keywords = [], contentType = 'website' } = Astro.props;
 const pageSlug = Astro.url.pathname.split('/').filter(Boolean).at(-1) ?? '';
 const tool = TOOLS.find((item) => item.slug === pageSlug && item.status === 'live');
-const canonicalUrl = canonical(Astro.url.pathname);
+const canonicalUrl = canonical(pageSlug === '404' ? '/404.html' : Astro.url.pathname);
 const shareSlug = imageSlug ?? tool?.slug ?? 'home';
 const shareImage = canonical(`/og/${shareSlug}.png`);
 const home = canonicalUrl === canonical('/');

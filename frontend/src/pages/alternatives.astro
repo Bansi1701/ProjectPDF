@@ -16,10 +16,10 @@ const description = `How ${SITE.name}, which processes PDFs in your browser, com
 const rows: [string, string, string][] = [
   ['Where the PDF is processed', 'In your browser, on your device', 'On the service’s servers, after upload'],
   ['What the service can see', 'Nothing from the document — the receipt reports 0 bytes sent', 'The whole file, for as long as its policy keeps it'],
-  ['Retention', 'No copy exists to retain', 'Deleted after a retention window each service states in its privacy policy'],
+  ['Retention', 'No server copy; optional workflow copies expire locally', 'Depends on the service, account settings and published retention policy'],
   ['Account', 'Never', 'Optional for basic use; needed for saved files, higher limits and paid features'],
-  ['Price and quotas', 'Free, no daily quota, no file count limit', 'Free tier with usage limits; paid plans lift them'],
-  ['Works once the page has loaded, with no connection', 'Yes, for every live tool', 'No — each operation requires the upload'],
+  ['Price and quotas', 'Free with no imposed daily quota; device capacity still applies', 'Plans and quotas vary; check the provider’s current terms'],
+  ['Connection needed', 'Needed to load each tool and its engines, fonts or OCR language files; document processing is local', 'Server-backed operations need a connection'],
   ['Certified digital signatures', 'No — visible signatures only', 'Yes, on some services and plans'],
   ['Native mobile and desktop apps', 'No — the browser is the app', 'Yes'],
   ['Very large scans and heavy OCR', 'Limited by your device’s memory', 'Limited by plan, run on their hardware'],
@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: 'When is an upload-based service the better choice?',
-    answer: 'When you need a certified digital signature backed by a certificate authority, a shared cloud workspace, native mobile apps, or processing of enormous files that exceed your device’s memory. Those genuinely need a server, and the established services do them well.',
+    answer: 'Compare specialist providers when you need certificate-backed digital signatures, shared cloud workspaces or processing capacity beyond your browser. A dedicated desktop application may also handle larger files locally. Check the specific service and plan rather than assuming every online tool offers these features.',
   },
   {
     question: `Can I use ${SITE.name} offline?`,
@@ -76,7 +76,7 @@ const schemas = [
 
     <section>
       <h2>The one difference that matters</h2>
-      <p>An upload-based PDF service works like a print shop: you hand the document over, it is processed on their machines, and a copy is returned to you. Their privacy policies describe what happens to the copy they hold and for how long. {SITE.name} works like a tool on your own desk: the file is opened in browser memory, a Web Worker performs the operation on your device, and the result is written locally. There is no copy to describe a retention policy for, because none is ever made.</p>
+      <p>An upload-based PDF service receives your document, processes it remotely, and returns a result. Its privacy policy describes retention and other processing. {SITE.name}'s live local tools process files on your device without a server copy. If you choose a connected workflow, a temporary copy stays in your browser until the next tool claims it; the <a href={`${base}/privacy/`}>privacy policy</a> explains its expiry and deletion controls.</p>
     </section>
 
     <section>

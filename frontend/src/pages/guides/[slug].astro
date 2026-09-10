@@ -3,6 +3,7 @@ import { getCollection, render, type CollectionEntry } from 'astro:content';
 
 import HelpFooter from '../../components/HelpFooter.astro';
 import Masthead from '../../components/Masthead.astro';
+import LocalContentLinks from '../../components/LocalContentLinks.astro';
 import { TOOLS, type Tool } from '../../config/site';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { articleLd, breadcrumbLd, faqLd } from '../../lib/seo';
@@ -67,7 +68,7 @@ const schemas = [
     </header>
 
     <article class="prose">
-      <Content />
+      <LocalContentLinks><Content /></LocalContentLinks>
     </article>
 
     <section class="faqs" aria-labelledby="guide-faq">

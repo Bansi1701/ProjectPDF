@@ -39,8 +39,10 @@ built for other branches and pull requests.
 
 `frontend/public/_headers` sets caching and security headers. Cloudflare reads
 it; GitHub Pages ignores it, so it is safe to ship from either. Content-hashed
-`/_astro/*` is immutable for a year; engine payloads keep fixed filenames so
-they get a month; HTML always revalidates, so a deploy is visible immediately.
+`/_astro/*` is immutable for a year; fixed-name engine payloads and HTML
+revalidate, so a compatible/security update is not held back by a month-long
+browser cache. Unchanged payloads can use conditional requests. Fonts, brand
+assets and OCR language data retain their month-long cache.
 
 It deliberately sets no `Cross-Origin-Opener-Policy` or
 `Cross-Origin-Embedder-Policy` — cross-origin isolation is banned repo-wide.

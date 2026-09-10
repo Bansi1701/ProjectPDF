@@ -1,10 +1,11 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PDFDocument, StandardFonts, rgb } from '@cantoo/pdf-lib';
 import { Resvg } from '@resvg/resvg-js';
 import { zipSync } from 'fflate';
 import { chromium } from 'playwright';
+import { fileURLToPath } from 'node:url';
 
 const base = (process.env.PROJECTPDF_AUDIT_BASE ?? 'http://127.0.0.1:4326/ProjectPDF').replace(/\/$/, '');
 const directory = await mkdtemp(join(tmpdir(), 'projectpdf-browser-'));
@@ -104,7 +105,58 @@ await writeFile(
   })
 );
 
+// Reuse these synthetic inputs for interactive browser QA without opening a
+// second browser controller. No customer documents enter this test corpus.
+const fixturePassword = 'Synthetic-Password-42!';
+const formPdf = await fixture('form.pdf');
+{
+  const doc = await PDFDocument.load(await readFile(formPdf), { updateMetadata: false });
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const field = doc.getForm().createTextField('AuditField');
+  field.setText('Before');
+  field.addToPage(doc.getPage(0), { x: 42, y: 118, width: 180, height: 28, font });
+  await writeFile(formPdf, await doc.save({ useObjectStreams: true, addDefaultPage: false }));
+}
+const blankPdf = join(directory, 'blank.pdf');
+{
+  const doc = await PDFDocument.create({ updateMetadata: false });
+  doc.addPage([360, 480]);
+  await writeFile(blankPdf, await doc.save({ useObjectStreams: true, addDefaultPage: false }));
+}
+const protectedPdf = join(directory, 'protected.pdf');
+{
+  const doc = await PDFDocument.load(await readFile(pdf), { updateMetadata: false });
+  doc.encrypt({ userPassword: fixturePassword, ownerPassword: fixturePassword, algorithm: 'AES-256', permissions: { printing: false, copying: false, modifying: false, annotating: false, fillingForms: false, contentAccessibility: true, documentAssembly: false } });
+  await writeFile(protectedPdf, await doc.save({ useObjectStreams: true, addDefaultPage: false }));
+}
+if (process.argv.includes('--fixtures-only')) {
+  const manifest = join(directory, 'manifest.json');
+  await writeFile(manifest, JSON.stringify({ pdf, changedPdf, formPdf, blankPdf, protectedPdf, password: fixturePassword, image, textFile, docx, xlsx, pptx }, null, 2));
+  console.log(`Synthetic audit fixtures: ${manifest}`);
+  process.exit(0);
+}
+
 const cases = [
+  { slug: 'merge-pdf', files: [pdf, changedPdf], timeout: 45_000, expectPdfPages: 4 },
+  { slug: 'split-pdf', files: [pdf], timeout: 45_000, expectPdfPages: 1,
+    prepare: async (page) => { await page.locator('[data-grid-pages] > *').first().waitFor(); await page.locator('[data-grid-cut]').first().click(); } },
+  { slug: 'rotate-pdf', files: [pdf], timeout: 45_000, expectPdfPages: 2,
+    prepare: async (page) => { await page.locator('[data-grid-pages] > *').first().waitFor(); await page.locator('[data-grid-turn-all="90"]').click(); } },
+  { slug: 'organise-pdf', files: [pdf], timeout: 45_000, expectPdfPages: 2 },
+  { slug: 'extract-pages', files: [pdf], timeout: 45_000,
+    prepare: async (page) => { await page.locator('[data-grid-pages] > *').first().waitFor(); await page.locator('[data-grid-all]').click(); } },
+  { slug: 'delete-pages', files: [pdf], timeout: 45_000, expectPdfPages: 2 },
+  { slug: 'watermark-pdf', files: [pdf], timeout: 45_000, prepare: async (page) => page.locator('[data-text]').fill('SYNTHETIC AUDIT') },
+  { slug: 'page-numbers', files: [pdf], timeout: 45_000, expectPdfPages: 2 },
+  { slug: 'pdf-a', files: [blankPdf], timeout: 45_000, expectPdfPages: 1 },
+  { slug: 'pdf-forms', files: [formPdf], timeout: 45_000,
+    prepare: async (page) => page.locator('[data-field="AuditField"]').fill('After') },
+  { slug: 'protect-pdf', files: [pdf], timeout: 45_000,
+    prepare: async (page) => page.locator('[data-user-password]').fill(fixturePassword) },
+  { slug: 'unlock-pdf', files: [protectedPdf], timeout: 45_000,
+    prepare: async (page) => page.locator('[data-user-password]').fill(fixturePassword) },
+  { slug: 'repair-pdf', files: [pdf], timeout: 45_000, expectPdfPages: 2 },
+  { slug: 'scan-pdf', files: [image], timeout: 60_000, input: '.scan__picker-input', run: '[data-scan-run]' },
   { slug: 'compare-pdf', files: [pdf, changedPdf], timeout: 45_000 },
   { slug: 'pdf-to-jpg', files: [pdf], timeout: 45_000 },
   { slug: 'ocr-pdf', files: [pdf], timeout: 120_000 },
@@ -184,12 +236,23 @@ const cases = [
     prepare: async (page) => {
       const renderedPage = page.locator('[data-pages] .page').first();
       await renderedPage.waitFor({ state: 'visible', timeout: 30_000 });
+      await page.waitForFunction(() => {
+        const preview = document.querySelector('[data-pages] .page');
+        return preview && !preview.closest('[inert]');
+      });
+      await renderedPage.scrollIntoViewIfNeeded();
       const box = await renderedPage.boundingBox();
       if (!box) throw new Error('redact-pdf: rendered page has no usable bounds');
       await page.mouse.move(box.x + box.width * 0.1, box.y + box.height * 0.1);
       await page.mouse.down();
       await page.mouse.move(box.x + box.width * 0.42, box.y + box.height * 0.22);
       await page.mouse.up();
+      await page.locator('[data-pages] .mark:not(.mark--drawing)').first().waitFor({ state: 'visible' });
+      const overlay = await page.locator('[data-pages] .mark:not(.mark--drawing)').first().evaluate((mark) => ({
+        position: getComputedStyle(mark).position,
+        color: getComputedStyle(mark).backgroundColor,
+      }));
+      if (overlay.position !== 'absolute' || overlay.color !== 'rgb(0, 0, 0)') throw new Error('Redaction marks are missing the visible black overlay styling');
     },
   },
   { slug: 'jpg-to-pdf', files: [image], timeout: 45_000 },
@@ -242,16 +305,109 @@ async function auditEditorLayout(browser) {
     if (viewport.name === 'mobile' && layout.thumbWidth > 100) {
       throw new Error(`edit-pdf mobile: a page thumbnail expanded to ${Math.round(layout.thumbWidth)}px`);
     }
+    if (process.argv.includes('--screenshots')) {
+      const output = fileURLToPath(new URL('../.tmp-test/', import.meta.url));
+      await mkdir(output, { recursive: true });
+      await page.locator('live-pdf-editor').screenshot({ path: join(output, `editor-${viewport.name}.png`) });
+    }
     await context.close();
   }
   process.stdout.write('✓ edit-pdf responsive workspace\n');
 }
 
+async function auditWorkflows(browser) {
+  const recipes = [
+    ['shrink-pdf-under-upload-limit', ['flatten-pdf', 'compress-pdf']],
+    ['make-print-ready-booklet', ['auto-crop', 'impose-pdf']],
+    ['prepare-scanned-contract-for-filing', ['auto-crop', 'ocr-pdf', 'header-footer', 'protect-pdf']],
+    ['redact-bank-statement-before-sending', ['redact-pdf', 'metadata-pdf', 'protect-pdf']],
+  ];
+  for (const [recipe, steps] of recipes) {
+    const context = await browser.newContext({ viewport: recipe === 'redact-bank-statement-before-sending'
+      ? { width: 390, height: 844 } : { width: 1280, height: 900 } });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(`${base}/how-to/${recipe}/`, { waitUntil: 'networkidle' });
+    await page.locator('[data-recipe-input]').setInputFiles(pdf);
+    await page.locator('[data-recipe-start]').click();
+    for (const [index, slug] of steps.entries()) {
+      await page.waitForURL((url) => url.pathname.endsWith(`/${slug}/`) && !url.searchParams.has('from'));
+      await page.locator('.workflow-banner').waitFor();
+      const banner = await page.locator('.workflow-banner').textContent();
+      if (!banner.includes(`Step ${index + 1} of ${steps.length}`)) throw new Error(`${recipe}: wrong step banner`);
+      if (slug === 'impose-pdf' && await page.locator('[data-impose-kind]').inputValue() !== 'booklet') throw new Error('Booklet recipe did not select booklet mode');
+      if (slug === 'metadata-pdf' && !await page.locator('[data-metadata-strip]').isChecked()) throw new Error('Redaction recipe did not select metadata removal');
+      const test = cases.find((item) => item.slug === slug);
+      if (test?.prepare && slug !== 'metadata-pdf') await test.prepare(page);
+      await page.locator('[data-run]:visible').last().click();
+      await page.locator('[data-result]').waitFor({ state: 'visible', timeout: 120_000 });
+      if (recipe === 'redact-bank-statement-before-sending') {
+        const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth);
+        if (overflow > 2) throw new Error(`${slug}: workflow result overflows the mobile viewport by ${overflow}px`);
+      }
+      if (index < steps.length - 1) await page.getByRole('button', { name: /^Continue to / }).click();
+      else if (!await page.getByText('Workflow complete. Review and save your finished file.').isVisible()) throw new Error(`${recipe}: completion missing`);
+    }
+    if (errors.length) throw new Error(`${recipe}: ${errors.join('; ')}`);
+    await context.close();
+    process.stdout.write(`✓ workflow ${recipe}\n`);
+  }
+}
+
+async function auditHandoffClaims(browser) {
+  const context = await browser.newContext();
+  try {
+    const seed = await context.newPage();
+    await seed.goto(`${base}/compress-pdf/`, { waitUntil: 'networkidle' });
+    const key = 'synthetic-single-claim';
+    const bytes = Array.from(await readFile(pdf));
+    await seed.evaluate(async ({ key, bytes }) => {
+      const db = await new Promise((resolve, reject) => {
+        const request = indexedDB.open('projectpdf-handoff', 1);
+        request.onupgradeneeded = () => request.result.createObjectStore('files', { keyPath: 'key' });
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      await new Promise((resolve, reject) => {
+        const transaction = db.transaction('files', 'readwrite');
+        transaction.objectStore('files').put({ key, name: 'synthetic.pdf', type: 'application/pdf', blob: new Blob([Uint8Array.from(bytes)], { type: 'application/pdf' }), at: Date.now() });
+        transaction.oncomplete = resolve;
+        transaction.onabort = () => reject(transaction.error);
+      });
+      db.close();
+    }, { key, bytes });
+    const pages = await Promise.all([context.newPage(), context.newPage()]);
+    await Promise.all(pages.map(async (page) => {
+      await page.goto(`${base}/compress-pdf/?recipe=shrink-pdf-under-upload-limit&step=2&from=${key}`, { waitUntil: 'networkidle' });
+      await page.waitForFunction(() => {
+        const run = document.querySelector('[data-run]');
+        const error = document.querySelector('[data-error]');
+        return (run && !run.disabled) || (error && !error.hidden && error.textContent.includes('handoff'));
+      });
+    }));
+    const winners = [];
+    const losers = [];
+    for (const page of pages) (await page.locator('[data-run]').isEnabled() ? winners : losers).push(page);
+    if (winners.length !== 1 || losers.length !== 1) throw new Error('A temporary PDF must be claimed by exactly one tab');
+    if (new URL(winners[0].url()).searchParams.has('from')) throw new Error('Successful handoff retained its consumed key');
+    if (new URL(losers[0].url()).searchParams.get('from') !== key) throw new Error('Failed handoff lost its retry key');
+    await losers[0].reload({ waitUntil: 'networkidle' });
+    await losers[0].locator('[data-error]').waitFor({ state: 'visible' });
+    if (await losers[0].locator('[data-run]').isEnabled()) throw new Error('A consumed PDF was unexpectedly opened a second time');
+    process.stdout.write('✓ atomic two-tab handoff and failed-claim retry\n');
+  } finally {
+    await context.close();
+  }
+}
+
 const browser = await chromium.launch({ headless: true });
 const completed = [];
 try {
+  await auditWorkflows(browser);
+  await auditHandoffClaims(browser);
   await auditEditorLayout(browser);
-  for (const test of cases) {
+  for (const test of process.argv.includes('--workflows-only') ? [] : cases) {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await context.newPage();
     const runtimeErrors = [];
@@ -261,14 +417,14 @@ try {
     });
 
     await page.goto(`${base}/${test.slug}/`, { waitUntil: 'networkidle', timeout: 30_000 });
-    await page.locator('[data-input]').setInputFiles(test.files);
+    await page.locator(test.input ?? '[data-input]').setInputFiles(test.files);
     if (test.prepare) await test.prepare(page);
-    const run = page.locator('[data-run]:visible').last();
+    const run = page.locator(test.run ?? '[data-run]:visible').last();
     await run.waitFor({ state: 'visible', timeout: 30_000 });
     await run.click();
 
-    const result = page.locator('[data-result]');
-    const error = page.locator('[data-error]');
+    const result = page.locator(test.result ?? '[data-result]');
+    const error = page.locator(test.error ?? '[data-error]');
     await Promise.race([
       result.waitFor({ state: 'visible', timeout: test.timeout }),
       error.waitFor({ state: 'visible', timeout: test.timeout }).then(async () => {
@@ -276,7 +432,7 @@ try {
       }),
     ]);
 
-    const downloads = await page.locator('[data-downloads] a[download]').count();
+    const downloads = await page.locator(test.downloads ?? '[data-downloads] a[download]').count();
     if (downloads === 0) throw new Error(`${test.slug}: completed without a downloadable result`);
     if (test.expectPdfPages) {
       const bytes = await page.locator('[data-downloads] a[download]').first().evaluate(async (anchor) => {
