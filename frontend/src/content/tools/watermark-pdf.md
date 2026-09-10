@@ -1,10 +1,10 @@
 ---
-intro: "Use Watermark PDF to choose one PDF plus text or a logo, place, tile, rotate, and fade the watermark on chosen pages. Text and image watermarks are previewed with their real position and opacity before export. Filozy starts the document engine only after you choose a file, performs the work inside this tab, and creates a new result for you to save. Your selected document, its filename, and its contents are not sent to Filozy."
+intro: "Use Watermark PDF to stamp text diagonally across every page of a PDF. The result is created in your browser and saved as a separate copy. Your document is not uploaded. Keep the original and inspect the mark against light and dark page content before sharing."
 howTo:
-  - name: "Choose one PDF plus text or a logo"
-    text: "Select one PDF plus text or a logo from the dropzone. Filozy reads it locally and shows the relevant preview or controls before changing anything."
+  - name: "Choose one PDF"
+    text: "Select the document from the dropzone. The current tool accepts text watermarks, not a separate logo file."
   - name: "Review the settings"
-    text: "Use the page preview and available options to decide exactly how watermark pdf should handle this document."
+    text: "Enter the watermark text, such as DRAFT. It will be drawn diagonally on every page at a preset low opacity."
   - name: "Create and check the result"
     text: "Run the tool, review the reported page count, size, or notes, then save the newly created file while keeping the original."
 faqs:
@@ -13,7 +13,7 @@ faqs:
   - question: "Will this change my original file?"
     answer: "No. Browsers cannot silently overwrite the file you selected. Filozy creates a separate result for you to save or pass to another local tool."
   - question: "What should I check after using Watermark PDF?"
-    answer: "Check the visible preview and the result summary. Text and image watermarks are previewed with their real position and opacity before export. Keep the original until the new output has been opened and verified."
+    answer: "The text is stamped diagonally across every page. Open the saved copy and check that the mark remains readable without obscuring important content. Keep the original."
   - question: "Do I need an account or subscription?"
     answer: "No account is required for this browser-side tool. It runs on the device and does not use a document-upload allowance or daily server quota."
 related:

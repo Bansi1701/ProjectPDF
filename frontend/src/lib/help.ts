@@ -183,8 +183,12 @@ export function helpFaqs(
 }
 
 export function helpLimitations(tool: Tool): string[] {
-  return LIMITATIONS[tool.slug] ?? [
+  const limits = LIMITATIONS[tool.slug] ?? [
     'The result depends on the structure and quality of the source document, so visually inspect the exported file before relying on it.',
     'Browser memory varies by device. Very large or unusually complex PDFs may work better when processed in smaller groups.',
   ];
+  if (['merge-pdf', 'split-pdf', 'rotate-pdf', 'organise-pdf', 'extract-pages', 'delete-pages', 'split-by', 'redact-pdf', 'unlock-pdf', 'repair-pdf'].includes(tool.slug)) {
+    return ['This workflow stops on interactive forms rather than risk losing their fields. Use Flatten first and check every visible answer in that saved copy, then open the flattened PDF here. Keep the editable original; protected or XFA forms may need a compatible form application first.', ...limits];
+  }
+  return limits;
 }

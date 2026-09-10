@@ -6,10 +6,10 @@ import IntentPage from '../components/IntentPage.astro';
   description="Remove sensitive text from a PDF on your own device. The content under each mark is deleted, not covered, and the file never leaves your browser."
   toolSlug="redact-pdf"
   toolName="Redact PDF"
-  explanation="Uploading a document to redact it means the unredacted version has already been shared once. Filozy finds candidate text locally, lets you mark regions, then removes the underlying text and graphics from the page content itself and re-saves the file in your browser. A black rectangle drawn over text in an ordinary editor still leaves the words selectable; this does not."
+  explanation="Uploading a document to redact it means the unredacted version has already been shared once. Filozy lets you draw redaction regions locally, then rebuilds marked pages so the covered material is not left as selectable text beneath a black rectangle. Keep the original separately and inspect every intended removal in the saved result."
   steps={[
-    { title: 'Choose the document locally', text: 'Select the PDF. Text is indexed in the browser so you can search for what needs to go.' },
-    { title: 'Mark what must disappear', text: 'Search for names, numbers or exact phrases — scanned pages are read with local OCR — and draw boxes over anything else. Every red box is yours to confirm or reject before saving.' },
+    { title: 'Choose the document locally', text: 'Select the PDF and inspect its pages for private information. The file stays in this browser.' },
+    { title: 'Mark what must disappear', text: 'Draw boxes over every name, number or other visible area that must disappear. Review every red box before saving.' },
     { title: 'Save the clean copy', text: 'Download the redacted PDF, then search it to confirm the text is gone. Keep the original somewhere safe and separate.' },
   ]}
   limitation="Redaction removes what is inside the marked areas of the page content. Text hidden in metadata, bookmarks, attachments or an image-only scan must be handled separately — run Metadata and OCR checks before you send the file."

@@ -45,7 +45,7 @@ const buildId = typeof releaseId === 'string' && /^[a-f0-9]{40}$/.test(releaseId
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
-    <!-- Verification only. No ad script, cookies or Google requests are enabled. -->
+    <!-- AdSense publisher ownership metadata. Advertising runtime requires a separate reviewed release. -->
     <meta name="google-adsense-account" content="ca-pub-6531092487237731" />
     {buildId && <meta name="filozy-build" content={buildId} />}
 

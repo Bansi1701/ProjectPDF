@@ -57,7 +57,7 @@ export const TOOLS: Tool[] = [
   { slug: 'text-to-pdf', name: 'Text, CSV or Markdown to PDF', searchName: 'Text to PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'Plain text, a spreadsheet export, or Markdown — typeset here.' },
   { slug: 'extract-images', name: 'Extract images', searchName: 'Extract images from PDF', category: 'Convert', runsWhere: 'local', status: 'live', blurb: 'The original pictures at their own resolution, not screenshots.' },
   { slug: 'edit-pdf', name: 'Edit', searchName: 'Edit PDF', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Text, shapes, highlights and images on the page.' },
-  { slug: 'watermark-pdf', name: 'Watermark', searchName: 'Watermark PDF', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Text or a logo — placed, tiled, angled, on the pages you pick.' },
+  { slug: 'watermark-pdf', name: 'Watermark', searchName: 'Watermark PDF', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Stamp preset diagonal text across every page.' },
   { slug: 'page-numbers', name: 'Page numbers', searchName: 'Add page numbers to PDF', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Numbering that matches the page labels people cite.' },
   { slug: 'grayscale-pdf', name: 'Grayscale', searchName: 'Grayscale PDF', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Drop the color without flattening the text into pixels.' },
   { slug: 'auto-crop', name: 'Trim margins', searchName: 'Auto crop PDF', category: 'Edit', runsWhere: 'local', status: 'live', blurb: 'Finds the content and crops to it — for scans with huge margins.' },

@@ -506,9 +506,28 @@ async function auditSaving(browser) {
   } finally { await context.close(); }
 }
 
+async function auditFormCopySafety(browser) {
+  const routes = new Set(['merge-pdf', 'split-pdf', 'rotate-pdf', 'organise-pdf', 'extract-pages', 'delete-pages', 'split-by', 'redact-pdf', 'unlock-pdf', 'repair-pdf']);
+  for (const test of cases.filter((item) => routes.has(item.slug))) {
+    const context = await browser.newContext();
+    try {
+      const page = await context.newPage();
+      await page.goto(`${base}/${test.slug}/`, { waitUntil: 'networkidle' });
+      await page.locator('[data-input]').setInputFiles(test.slug === 'merge-pdf' ? [pdf, formPdf] : [formPdf]);
+      if (test.prepare) await test.prepare(page);
+      await page.locator('[data-run]:visible').last().click();
+      await page.locator('[data-error]').waitFor({ state: 'visible' });
+      if (!(await page.locator('[data-error]').textContent()).includes('Flatten')) throw new Error(`${test.slug}: missing form-safety guidance`);
+      if (await page.locator('[data-result]').isVisible()) throw new Error(`${test.slug}: exposed a result after refusing unsafe form copying`);
+    } finally { await context.close(); }
+  }
+  process.stdout.write('✓ ten rebuilding tool views safely reject interactive forms with actionable guidance\n');
+}
+
 const browser = await chromium.launch({ headless: true });
 const completed = [];
 try {
+  await auditFormCopySafety(browser);
   await auditSaving(browser);
   await auditWorkflows(browser);
   await auditHandoffClaims(browser);

@@ -20,6 +20,7 @@
 import { PDFDict, PDFDocument, PDFName } from '@cantoo/pdf-lib';
 
 import type { InputFile, OpResult } from './types';
+import { pageCopySafetyError } from './pageCopySafety';
 
 const baseName = (name: string): string => name.replace(/\.pdf$/i, '');
 
@@ -244,6 +245,9 @@ export async function unlock(files: InputFile[], password: string): Promise<OpRe
 
     return { ok: false, error: `This file could not be read as a PDF: ${(error as Error).message}` };
   }
+
+  const formError = pageCopySafetyError(doc);
+  if (formError) return { ok: false, error: formError };
 
   // Loading without a password succeeding means the file was either not
   // encrypted at all, or carried only an owner password — which restricts

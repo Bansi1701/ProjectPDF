@@ -1,4 +1,18 @@
-# AdSense setup — disabled pending consent
+# AdSense review and controlled advertising setup
+
+## September 10 editorial readiness release
+
+Public launch-status wording has been replaced with conditional advertising disclosures, Google partner-data links and personalisation opt-out information. This does **not** activate advertising or represent a published CMP. Actual Cloudflare analytics remains disclosed. All 39 live tool Help pages now have original worked examples, output checks and troubleshooting; tool pages retain shorter operating guidance rather than repeating the full article. Source examples are maintained in `frontend/src/lib/helpScenarios.ts`.
+
+The build still rejects advertising/CMP runtime and unreviewed ad units on **every** route. Ownership metadata, seller record and required policy text are checked separately. Never weaken that guard to make the site appear approved.
+
+Owner handoff before serving ads: confirm Google's site review outcome, publish and test the appropriate CMP/withdrawal controls, resolve hosting measurement under the collection standard, and resolve same-origin document-storage isolation. The operator's legal identity obligations and account eligibility require owner/legal review; a brand name and generated policy cannot certify worldwide compliance. Review submission remains an owner action.
+
+For a later placement release, use an explicit reviewed article allowlist; start with at most one labelled manual unit after substantive article content. Reserve layout space and separate it from links and controls. Exclude the homepage tool launcher, tool routes, processing/results/errors, workflows, privacy/terms and empty search pages. Never place advertising in exported documents. Auto Ads across the whole origin is not approved by this checklist.
+
+Google references reviewed for this release: [required disclosures](https://support.google.com/adsense/answer/1348695), [placement rules](https://support.google.com/adsense/answer/1346295), [certified CMP requirements](https://support.google.com/adsense/answer/13554116). These website changes support review; they do not guarantee approval, revenue, originality clearance or legal compliance.
+
+## Prior decisions and implementation history
 
 Owner decision, September 9, 2026: keep ads disabled until consent setup is ready.
 

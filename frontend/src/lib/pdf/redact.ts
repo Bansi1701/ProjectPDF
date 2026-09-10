@@ -21,6 +21,7 @@
 import { PDFDocument } from '@cantoo/pdf-lib';
 
 import { documentOptions, loadPdfjs } from './pdfjs';
+import { pageCopySafetyError } from './pageCopySafety';
 import type { InputFile, OpResult, RedactionBox } from './types';
 
 const baseName = (name: string): string => name.replace(/\.pdf$/i, '');
@@ -40,7 +41,6 @@ export async function redact(files: InputFile[], boxes: RedactionBox[]): Promise
   // Captured before pdf.js sees it: getDocument takes ownership of the buffer
   // it is given and detaches it, so byteLength reads 0 afterwards.
   const bytesIn = file.bytes.byteLength;
-  const api = await loadPdfjs();
 
   let original: PDFDocument;
   try {
@@ -55,6 +55,9 @@ export async function redact(files: InputFile[], boxes: RedactionBox[]): Promise
     };
   }
 
+  const formError = pageCopySafetyError(original);
+  if (formError) return { ok: false, error: formError };
+  const api = await loadPdfjs();
   const source = await api.getDocument({
     // pdf.js may take ownership of and detach the buffer it receives. Keep the
     // original bytes available to pdf-lib for untouched pages.

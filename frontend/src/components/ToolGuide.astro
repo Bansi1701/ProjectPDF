@@ -5,14 +5,14 @@
  * The tool UI above is a dropzone and controls; on its own it tells a crawler
  * almost nothing, and the page that should rank for "merge pdf" was carrying
  * less unique text than the navigation. This renders the same content the
- * Help Center is built from — quick answer, steps, limits, FAQs, related
- * tools — as plain static HTML with matching structured data. No script, so
+ * tool's quick steps and two essential FAQs as static HTML. Worked examples,
+ * full FAQs and troubleshooting live in Help, not a duplicate article. No script, so
  * the zero-JS rule for SEO pages still holds.
  */
 import { getCollection, getEntry } from 'astro:content';
 
 import { TOOLS, type Tool } from '../config/site';
-import { helpFaqs, helpGroupFor, helpLimitations, helpProfileFor, helpQuickAnswer } from '../lib/help';
+import { helpGroupFor, helpLimitations } from '../lib/help';
 import { breadcrumbLd, faqLd, howToLd, softwareAppLd } from '../lib/seo';
 
 interface Props {
@@ -28,9 +28,8 @@ if (!entry) throw new Error(`ToolGuide: no help content for "${slug}" in src/con
 const content = entry.data;
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 const group = helpGroupFor(tool);
-const profile = helpProfileFor(tool);
-const faqs = helpFaqs(tool, content);
-const limitations = helpLimitations(tool);
+const faqs = content.faqs.slice(0, 2);
+const limitations = helpLimitations(tool).slice(0, 1);
 const lower = tool.searchName.toLocaleLowerCase();
 const related = content.related
   .map((candidate) => TOOLS.find((item) => item.slug === candidate && item.status === 'live'))
@@ -61,8 +60,7 @@ const schemas = [
     <article class="guide__main">
       <p class="guide__eyebrow">{group.label} · quick answer</p>
       <h2 id="guide-heading">What {tool.searchName} does</h2>
-      <p class="guide__lede">{helpQuickAnswer(tool)}</p>
-      <p>{content.intro}</p>
+      <p class="guide__lede">{content.intro}</p>
 
       <h2>How to {lower} in your browser</h2>
       <ol class="guide__steps">
@@ -74,13 +72,10 @@ const schemas = [
         ))}
       </ol>
 
-      <h2>Before you start</h2>
-      <ul>{profile.before.map((item) => <li>{item}</li>)}</ul>
-
       <h2>Limits worth knowing</h2>
       <ul>{limitations.map((item) => <li>{item}</li>)}</ul>
 
-      <h2>Frequently asked questions</h2>
+      <h2>Essential questions</h2>
       <div class="guide__faqs">
         {faqs.map((faq) => (
           <details>
@@ -89,6 +84,7 @@ const schemas = [
           </details>
         ))}
       </div>
+      <p><a class="guide__more" href={`${base}/help/${slug}/#how-to-use`}>See a worked example, troubleshooting and the full FAQ →</a></p>
     </article>
 
     <aside class="guide__aside">

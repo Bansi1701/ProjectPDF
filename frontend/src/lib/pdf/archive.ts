@@ -14,6 +14,7 @@
 import { PDFArray, PDFDict, PDFDocument, PDFName, PDFRef } from '@cantoo/pdf-lib';
 
 import type { InputFile, OpResult } from './types';
+import { pageCopySafetyError } from './pageCopySafety';
 
 const baseName = (name: string): string => name.replace(/\.pdf$/i, '');
 
@@ -167,6 +168,8 @@ export async function repair(files: InputFile[]): Promise<OpResult> {
     };
   }
 
+  const formError = pageCopySafetyError(doc);
+  if (formError) return { ok: false, error: formError };
   const total = doc.getPageCount();
   if (total === 0) {
     return { ok: false, error: 'This document has no recoverable pages.' };

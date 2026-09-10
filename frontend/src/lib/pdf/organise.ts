@@ -11,6 +11,7 @@ import type { InputFile, OpResult, OutputFile } from './types';
 import { parsePageSet } from './pageset';
 import { preserveDocumentMetadata } from './documentinfo';
 import { preserveDocumentOutlines } from './outlines';
+import { pageCopySafetyError } from './pageCopySafety';
 
 const load = async (file: InputFile): Promise<PDFDocument> =>
   PDFDocument.load(file.bytes, { updateMetadata: false });
@@ -33,6 +34,8 @@ export async function merge(files: InputFile[]): Promise<OpResult> {
   for (const file of files) {
     bytesIn += file.bytes.byteLength;
     const source = await load(file);
+    const formError = pageCopySafetyError(source);
+    if (formError) return { ok: false, error: formError };
     sources.push(source);
     if (output.getPageCount() === 0) preserveDocumentMetadata(source, output);
     const pages = await output.copyPages(source, source.getPageIndices());
@@ -96,6 +99,8 @@ export async function split(files: InputFile[], ranges: string): Promise<OpResul
   const started = performance.now();
   const source = await load(file);
   const pageCount = source.getPageCount();
+  const formError = pageCopySafetyError(source);
+  if (formError) return { ok: false, error: formError };
 
   const groups = ranges
     .split(',')
@@ -194,6 +199,8 @@ export async function reorder(files: InputFile[], pageOrder: number[]): Promise<
   const started = performance.now();
   const source = await load(file);
   const expected = source.getPageCount();
+  const formError = pageCopySafetyError(source);
+  if (formError) return { ok: false, error: formError };
   const order = pageOrder.length ? pageOrder : source.getPageIndices();
   if (order.length !== expected || new Set(order).size !== expected || order.some((page) => page < 0 || page >= expected)) {
     return { ok: false, error: 'The page order is invalid. Try choosing the file again.' };
@@ -220,6 +227,8 @@ export async function extract(files: InputFile[], ranges: string): Promise<OpRes
   if (!file) return { ok: false, error: 'Choose a PDF to extract from.' };
   const started = performance.now();
   const source = await load(file);
+  const formError = pageCopySafetyError(source);
+  if (formError) return { ok: false, error: formError };
   try {
     const output = await PDFDocument.create({ updateMetadata: false });
     preserveDocumentMetadata(source, output);
@@ -247,6 +256,8 @@ export async function deletePages(files: InputFile[], ranges: string): Promise<O
   if (!file) return { ok: false, error: 'Choose a PDF to edit.' };
   const started = performance.now();
   const source = await load(file);
+  const formError = pageCopySafetyError(source);
+  if (formError) return { ok: false, error: formError };
   try {
     const removed = new Set(parseGroup(ranges, source.getPageCount()));
     const kept = source.getPageIndices().filter((page) => !removed.has(page));

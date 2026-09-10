@@ -16,6 +16,7 @@ import {
   helpQuickAnswer,
 } from '../../lib/help';
 import { articleLd, breadcrumbLd, faqLd, howToLd, softwareAppLd } from '../../lib/seo';
+import { helpScenarioFor } from '../../lib/helpScenarios';
 
 interface Props {
   entry: CollectionEntry<'tools'>;
@@ -40,6 +41,12 @@ const keywords = helpKeywords(tool);
 const description = helpArticleDescription(tool);
 const allFaqs = helpFaqs(tool, content);
 const limitations = helpLimitations(tool);
+const scenario = helpScenarioFor(tool.slug);
+const exampleSteps = [
+  { name: 'Prepare the example', text: scenario.input },
+  { name: 'Make the change', text: scenario.action },
+  { name: 'Check the result', text: scenario.result },
+];
 const related = content.related
   .map((slug) => TOOLS.find((candidate) => candidate.slug === slug && candidate.status === 'live'))
   .filter((candidate): candidate is Tool => Boolean(candidate));
@@ -50,7 +57,7 @@ const heading = `How to use ${tool.searchName}`;
 
 const schemas = [
   articleLd({ headline: heading, description, path: helpUrl, keywords, about: tool.searchName }),
-  howToLd(heading, content.howTo),
+  howToLd(scenario.example, exampleSteps),
   faqLd(allFaqs),
   breadcrumbLd([
     { name: 'Home', url: '/' },
@@ -92,7 +99,8 @@ const schemas = [
           <a href="#quick-answer">Quick answer</a>
           <a href="#what-it-does">What it does</a>
           <a href="#before-you-start">Before you start</a>
-          <a href="#how-to-use">How to use it</a>
+          <a href="#how-to-use">Worked example</a>
+          <a href="#troubleshooting">Troubleshooting</a>
           <a href="#tips">Tips</a>
           <a href="#limitations">Limitations</a>
           <a href="#questions">Questions and answers</a>
@@ -110,7 +118,7 @@ const schemas = [
         <section id="what-it-does">
           <p class="section-kicker">Purpose</p>
           <h2>What does {tool.searchName} do?</h2>
-          <p>{content.intro}</p>
+          <p>{scenario.result}</p>
           <h3>Who normally uses it?</h3>
           <p>This guide is useful for {profile.audience}. The working tool is focused on one outcome: {tool.blurb}</p>
         </section>
@@ -124,14 +132,29 @@ const schemas = [
         </section>
 
         <section id="how-to-use">
-          <p class="section-kicker">Step by step</p>
-          <h2>How do I use {tool.searchName}?</h2>
+          <p class="section-kicker">Worked example</p>
+          <h2>{scenario.example}</h2>
+          <p>This example describes a practice task, not a document you need to upload to us. Use your own authorised file and keep the original.</p>
           <ol class="steps">
-            {content.howTo.map((step, index) => (
+            {exampleSteps.map((step, index) => (
               <li><span>{String(index + 1).padStart(2, '0')}</span><div><h3>{step.name}</h3><p>{step.text}</p></div></li>
             ))}
           </ol>
+          {['merge-pdf', 'split-pdf'].includes(tool.slug) && (
+            <figure class="example-image">
+              <img src={`${base}/help/${tool.slug}-example.png`} width="736" height={tool.slug === 'merge-pdf' ? 464 : 283} loading="lazy" decoding="async" alt={tool.slug === 'merge-pdf' ? 'Filozy Merge page grid showing seven fictional pages: one cover, two résumé pages and four portfolio pages.' : 'Filozy Split page grid showing six fictional pages and the cut controls between them.'} />
+              <figcaption>Actual Filozy page preview using fictional sample documents. {tool.slug === 'merge-pdf' ? 'Check the combined order before merging.' : 'In this example, place a cut after page 3 to create two chapters.'} Interface captured September 10, 2026.</figcaption>
+            </figure>
+          )}
           <a class="inline-cta" href={toolUrl}>Start {tool.searchName} in Filozy <span aria-hidden="true">→</span></a>
+        </section>
+
+        <section id="troubleshooting">
+          <p class="section-kicker">When the result is not right</p>
+          <h2>Troubleshooting {tool.searchName}</h2>
+          <p>{scenario.troubleshooting}</p>
+          <div class="notice"><h3>Before you rely on the output</h3><p>{scenario.caution}</p></div>
+          <p>Open the saved result as well as the preview. Keep the original until you have checked the pages and information that matter for your task.</p>
         </section>
 
         <section id="tips">
@@ -249,6 +272,9 @@ const schemas = [
   .steps li > span { display: grid; width: 2.3rem; height: 2.3rem; place-items: center; border-radius: 11px; background: var(--group-color); color: white; font: 700 var(--step--2)/1 var(--font-mono); }
   .steps h3 { margin: 0 0 0.25rem; }
   .steps p { margin: 0; }
+  .example-image { margin: 1.5rem 0 0; }
+  .example-image img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  .example-image figcaption { margin-top: 0.7rem; color: var(--muted); font-size: var(--step--1); line-height: var(--leading-copy); }
   .inline-cta { display: inline-flex; gap: 0.45rem; margin-top: 1rem; color: var(--accent); font-weight: 700; text-decoration: none; }
   .tip-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem; }
   .tip-grid > div { padding: 1rem; border: 1px solid var(--line); border-radius: calc(var(--radius) * 1.15); background: var(--paper-raised); }

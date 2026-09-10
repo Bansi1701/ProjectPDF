@@ -20,6 +20,9 @@ const problems = [];
 
 for (const file of files) {
   const html = await readFile(file, 'utf8');
+  if (/github\.com\/Bansi1701\/ProjectPDF|public GitHub repository|Source repository:/i.test(html)) {
+    problems.push(`${relative(dist, file)} exposes a removed public repository reference`);
+  }
   const withoutRepositoryPaths = html
     .replaceAll('https://bansi1701.github.io/ProjectPDF', '')
     .replaceAll('https://github.com/Bansi1701/ProjectPDF', '')
@@ -36,6 +39,7 @@ for (const file of files) {
 
 for (const resource of ['llms.txt', 'llms-full.txt', 'guides/feed.xml']) {
   const content = await readFile(join(dist, resource), 'utf8');
+  if (/github\.com\/Bansi1701\/ProjectPDF|Source repository:/i.test(content)) problems.push(`${resource} exposes a removed public repository reference`);
   if (!content.includes('Filozy') || /HatePDF|Hate PDF|PDFCraft/i.test(content)) {
     problems.push(`${resource} has missing or outdated public branding`);
   }

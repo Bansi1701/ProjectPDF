@@ -21,6 +21,7 @@ import { PDFDocument, degrees } from '@cantoo/pdf-lib';
 import type { InputFile, OpResult, PagePlan } from './types';
 import { preserveDocumentMetadata } from './documentinfo';
 import { preserveDocumentOutlines } from './outlines';
+import { pageCopySafetyError } from './pageCopySafety';
 
 const baseName = (name: string): string => name.replace(/\.pdf$/i, '');
 
@@ -48,7 +49,10 @@ export async function compose(
   const sources: PDFDocument[] = [];
   for (const file of files) {
     try {
-      sources.push(await PDFDocument.load(file.bytes));
+      const source = await PDFDocument.load(file.bytes, { updateMetadata: false });
+      const formError = pageCopySafetyError(source);
+      if (formError) return { ok: false, error: formError };
+      sources.push(source);
     } catch {
       return {
         ok: false,

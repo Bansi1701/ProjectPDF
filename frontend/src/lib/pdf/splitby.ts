@@ -48,6 +48,7 @@ import {
 import type { PDFObject } from '@cantoo/pdf-lib';
 
 import { compose } from './pageplan';
+import { pageCopySafetyError } from './pageCopySafety';
 import { documentOptions, loadPdfjs } from './pdfjs';
 import type { InputFile, OpResult, OpSuccess, PagePlan } from './types';
 
@@ -662,6 +663,8 @@ export async function splitBy(files: InputFile[], options: SplitByOptions): Prom
   }
 
   const pageCount = source.getPageCount();
+  const formError = pageCopySafetyError(source);
+  if (formError) return { ok: false, error: formError };
   if (pageCount < 2) {
     return {
       ok: false,

@@ -61,6 +61,8 @@ jobs:
         run: |
           npx astro preview --host 127.0.0.1 --port 4326 --background
           npm run audit:browser-operations
+          npm run audit:help-browser
+          npm run audit:browser
 
       - name: Publish to Cloudflare Pages
         env:

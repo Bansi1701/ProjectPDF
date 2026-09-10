@@ -65,7 +65,6 @@ export const organizationLd = () => ({
   url: `${SITE_ORIGIN}/`,
   logo: canonical('/brand/pdfcraft-fold-mark.png'),
   description: SITE.description,
-  sameAs: ['https://github.com/Bansi1701/ProjectPDF'],
 });
 
 export const softwareAppLd = (name: string, description: string, path: string) => ({

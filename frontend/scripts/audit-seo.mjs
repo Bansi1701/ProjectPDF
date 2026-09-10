@@ -111,6 +111,15 @@ for (const file of files) {
   if (isToolPage && !html.includes('"FAQPage"')) {
     problems.push(`${label}: tool page without its guide content (no FAQ)`);
   }
+  if (isHelpPage) {
+    for (const marker of ['id="how-to-use"', 'Worked example', 'id="troubleshooting"', 'Before you rely on the output', '"TechArticle"', '"FAQPage"']) {
+      if (!html.includes(marker)) problems.push(`${label}: missing reference-guide content: ${marker}`);
+    }
+    const toolHtml = await readFile(join(dist, slug, 'index.html'), 'utf8');
+    const howTo = [...html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)]
+      .map(([, json]) => JSON.parse(json)).find((schema) => schema['@type'] === 'HowTo');
+    if (!howTo?.step?.length || toolHtml.includes(JSON.stringify(howTo))) problems.push(`${label}: help example must differ from the tool quick steps`);
+  }
   const isGuidePage = segments.length === 2 && segments[0] === 'guides';
   if (isGuidePage && !html.includes('"TechArticle"')) {
     problems.push(`${label}: guide without TechArticle structured data`);

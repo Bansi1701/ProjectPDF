@@ -19,6 +19,7 @@
     "audit:tools": "node scripts/audit-tools.mjs",
     "audit:dependencies": "node scripts/audit-dependencies.mjs",
     "audit:browser": "node scripts/audit-browser.mjs",
+    "audit:help-browser": "node scripts/audit-help-browser.mjs",
     "audit:browser-operations": "node scripts/audit-browser-operations.mjs",
     "test:operations": "node scripts/run-operation-smoke.mjs",
     "audit:storage": "node scripts/audit-storage.mjs",

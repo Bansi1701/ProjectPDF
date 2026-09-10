@@ -1,10 +1,10 @@
 ---
-intro: "Use Overlay PDF to choose a base PDF and an overlay PDF, place letterhead, draft marks, or repeated pages over the original. Both files remain local and page matching is performed before a combined copy is exported. Filozy starts the document engine only after you choose a file, performs the work inside this tab, and creates a new result for you to save. Your selected document, its filename, and its contents are not sent to Filozy."
+intro: "Use Overlay PDF to place the second PDF over or under the first, using the selected fit. Both files remain local and a separate combined copy is exported. Inspect the alignment and check that the overlay does not obscure important text before sharing."
 howTo:
   - name: "Choose a base PDF and an overlay PDF"
     text: "Select a base PDF and an overlay PDF from the dropzone. Filozy reads it locally and shows the relevant preview or controls before changing anything."
   - name: "Review the settings"
-    text: "Use the page preview and available options to decide exactly how overlay pdf should handle this document."
+    text: "Choose the base first and overlay second. Select Over or Under and the desired Fit option, then create the result."
   - name: "Create and check the result"
     text: "Run the tool, review the reported page count, size, or notes, then save the newly created file while keeping the original."
 faqs:
@@ -13,7 +13,7 @@ faqs:
   - question: "Will this change my original file?"
     answer: "No. Browsers cannot silently overwrite the file you selected. Filozy creates a separate result for you to save or pass to another local tool."
   - question: "What should I check after using Overlay PDF?"
-    answer: "Check the visible preview and the result summary. Both files remain local and page matching is performed before a combined copy is exported. Keep the original until the new output has been opened and verified."
+    answer: "Open the combined copy and inspect the first and last pages for alignment and unintended covering. Check pages of different sizes separately, and keep both originals."
   - question: "Do I need an account or subscription?"
     answer: "No account is required for this browser-side tool. It runs on the device and does not use a document-upload allowance or daily server quota."
 related:

@@ -4,7 +4,7 @@ import { chromium } from 'playwright';
 
 const here = (path) => fileURLToPath(new URL(path, import.meta.url));
 const site = readFileSync(here('../src/config/site.ts'), 'utf8');
-const slugs = [...site.matchAll(/\{\s*slug:\s*'([^']+)'[\s\S]*?status:\s*'live'[\s\S]*?\}/g)].map(
+const slugs = [...site.matchAll(/\{\s*slug:\s*'([^']+)'[^}]*?status:\s*'live'[^}]*?\}/g)].map(
   (match) => match[1]
 );
 const brand = /export const SITE\s*=\s*\{[\s\S]*?\bname:\s*'([^']+)'/.exec(site)?.[1];

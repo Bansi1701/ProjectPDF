@@ -28,7 +28,9 @@ for (let attempt = 1; attempt <= 6; attempt++) {
     }));
     const privacy = pages.find((page) => page.route === '/privacy/').html;
     assert.match(privacy, /Ontario, Canada/, 'Operator jurisdiction missing');
-    assert.match(privacy, /Advertising is not active/, 'Disabled-ad disclosure missing');
+    for (const disclosure of ['When an ad is served', 'cookies, web beacons, IP addresses', 'policies.google.com/technologies/partner-sites', 'myadcenter.google.com', 'workflow identifiers are not advertising data']) {
+      assert.ok(privacy.includes(disclosure), `Advertising disclosure missing: ${disclosure}`);
+    }
     const analyticsTags = pages.reduce((count, page) => count + page.analyticsTags, 0);
     if (analyticsTags) {
       assert.match(privacy, /Cloudflare Web Analytics is currently added/, 'Host analytics is not disclosed');

@@ -1,10 +1,10 @@
 ---
-intro: "Use Redact PDF to search private words or exact phrases across the document, include scanned pages with local OCR, and review every marked area before saving. A true redaction removes the covered content rather than drawing a black rectangle that can be moved or copied through. Filozy performs the work inside this tab; your document is not uploaded."
+intro: "Use Redact PDF to draw areas over private information and review every mark before saving. Marked pages are rebuilt so the covered content is removed rather than left beneath a movable black rectangle. Filozy performs the work in this tab; your document is not uploaded."
 howTo:
   - name: "Choose one PDF"
     text: "Select one PDF from the dropzone. Filozy reads it locally and shows the relevant preview or controls before changing anything."
-  - name: "Find or mark private content"
-    text: "Search a name, account number, email address, or phrase and mark all matches, or drag boxes by hand. Local OCR can read scanned pages with no text layer."
+  - name: "Mark private content"
+    text: "Draw a box over every area that must be removed, including repeated headers and image-only occurrences. Review every mark before saving."
   - name: "Create and check the result"
     text: "Run the tool, review the reported page count, size, or notes, then save the newly created file while keeping the original."
 faqs:

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { PDFDocument, StandardFonts } from '@cantoo/pdf-lib';
+import { PDFDocument, PDFName, StandardFonts } from '@cantoo/pdf-lib';
 
 import { crop } from '../src/lib/pdf/crop';
 import { editDocument, pageNumbers } from '../src/lib/pdf/edit';
@@ -17,6 +17,7 @@ import { signPdf } from '../src/lib/pdf/sign';
 import { textDocToPdf } from '../src/lib/pdf/textdoc';
 import type { InputFile, OpResult, OpSuccess } from '../src/lib/pdf/types';
 import { watermark } from '../src/lib/pdf/watermark';
+import { pageCopySafetyError } from '../src/lib/pdf/pageCopySafety';
 
 const checks: string[] = [];
 
@@ -68,6 +69,39 @@ async function main(): Promise<void> {
 const alpha = await makePdf('alpha', [500, 510, 520]);
 const beta = await makePdf('beta', [600, 610]);
 const formPdf = await makePdf('form', [540], true);
+{
+  const source = await PDFDocument.load(formPdf.bytes);
+  assert.match(pageCopySafetyError(source) ?? '', /Flatten/);
+  for (const operation of [
+    () => merge([alpha, formPdf]),
+    () => split([formPdf], '1'),
+    () => reorder([formPdf], [0]),
+    () => extract([formPdf], '1'),
+    () => deletePages([formPdf], '1'),
+    () => compose([formPdf], [{ file: 0, page: 1, rotate: 0 }], [], 'form'),
+    () => repair([formPdf]),
+    () => unlock([formPdf], ''),
+  ]) {
+    const result = await operation();
+    assert.equal(result.ok, false, 'Page-copy operation must not silently drop form fields');
+    if (!result.ok) assert.match(result.error, /Flatten/);
+  }
+  const flat = success(await flattenPdf([formPdf]), 'flatten before rearrangement');
+  source.encrypt({ userPassword: 'Test-form-42!', ownerPassword: 'Test-form-owner-42!', algorithm: 'AES-256' });
+  const openedForm = await unlock([input('protected-form.pdf', await source.save())], 'Test-form-42!');
+  assert.equal(openedForm.ok, false, 'Unlock must not drop fields after password-open');
+  if (!openedForm.ok) assert.match(openedForm.error, /Flatten/);
+  const flattened = input('flattened.pdf', flat.files[0].bytes);
+  const merged = success(await merge([flattened, alpha]), 'merge flattened form');
+  assert.equal(await pageCount(merged.files[0].bytes), 4);
+  const plain = await PDFDocument.create();
+  plain.addPage();
+  assert.equal(pageCopySafetyError(plain), undefined);
+  assert.equal(plain.catalog.has(PDFName.of('AcroForm')), false, 'Safety probe must not create a form');
+  plain.catalog.set(PDFName.of('AcroForm'), plain.context.obj({ Fields: [], XFA: 'unsupported' }));
+  assert.match(pageCopySafetyError(plain) ?? '', /XFA/);
+  pass('page-copy operations reject interactive/XFA forms; flattened copies can be composed');
+}
 const signaturePng = Uint8Array.from(
   atob('iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAYAAAD0In+KAAAAFElEQVR42mNk+M/wn4GBgYGJAQoAHgQCAcf3O7sAAAAASUVORK5CYII='),
   (character) => character.charCodeAt(0)
@@ -249,7 +283,7 @@ const signaturePng = Uint8Array.from(
   pass('repair output reopens successfully');
 }
 
-assert.equal(checks.length, 19);
+assert.equal(checks.length, 20);
 process.stdout.write(`Operation smoke: ${checks.length} groups passed.\n`);
 }
 
