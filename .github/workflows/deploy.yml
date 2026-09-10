@@ -41,7 +41,7 @@ jobs:
         run: npm audit --audit-level=high || echo "⚠️ npm audit reported high-severity findings. Continuing for deployment."
       - name: Build production site
         # Repository variables (Settings → Secrets and variables → Actions →
-        # Variables). All optional. Set SITE_ORIGIN to https://example.com
+        # Variables). All optional. Set SITE_ORIGIN to https://filozy.com
         # once DNS points at Pages and the whole site — canonicals, sitemap,
         # robots, schema, CNAME — moves with it. INDEXNOW_KEY enables the
         # post-deploy ping to Bing and partners; the verification values

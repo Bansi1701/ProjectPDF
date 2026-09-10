@@ -41,17 +41,17 @@ Generated at build time from the same config, so they cannot drift:
 | `/og/<slug>.png` | Share image per tool |
 | `CNAME`, `<indexnow-key>.txt` | Written only when the matching variable is set |
 
-## Moving to a custom domain (example.com is a placeholder)
+## Moving to filozy.com (or any domain)
 
 The site derives every absolute URL from one variable. Nothing in `src/` names
 the host.
 
 1. Buy the domain. In the repository, **Settings → Pages → Custom domain**,
-   enter `example.com` and enable *Enforce HTTPS* once the certificate issues.
+   enter `filozy.com` and enable *Enforce HTTPS* once the certificate issues.
 2. At the registrar, add the four GitHub Pages `A` records for the apex and
    a `CNAME` for `www` → `bansi1701.github.io`.
 3. **Settings → Secrets and variables → Actions → Variables**: add
-   `SITE_ORIGIN = https://example.com`. Redeploy (push, or *Run workflow*). The example domain is a placeholder.
+   `SITE_ORIGIN = https://filozy.com`. Redeploy (push, or *Run workflow*).
    The build now emits `base: '/'`, canonicals on the new host, the CNAME
    file, and a sitemap and robots.txt at the root — where crawlers actually
    read them (on a `github.io` project site, `robots.txt` under `/ProjectPDF/`
@@ -63,7 +63,7 @@ the host.
 
 ## Getting indexed and cited — the manual steps
 
-1. **Google Search Console** — add `https://example.com` (placeholder) as a Domain property
+1. **Google Search Console** — add `https://filozy.com` as a Domain property
    (DNS record) or URL-prefix property (HTML tag: paste the token into the
    `GOOGLE_SITE_VERIFICATION` variable and redeploy). Submit
    `sitemap-index.xml`. Request indexing for the homepage and five main tools.

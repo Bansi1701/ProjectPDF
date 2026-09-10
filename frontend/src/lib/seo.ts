@@ -28,7 +28,7 @@ export interface ArticleItem {
 const trimSlashes = (value: string): string => value.replace(/^\/+|\/+$/g, '');
 
 /**
- * Where the site is deployed, base path included: "https://example.com" or
+ * Where the site is deployed, base path included: "https://filozy.com" or
  * "https://bansi1701.github.io/ProjectPDF".
  *
  * Both halves come from astro.config, which reads SITE_ORIGIN, so moving to a

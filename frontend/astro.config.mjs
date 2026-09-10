@@ -16,7 +16,7 @@ const here = (path) => fileURLToPath(new URL(path, import.meta.url));
  *
  * One variable moves the whole site between hosts: canonicals, sitemap,
  * robots, schema, CNAME and every internal path derive from it. Unset, it is
- * the GitHub Pages project site; set SITE_ORIGIN=https://example.com in the
+ * the GitHub Pages project site; set SITE_ORIGIN=https://filozy.com in the
  * deploy workflow's repository variables and the build targets the domain.
  */
 const DEFAULT_ORIGIN = 'https://bansi1701.github.io/ProjectPDF';

@@ -5,7 +5,7 @@ compress, convert (Word, Excel, PowerPoint, images), OCR, redact, sign, watermar
 and encrypt PDFs with nothing uploaded: the file is processed on your device and
 each job reports **0 document bytes sent**. No account, no limits, no cookies, no
 trackers. **Live: [bansi1701.github.io/ProjectPDF](https://bansi1701.github.io/ProjectPDF/)**
-(moving to `https://example.com` as a placeholder for the future custom domain).
+(moving to [filozy.com](https://filozy.com)).
 
 How it holds that promise: every operation runs in a Web Worker on pdf.js,
 pdf-lib and self-hosted WASM engines; the build fails if an undocumented

@@ -6,8 +6,8 @@ lead with the one verifiable claim (0 document bytes sent) rather than an
 adjective, and to be honest about limits — that is what gets upvoted and
 quoted, and it is what the site itself does.
 
-Replace the `https://example.com` placeholder with the live domain before posting. Do not post the
-same text in several places; adapt the framing to each audience.
+Post these only once filozy.com is live. Do not post the same text in several
+places; adapt the framing to each audience.
 
 ---
 
@@ -16,7 +16,7 @@ same text in several places; adapt the framing to each audience.
 **Title** (80 chars max):
 `Show HN: Filozy – 39 PDF tools that run in the browser, zero bytes uploaded`
 
-**URL:** `https://example.com/` (placeholder)
+**URL:** `https://filozy.com/`
 
 **First comment** (post immediately after submitting):
 
@@ -70,7 +70,7 @@ the same comment twice.
 
 > Depends what "safe" means to you. iLovePDF and Smallpdf both upload the file to their servers, process it there, and state they delete it after a set time (Smallpdf says one hour; iLovePDF's security page gives a number of hours by account type). That's fine for a menu; it's a different question for a contract or an ID.
 >
-> If you'd rather the file never left the machine: I built Filozy (https://example.com, placeholder), which does the same jobs — merge/split/compress/convert/OCR/redact/encrypt — in the browser with no upload. You can verify it yourself: open DevTools → Network before choosing the file and watch; nothing the size of your document ever goes out, and the tool shows "document bytes sent: 0" after each job. Free, no account. Limits worth knowing: no certified e-signatures, and a phone can run out of memory on a huge scan.
+> If you'd rather the file never left the machine: I built Filozy (filozy.com), which does the same jobs — merge/split/compress/convert/OCR/redact/encrypt — in the browser with no upload. You can verify it yourself: open DevTools → Network before choosing the file and watch; nothing the size of your document ever goes out, and the tool shows "document bytes sent: 0" after each job. Free, no account. Limits worth knowing: no certified e-signatures, and a phone can run out of memory on a huge scan.
 >
 > (Disclosure: it's my project.)
 
@@ -82,7 +82,7 @@ for the desi-founder angle if the tone fits.
 
 ## GitHub README first paragraph (already applied)
 
-> **Filozy** — free PDF tools that run entirely in your browser. Merge, split, compress, convert, OCR, redact, sign and encrypt PDFs with nothing uploaded: the file is processed on your device and each job reports 0 document bytes sent. No account, no limits, no trackers. **[example.com (placeholder)](https://example.com)**
+> **Filozy** — free PDF tools that run entirely in your browser. Merge, split, compress, convert, OCR, redact, sign and encrypt PDFs with nothing uploaded: the file is processed on your device and each job reports 0 document bytes sent. No account, no limits, no trackers. **[filozy.com](https://filozy.com)**
 
 ---
 
