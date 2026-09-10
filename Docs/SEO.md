@@ -44,7 +44,9 @@ Generated at build time from the same config, so they cannot drift:
 ## Moving to filozy.com (or any domain)
 
 The site derives every absolute URL from one variable. Nothing in `src/` names
-the host.
+the host. Host setup — Cloudflare Pages build settings, environment
+variables and DNS — is in [DEPLOYMENT.md](DEPLOYMENT.md); the steps below are
+what the *domain* move needs on GitHub Pages.
 
 1. Buy the domain. In the repository, **Settings → Pages → Custom domain**,
    enter `filozy.com` and enable *Enforce HTTPS* once the certificate issues.
