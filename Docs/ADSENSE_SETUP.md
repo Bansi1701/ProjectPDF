@@ -2,6 +2,15 @@
 
 Owner decision, September 9, 2026: keep ads disabled until consent setup is ready.
 
+September 10 update: the owner confirmed an **Ontario, Canada** operation serving
+worldwide visitors and wants useful measurement only as applicable law permits.
+Follow [PRIVACY_COLLECTION_STANDARD.md](PRIVACY_COLLECTION_STANDARD.md).
+The actual app is now served at `https://filozy.com` through Cloudflare Pages;
+the root seller record is reachable and the latest policies are delivered.
+Cloudflare still injects Web Analytics automatically. This is not yet verified
+as consent-controlled; it is a launch blocker, not an AdSense dependency.
+No ads have been enabled and no worldwide compliance claim is made.
+
 Publisher: `ca-pub-6531092487237731` (public identifier, not a secret).
 
 The shared HTML head contains Google's verification meta tag on every page. It does not load a script, send a request to Google, or display ads. Choose the **meta tag** verification method in AdSense. Approval remains Google's decision.
@@ -30,9 +39,10 @@ Primary references checked September 9, 2026:
 
 These notes are an implementation checklist, not a worldwide legal-compliance certification.
 
-## Account and domain findings
+## Historical account and domain findings — September 9
 
-Observed in the owner's Chrome AdSense session on September 9, 2026:
+Observed on September 9, 2026; domain findings below are superseded by the
+September 10 update above. They are not the current deployment status:
 
 - The account's registered site is `filozy.com`, marked **Requires review**. Ownership verification and site review have not been submitted during this audit.
 - `https://filozy.com/` currently serves GoDaddy's **Launching Soon** page, not this app. The app is still at `https://bansi1701.github.io/ProjectPDF/`.
@@ -45,10 +55,10 @@ Observed in the owner's Chrome AdSense session on September 9, 2026:
 
 | Area | Current implementation / required next action |
 | --- | --- |
-| Ownership and review | Verification meta on every page; seller record included. Connect the correct domain, verify it, then request Google's site review. |
+| Ownership and review | Custom domain now serves the app and root seller record; verification meta on every page. Confirm the current AdSense review/approval status in the account. |
 | Account eligibility | Owner must confirm age, eligible account/location, identity, tax and payment requirements. The site code cannot certify these. |
 | Privacy | Current no-ad processing, hosting requests, preferences and temporary workflow storage are disclosed. The owner approved Filozy and admin.filozy@gmail.com for public contact. Review legal-operator identification, additional processing/disclosures and the response procedure before activating advertising. Do not claim the policy is legally complete. |
-| Consent | No ads or analytics run. Before activation, review a certified CMP, clear Accept/Reject/Manage choices, withdrawal, vendor/purpose descriptions, applicable US opt-outs/GPC and regional obligations. Use the owner's stricter opt-in default globally. |
+| Consent | Ads do not run; Cloudflare injects analytics independently. Review/replace automatic injection before a consent-controlled launch. Review a certified CMP, separate analytics/ad choices, withdrawal, vendor/purpose descriptions, applicable US opt-outs/GPC and regional obligations. Use a conservative global opt-in default unless an exact exemption is reviewed. |
 | Limited ads | Do not assume limited/non-personalized ads avoid consent or storage obligations. The draft's revenue-based consent optimization was switched off; that edit is unpublished. |
 | Content and copyright | Public engine/font notices added and comparison claims qualified. Keep original writing, illustrations and evidence for asset rights. No comprehensive external plagiarism, trademark clearance or legal copyright opinion was performed. |
 | Help quality | Existing tool guides and detailed articles are retained; inaccurate Split instructions corrected. Repeated generic FAQ templates need continued human editorial review and more tool-specific examples. No arbitrary word count guarantees approval. |

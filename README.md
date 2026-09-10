@@ -3,15 +3,18 @@
 **Filozy** — free PDF tools that run entirely in your browser. Merge, split,
 compress, convert (Word, Excel, PowerPoint, images), OCR, redact, sign, watermark
 and encrypt PDFs with nothing uploaded: the file is processed on your device and
-each job reports **0 document bytes sent**. No account, no limits, no cookies, no
-trackers. **Live: [bansi1701.github.io/ProjectPDF](https://bansi1701.github.io/ProjectPDF/)**
-(moving to [filozy.com](https://filozy.com)).
+each job reports **0 document bytes sent**. No account or daily limits.
+Advertising is disabled. The production host adds Cloudflare Web Analytics for
+website measurement; this is separate from processing document contents.
+**Live: [filozy.com](https://filozy.com)**.
 
 How it holds that promise: every operation runs in a Web Worker on pdf.js,
 pdf-lib and self-hosted WASM engines; the build fails if an undocumented
 network request or browser-storage call appears in the code; the
-[privacy page](https://bansi1701.github.io/ProjectPDF/privacy/) is generated
-from the same audit. Verify it yourself: open DevTools → Network before choosing
+[privacy page](https://filozy.com/privacy/) describes application and hosting
+processing separately. Static audits cannot detect host-injected scripts;
+deployed-response checks and browser verification are also necessary.
+Verify it yourself: open DevTools → Network before choosing
 a file — [here is how](https://bansi1701.github.io/ProjectPDF/guides/how-to-check-if-a-pdf-tool-uploads-your-file/).
 
 Not offered, honestly: certified digital signatures, cloud storage, native apps.

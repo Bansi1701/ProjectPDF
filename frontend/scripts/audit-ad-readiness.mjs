@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { assertNoOptionalRuntime } from './privacy-delivery.mjs';
 
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
 const publisher = 'ca-pub-6531092487237731';
@@ -17,9 +18,12 @@ for (const path of pages) {
   assert.match(html, new RegExp(`<meta\\b[^>]*name="google-adsense-account"[^>]*content="${publisher}"`), `Missing verification tag: ${path}`);
   // The current approved release is verification-only, not ad activation.
   assert.doesNotMatch(html, /<(?:script|iframe)\b[^>]*(?:googlesyndication|doubleclick|googletagmanager|fundingchoicesmessages)/i, `Ads or consent scripts activated prematurely: ${path}`);
+  for (const [script] of html.matchAll(/<(?:script|iframe)\b[^>]*>[\s\S]*?<\/(?:script|iframe)>/gi)) {
+    assertNoOptionalRuntime(script, path);
+  }
 }
 for (const path of builtFiles.filter((path) => path.endsWith('.js'))) {
-  assert.doesNotMatch(readFileSync(path, 'utf8'), /(?:googlesyndication\.com|doubleclick\.net|googletagmanager\.com|fundingchoicesmessages\.google\.com)/i, `Advertising runtime found in JavaScript: ${path}`);
+  assertNoOptionalRuntime(readFileSync(path, 'utf8'), path);
 }
 assert.equal(readFileSync(join(root, 'ads.txt'), 'utf8').trim(), 'google.com, pub-6531092487237731, DIRECT, f08c47fec0942fa0');
 for (const notice of ['pdf-lib', 'pdfjs', 'tesseract', 'tesseract-core', 'fflate', 'harfbuzz']) {

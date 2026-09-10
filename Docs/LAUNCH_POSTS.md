@@ -6,7 +6,9 @@ lead with the one verifiable claim (0 document bytes sent) rather than an
 adjective, and to be honest about limits — that is what gets upvoted and
 quoted, and it is what the site itself does.
 
-Post these only once filozy.com is live. Do not post the same text in several
+These are drafts: recheck every feature claim and the live privacy policy before
+publishing. Host-injected measurement is separate from document processing;
+do not describe the deployed site as tracker-free. Do not post the same text in several
 places; adapt the framing to each audience.
 
 ---
@@ -56,7 +58,7 @@ places; adapt the framing to each audience.
 
 **Long description:**
 
-> Filozy is a PDF toolkit that runs entirely in the web browser. Every tool — merge, split, reorder, compress, PDF to Word/Excel/PowerPoint and back, JPG↔PDF, OCR, redact, sign, watermark, page numbers, Bates numbering, metadata, flatten, protect/unlock, repair, PDF/A — reads the file into browser memory, does the work in a Web Worker on your device, and saves the result locally. The site sets no cookies and loads no trackers, and each finished job shows a receipt with document bytes sent: 0. Free, no account, no quota. Not offered: certified digital signatures, cloud storage, native apps.
+> Filozy is a PDF toolkit that runs entirely in the web browser. Every tool — merge, split, reorder, compress, PDF to Word/Excel/PowerPoint and back, JPG↔PDF, OCR, redact, sign, watermark, page numbers, Bates numbering, metadata, flatten, protect/unlock, repair, PDF/A — reads the file into browser memory, does the work in a Web Worker on your device, and saves the result locally. Each finished job shows a receipt with document bytes sent: 0. Website hosting and measurement are described separately in the privacy policy. Free, no account, no quota. Not offered: certified digital signatures, cloud storage, native apps.
 
 ---
 
@@ -82,7 +84,7 @@ for the desi-founder angle if the tone fits.
 
 ## GitHub README first paragraph (already applied)
 
-> **Filozy** — free PDF tools that run entirely in your browser. Merge, split, compress, convert, OCR, redact, sign and encrypt PDFs with nothing uploaded: the file is processed on your device and each job reports 0 document bytes sent. No account, no limits, no trackers. **[filozy.com](https://filozy.com)**
+> **Filozy** — free PDF tools that run entirely in your browser. Merge, split, compress, convert, OCR, redact, sign and encrypt PDFs with nothing uploaded: the file is processed on your device and each job reports 0 document bytes sent. No account or daily limits. See the privacy policy for website hosting and measurement. **[filozy.com](https://filozy.com)**
 
 ---
 

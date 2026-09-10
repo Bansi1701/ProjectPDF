@@ -28,7 +28,7 @@ export const GET: APIRoute = async () => {
   const lines: string[] = [
     `# ${SITE.name} — complete tool reference`,
     '',
-    `${SITE.name} is a free, browser-based PDF toolkit. Every tool below runs on the user's device: the file is read into browser memory, a Web Worker does the work, and the result is saved locally. No upload, no account, no daily limit, no cookies or trackers. Source: ${canonical('/')}`,
+    `${SITE.name} is a free, browser-based PDF toolkit. Every tool below runs on the user's device: the file is read into browser memory, a Web Worker does the work, and the result is saved locally. No document upload, no account, no daily limit. Advertising is disabled; hosting and any deployed analytics are explained in the privacy policy: ${canonical('/privacy/')}. Source: ${canonical('/')}`,
     '',
   ];
 

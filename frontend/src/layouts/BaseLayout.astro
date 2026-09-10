@@ -34,6 +34,9 @@ const noindex = forceNoindex || TOOLS.some((tool) => tool.slug === pageSlug && t
 const themeKey = THEME_KEY;
 const legacyUsageKey = LEGACY_USAGE_KEY;
 const preferenceVersion = PREFERENCE_VERSION;
+// Public release identifier, not a visitor identifier or an activation flag.
+const releaseId = import.meta.env.PUBLIC_BUILD_ID;
+const buildId = typeof releaseId === 'string' && /^[a-f0-9]{40}$/.test(releaseId) ? releaseId : undefined;
 ---
 
 <!doctype html>
@@ -44,6 +47,7 @@ const preferenceVersion = PREFERENCE_VERSION;
     <meta name="generator" content={Astro.generator} />
     <!-- Verification only. No ad script, cookies or Google requests are enabled. -->
     <meta name="google-adsense-account" content="ca-pub-6531092487237731" />
+    {buildId && <meta name="filozy-build" content={buildId} />}
 
     <Seo title={brandedTitle} {description} {imageSlug} {noindex} {keywords} {contentType} />
 

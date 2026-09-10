@@ -20,7 +20,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   <div class="callout"><strong>In short</strong><p>Filozy's live document tools process your files in your browser. Using those local tools does not send us your documents. Email correspondence is separate, as explained below.</p><p>Document responsibilities and service limitations are explained in our <a href={`${base}/terms/`}>Terms of use</a>. Neither those terms nor this policy removes privacy rights or responsibilities that apply by law.</p></div>
 
   <h2>Who operates Filozy</h2>
-  <p>Operator: Filozy.</p>
+  <p>Operator: Filozy, operating from Ontario, Canada.</p>
   <p>For privacy questions or requests, email <a href="mailto:admin.filozy@gmail.com">admin.filozy@gmail.com</a>. Please do not include document contents, passwords or identity documents unless they are specifically needed and requested.</p>
   <p>If you email us, we receive your email address and the information you send so we can respond and handle your request. Email is separate from the local PDF tools and is handled through Gmail; <a href="https://policies.google.com/privacy">Google's privacy policy</a> explains that service's processing. Correspondence is kept only as needed to handle the request and meet applicable legal obligations, not for advertising or profiling.</p>
   <p>If you attach a document or paste its contents into an email, we receive that information too. Local-tool privacy protections do not apply to sending an email. Prefer a description of the problem or a sample with personal and confidential information removed.</p>
@@ -34,7 +34,10 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
   <h2>Cookies, analytics and advertising</h2>
   <p>Advertising is not active. The site includes an AdSense ownership-verification tag only; it does not load Google's ad script or send visitor information to Google. We will update this policy and configure the required privacy choices before enabling advertising.</p>
-  <p>Filozy does not currently set cookies or use advertising trackers, analytics profiles, browser fingerprinting or cross-site tracking. We do not sell personal information or share it for targeted advertising, and we do not record which tools you use. These defaults apply to every visitor, including visitors who send a Global Privacy Control signal.</p>
+  <p>The document application does not set advertising cookies, build advertising profiles or send document contents, filenames, passwords or recognized text to advertising or analytics services. We do not sell personal information or share it for targeted advertising. Advertising remains off for every visitor, including visitors who send a Global Privacy Control signal.</p>
+  {cloudflareHosting && <p>Cloudflare Web Analytics is currently added by our hosting provider to measure website visits and performance. This is separate from advertising. Its reports can include pages visited, referring websites, approximate country, browser, operating system, device type and loading timings. Cloudflare also receives the connection information needed to deliver these requests. See <a href="https://developers.cloudflare.com/web-analytics/about/">Cloudflare's analytics description</a> and <a href="https://developers.cloudflare.com/web-analytics/data-metrics/dimensions/">reported data categories</a>. This means a visit to a tool page may be measured; the document operation itself remains local.</p>}
+  {cloudflareHosting && <p>The current automatic Cloudflare measurement is not controlled by an on-site analytics preference. The clear-site-data button below removes local Filozy data; it does not switch off the hosting provider's measurement.</p>}
+  <p>Analytics and advertising serve different purposes and must not be treated as one permission. We will explain the purposes, providers and available controls before introducing advertising or additional optional measurement. Continuing to use a PDF tool is not consent to advertising. Contact our privacy team below with a question or objection about current processing.</p>
 
   <h2>Preferences saved on your device</h2>
   <p>If you choose a colour theme, preview size or favourite tools, that preference can be saved on your device for up to 12 months. Starting or continuing a workflow temporarily saves a copy of your PDF in this browser so the next tool can open it. The copy is deleted when claimed. Unclaimed copies expire after one hour and are removed the next time a workflow opens, or when you clear site data below. Expiry cannot delete data while your browser is closed. These preferences and workflow copies are not used for advertising or profiling.</p>
@@ -50,6 +53,8 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   <h2>Website hosting</h2>
   <p>The site is hosted by {cloudflareHosting ? 'Cloudflare Pages' : 'GitHub Pages'}. The hosting provider may receive ordinary connection information, such as your IP address, requested page, browser headers and access time, when it delivers the website. That request does not include the contents of a document you selected for a local tool. <a href={cloudflareHosting ? 'https://www.cloudflare.com/privacypolicy/' : 'https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement'}>{cloudflareHosting ? 'Cloudflare' : 'GitHub'}'s privacy statement</a> explains its processing.</p>
 
+  <p>Our service providers may process connection information and correspondence outside Canada, where other countries' laws and lawful access requirements can apply. This does not move the documents processed by local tools out of your browser.</p>
+
   <h2>External links</h2>
   <p>If you follow a link to another website, that site's privacy policy applies. Filozy does not control external services.</p>
 
@@ -63,6 +68,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
   <h2>Your choices and rights</h2>
   <p>You control the documents and preferences kept in your browser and can remove them using the controls above or your browser settings. Depending on the law that applies and the information processed, you may have rights to access, correct, delete or receive personal information, object to or restrict its use, and complain to a data-protection authority. Connection information processed by the hosting provider is covered by its privacy statement.</p>
   <p>Send requests about correspondence or other information we hold to <a href="mailto:admin.filozy@gmail.com">admin.filozy@gmail.com</a>. We cannot retrieve or erase files kept only on your device remotely. You do not have to give up a privacy right, complaint or legal remedy to use a tool or contact us.</p>
+  <p>For Canadian privacy concerns, you can also contact the <a href="https://www.priv.gc.ca/en/report-a-concern/">Office of the Privacy Commissioner of Canada</a>. Visitors elsewhere may contact their applicable privacy authority. We handle requests under the deadlines and rights that apply to the information and your circumstances.</p>
 
   <h2>Policy changes</h2>
   <p>We will update the date above when this policy changes materially.</p>

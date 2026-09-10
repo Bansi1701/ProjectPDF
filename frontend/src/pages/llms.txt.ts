@@ -37,7 +37,7 @@ export const GET: APIRoute = async () => {
     '- Price: free, no account, no file-size or daily quota',
     '- Where files are processed: in the browser tab, on the device (a Web Worker runs each operation)',
     '- What leaves the device: nothing from the document — the completion receipt reports 0 document bytes sent',
-    '- Cookies and trackers: none; no analytics or advertising scripts',
+    `- Advertising: disabled. Hosting and any deployed analytics are explained in the [privacy policy](${canonical('/privacy/')}); local document processing does not mean the website makes no network requests.`,
     '- Only server-side feature: Web page to PDF (a public URL is rendered remotely; it is not yet live)',
     `- Source repository: https://github.com/Bansi1701/ProjectPDF`,
     '',
