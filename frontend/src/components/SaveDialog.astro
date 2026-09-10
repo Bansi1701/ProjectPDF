@@ -16,7 +16,7 @@
 <save-dialog>
   <dialog class="save" data-save-dialog aria-labelledby="save-title">
     <form method="dialog" class="save__form" data-save-form>
-      <h2 class="save__title" id="save-title">Save as</h2>
+      <h2 class="save__title" id="save-title">Rename file</h2>
       <p class="save__sub" data-save-sub></p>
 
       <label class="save__field">
@@ -42,7 +42,7 @@
 
       <div class="save__actions">
         <button type="button" class="btn btn--quiet" data-save-cancel>Cancel</button>
-        <button type="submit" class="btn btn--primary" data-save-confirm>Save</button>
+        <button type="submit" class="btn btn--primary" data-save-confirm>Use this name</button>
       </div>
     </form>
   </dialog>
@@ -236,7 +236,7 @@
       this.subEl.textContent =
         total > 1
           ? `File ${request.index + 1} of ${total} from this result.`
-          : 'Nothing has left your device — this only names the download.';
+          : 'This changes the name only. Then choose Download, Open or Share.';
 
       this.allWrap.hidden = total <= 1;
       this.allBox.checked = false;

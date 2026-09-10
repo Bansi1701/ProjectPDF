@@ -43,6 +43,24 @@ const sitemap = new Set(
 const problems = [];
 const canonicals = new Map();
 
+const robots = await readFile(join(dist, 'robots.txt'), 'utf8');
+if (!robots.includes(`Sitemap: ${origin}/sitemap-index.xml`)) problems.push('robots.txt: sitemap does not match this deployment');
+if (!/^User-agent: OAI-SearchBot\r?\nAllow: \/$/m.test(robots)) problems.push('robots.txt: intended search crawler access missing');
+const sitemapIndex = await readFile(join(dist, 'sitemap-index.xml'), 'utf8');
+if (!sitemapIndex.includes(`<loc>${origin}/sitemap-0.xml</loc>`)) problems.push('sitemap index: wrong deployment or missing sitemap');
+for (const filename of ['llms.txt', 'llms-full.txt']) {
+  const markdown = await readFile(join(dist, filename), 'utf8');
+  for (const slug of liveSlugs) {
+    if (!markdown.includes(`${origin}/${slug}/`)) problems.push(`${filename}: missing live tool ${slug}`);
+  }
+  for (const [, location] of markdown.matchAll(/\]\((https?:\/\/[^\s)]+)\)/g)) {
+    if (!location.startsWith(`${origin}/`)) continue;
+    const path = location.slice(origin.length).split(/[?#]/)[0];
+    const target = join(dist, path, /\.[a-z0-9]+$/i.test(path) ? '' : 'index.html');
+    if (!existsSync(target)) problems.push(`${filename}: broken local reference ${location}`);
+  }
+}
+
 for (const file of files) {
   const label = relative(dist, file).replaceAll('\\', '/');
   const route =
@@ -57,6 +75,9 @@ for (const file of files) {
   const h1Count = (html.match(/<h1[\s>]/g) ?? []).length;
   const hasLang = /<html[^>]*\blang="[a-z]{2}/i.test(html);
   const hasShareImage = /property="og:image" content="https?:/.test(head);
+  for (const [, json] of html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)) {
+    try { JSON.parse(json); } catch { problems.push(`${label}: invalid structured-data JSON`); }
+  }
 
   if (!title) problems.push(`${label}: missing <title>`);
   else if (title.length > 90) problems.push(`${label}: title is ${title.length} characters (max 90): ${title}`);
@@ -97,11 +118,15 @@ for (const file of files) {
 }
 
 for (const location of sitemap) {
+  if (!location.startsWith(`${origin}/`)) {
+    problems.push(`sitemap: unexpected origin ${location}`);
+    continue;
+  }
   const path = location.replace(origin, '');
   if (!existsSync(join(dist, path, 'index.html'))) problems.push(`sitemap lists ${location} but no page was built there`);
 }
 
 if (problems.length) throw new Error(problems.join('\n'));
 console.log(
-  `SEO audit: ${files.length} pages carry one H1, a title, a description, a canonical and a share image; ${sitemap.size} sitemap entries match the indexable pages.`
+  `SEO audit: ${files.length} pages checked; ${sitemap.size} sitemap entries match indexable pages; robots, structured JSON and both AI-readable indexes match the release.`
 );

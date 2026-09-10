@@ -3,8 +3,8 @@ import type { APIRoute } from 'astro';
 import { SITE_ORIGIN } from '../lib/seo';
 
 /**
- * Every page is public, static and free of tracking, so there is nothing to
- * shield from crawlers — and being found and quoted accurately is the point.
+ * Public static information is crawlable. Selected documents are processed
+ * locally and are not published at crawlable URLs.
  * Search, retrieval and user-triggered AI agents are named explicitly so the
  * intent survives any future default that treats unnamed agents as excluded.
  */
@@ -38,7 +38,7 @@ export const GET: APIRoute = () =>
   new Response(
     [
       '# Filozy welcomes search engines and AI assistants alike.',
-      '# Every page here is public, static and tracker-free.',
+      '# Public information is static; selected documents are processed locally.',
       '',
       'User-agent: *',
       'Allow: /',

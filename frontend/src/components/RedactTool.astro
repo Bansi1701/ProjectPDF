@@ -74,6 +74,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 <script>
   import type { RedactionBox, WorkerResponse, WorkerProgress } from '../lib/pdf/types';
   import { receiveWorkflow, appendWorkflowAction } from '../lib/workflow';
+  import { mountResultActions, revealResult } from '../lib/resultActions';
 
   const root = document.querySelector<HTMLElement>('[data-redact]');
 
@@ -92,20 +93,6 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     const notes = q('[data-notes]');
     const downloads = q('[data-downloads]');
 
-    interface SaveDialogElement extends HTMLElement {
-      ask(request: { name: string; siblings: string[]; index: number }): Promise<{
-        name: string;
-        all: string[] | null;
-      } | null>;
-    }
-
-    const saveDialog = root.querySelector('save-dialog') as SaveDialogElement | null;
-
-    /** Naming is a convenience; never let its absence cost someone the file. */
-    async function saveAs(request: { name: string; siblings: string[]; index: number }) {
-      if (!saveDialog?.ask) return { name: request.name, all: null };
-      return saveDialog.ask(request);
-    }
     const receipt = q('[data-receipt]');
     const errorEl = q('[data-error]');
     const count = q('[data-count]');
@@ -114,7 +101,7 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
     let worker: Worker | null = null;
     let jobId = 0;
     let selectionId = 0;
-    let urls: string[] = [];
+    let resultActions: ReturnType<typeof mountResultActions> | null = null;
     /** Fractions of the page, so they survive any rendering scale. */
     let boxes: RedactionBox[] = [];
 
@@ -166,6 +153,9 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
       boxes = [];
       refresh();
       errorEl.hidden = true;
+      resultActions?.dispose();
+      resultActions = null;
+      downloads.replaceChildren();
       result.hidden = true;
       stage.hidden = false;
       pagesHost.replaceChildren();
@@ -316,43 +306,12 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, '');
         })
       );
 
-      for (const url of urls) URL.revokeObjectURL(url);
-      urls = [];
-
-      const produced = res.files.map((item) => item.name);
-
-      downloads.replaceChildren(
-        ...res.files.map((item, i) => {
-          const url = URL.createObjectURL(new Blob([item.bytes as BlobPart], { type: 'application/pdf' }));
-          urls.push(url);
-          const a = document.createElement('a');
-          a.className = 'btn btn--primary';
-          a.href = url;
-          a.download = item.name;
-          a.textContent = 'Save the redacted file';
-
-          a.addEventListener('click', async (event) => {
-            if (a.dataset.confirmed === 'true') {
-              delete a.dataset.confirmed;
-              return;
-            }
-            event.preventDefault();
-
-            const answer = await saveAs({ name: a.download, siblings: produced, index: i });
-            if (!answer) return;
-
-            a.download = answer.all?.[i] ?? answer.name;
-            a.dataset.confirmed = 'true';
-            a.click();
-          });
-
-          return a;
-        })
-      );
+      resultActions?.dispose();
+      resultActions = mountResultActions(downloads, res.files);
 
       receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
       appendWorkflowAction(downloads, res.files);
-      result.hidden = false;
+      revealResult(result);
     }
 
     input.addEventListener('change', () => {

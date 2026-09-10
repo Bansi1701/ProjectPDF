@@ -12,7 +12,7 @@ const routes = ['/', '/merge-pdf/', '/privacy/', '/terms/'];
 async function get(path) {
   const response = await fetch(`${base}${path}`, {
     redirect: 'error',
-    headers: { 'Cache-Control': 'no-cache' },
+    headers: { 'Cache-Control': 'no-cache', Accept: 'text/html', 'User-Agent': 'Mozilla/5.0 (compatible; FilozyDeliveryAudit/1.0)' },
     signal: AbortSignal.timeout(15000),
   });
   assert.equal(response.status, 200, `Unexpected HTTP status on ${path}`);

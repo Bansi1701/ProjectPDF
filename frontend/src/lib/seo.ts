@@ -71,17 +71,18 @@ export const organizationLd = () => ({
 export const softwareAppLd = (name: string, description: string, path: string) => ({
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
+  '@id': `${canonical(path)}#software`,
   name,
   description,
   url: canonical(path),
   applicationCategory: 'UtilitiesApplication',
   operatingSystem: 'Any modern web browser',
   browserRequirements: 'JavaScript enabled; no account required',
-  permissions: 'none',
   isAccessibleForFree: true,
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   featureList: ['Runs in the browser', 'No file upload', 'No account required'],
   publisher: organizationRef(),
+  isPartOf: { '@id': `${SITE_ORIGIN}/#website` },
 });
 
 export const howToLd = (name: string, steps: HowToStep[]) => ({

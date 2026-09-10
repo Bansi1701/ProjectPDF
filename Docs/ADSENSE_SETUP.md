@@ -102,6 +102,24 @@ Check these sources again before activation: policies and account screens can ch
 
 ## Controlled activation after the owner confirms the domain
 
+### Readiness update — 10 September 2026
+
+- filozy.com is connected and the public ownership meta tag was submitted with owner approval. AdSense displayed **Your site is verified**. The next account action is **Request review**; verification is not ad-serving approval.
+- AdSense's sites list still reported **ads.txt Not found** at inspection, although the production root returned the exact seller record with HTTP 200. Allow Google to recrawl; do not replace a valid record or infer approval from its presence.
+- European and US consent-message configuration remains an owner prerequisite, as do any private identity/payment/tax steps. Account privacy/security settings require owner action; no consent message or vendor configuration was changed during this review.
+- Cloudflare still injects its analytics script into browser-like HTML responses. A command-line response without the script is not proof it is disabled. The delivery audit now sends HTML request headers and reports known host injection separately.
+- The open Auto Ads preview showed eight in-page ads, including placements among application controls. This preview was not applied. It is not evidence of live ad serving.
+
+### Workflow-safe monetization boundary
+
+Keep the current verification-only build until approval, privacy choices and document-storage isolation are resolved. A future release should use an explicit allowlist of substantive informational articles, initially one or two manual responsive units between article sections, with reserved space and a clear Advertisement label. Do not put ads beside upload, download, save, navigation or editor controls, and do not add overlay, anchor or vignette interruptions to document tasks. See Google's [placement policies](https://support.google.com/adsense/answer/1346295) and [manual ad-unit guidance](https://support.google.com/adsense/answer/7037624).
+
+Route exclusions alone are not document isolation: an advertising script on any page shares that origin's browser storage privileges. Temporary workflow handoffs currently use IndexedDB. Before introducing third-party scripts, isolate the document workspace on a separate origin or implement and independently test ephemeral-key encrypted handoffs. Never pass filenames, document text, passwords, signatures or workflow identifiers to analytics, advertising or consent services.
+
+Use a certified CMP where required, separate advertising and analytics purposes, rejection/withdrawal controls, applicable US opt-outs/GPC and conservative defaults for unknown regions. Basic gating should make no ad request before permission; advanced consent-mode cookieless pings do not satisfy this project's no-optional-request default. Google's [certified CMP requirements](https://support.google.com/adsense/answer/13554116) and [consent-mode comparison](https://developers.google.com/tag-platform/security/concepts/consent-mode) are implementation inputs, not worldwide legal certification.
+
+Optimize actual aggregate ad performance only after this boundary is met. Test one placement change at a time, using AdSense reporting and page-performance checks. More ads do not guarantee more revenue; approval, consent, demand, traffic quality and usability all affect the outcome. Never click live ads during testing.
+
 The requested one-step experience means one coordinated release after the prerequisites are verified, not a switch that bypasses consent or Google's review. The site currently has no ad-activation flag and cannot accidentally turn on because DNS changes.
 
 1. Verify Cloudflare deployment, domain/HTTPS, root ads.txt, verification tag, privacy host disclosure and an actual tool export. Inspect the delivered page's requests/cookies as well as the built files: do not enable optional host-injected analytics, tag managers or tracking without reviewing the consent and disclosure requirements.

@@ -26,6 +26,7 @@
 import Lens from './Lens.astro';
 import Breadcrumbs from './Breadcrumbs.astro';
 import ToolFooter from './ToolFooter.astro';
+import SaveDialog from './SaveDialog.astro';
 import { getCollection } from 'astro:content';
 import { TOOLS } from '../config/site';
 
@@ -222,6 +223,7 @@ const related = content
     <div class="result__actions" data-downloads></div>
     <p class="result__receipt" data-receipt></p>
   </section>
+  <SaveDialog />
 
   <p class="error" data-error hidden role="alert"></p>
 
@@ -895,6 +897,7 @@ const related = content
    */
   import type { ImageLike, Point, Quad, ScanMode } from '../lib/pdf/scan';
   import type { OutputFile, WorkerRequest, WorkerResponse } from '../lib/pdf/types';
+  import { mountResultActions, revealResult } from '../lib/resultActions';
 
   /* ================================================================== *
    * Pure geometry — no DOM, no canvas, no state.
@@ -2001,6 +2004,9 @@ const related = content
 
     function discardAll(): void {
       closeReview();
+      resultActions?.dispose();
+      resultActions = null;
+      downloads.replaceChildren();
       for (const shot of shots) URL.revokeObjectURL(shot.url);
       shots = [];
       retakeTarget = null;
@@ -2514,7 +2520,7 @@ const related = content
     /** Kept so a failed recognition pass can still hand over the scan. */
     let scanOutput: OutputFile[] = [];
     let scanBytesOut = 0;
-    let urls: string[] = [];
+    let resultActions: ReturnType<typeof mountResultActions> | null = null;
     let ticker = 0;
 
     function ensureWorker(): Worker {
@@ -2650,28 +2656,12 @@ const related = content
         })
       );
 
-      for (const url of urls) URL.revokeObjectURL(url);
-      urls = [];
-
-      downloads.replaceChildren(
-        ...files.map((file, index) => {
-          const url = URL.createObjectURL(
-            new Blob([file.bytes as BlobPart], { type: file.type ?? 'application/pdf' })
-          );
-          urls.push(url);
-
-          const a = document.createElement('a');
-          a.className = index === 0 ? 'btn btn--primary' : 'btn btn--quiet';
-          a.href = url;
-          a.download = file.name;
-          a.textContent = file.name.endsWith('.txt') ? 'Save the text' : 'Save the PDF';
-          return a;
-        })
-      );
+      resultActions?.dispose();
+      resultActions = mountResultActions(downloads, files);
 
       const pages = scanReceipt.pages;
       receipt.textContent = `${pages} page${pages === 1 ? '' : 's'} · ${size(scanReceipt.bytesIn)} photographed → ${size(bytesOut)} · ${Math.round(ms)}ms · 0 bytes sent`;
-      result.hidden = false;
+      revealResult(result);
     }
 
     function onDone({ id, result: res }: WorkerResponse): void {

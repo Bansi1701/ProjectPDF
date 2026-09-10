@@ -9,7 +9,9 @@ discouraging sites run as a business, which matters once ads are on.
 
 Both hosts deploy on push to `main`. That is not the difference between them.
 
-## Cloudflare Pages (intended host)
+## Cloudflare Pages (current production host)
+
+Production is live at https://filozy.com. The repository's `deploy-cloudflare.yml` builds with that origin and publishes through Wrangler using existing GitHub secrets. Do not recreate the project, change DNS to GitHub or add a second automatic deployment pipeline. The setup instructions below are reference for rebuilding an equivalent environment, not outstanding migration work.
 
 One-time setup, in the Cloudflare dashboard:
 

@@ -582,6 +582,7 @@ const dropTitle = takesExcel
 <script>
   import type { WorkerRequest, WorkerResponse, WorkerProgress } from '../lib/pdf/types';
   import { receiveWorkflow, appendWorkflowAction } from '../lib/workflow';
+  import { mountResultActions, revealResult } from '../lib/resultActions';
   import { PREVIEW_SIZE_KEY, readPreference, writePreference } from '../lib/browserPreferences';
 
   const root = document.querySelector<HTMLElement>('[data-pdf-tool]');
@@ -625,7 +626,7 @@ const dropTitle = takesExcel
     let selectionId = 0;
     let busy = false;
     let lastProgress = -1;
-    let urls: string[] = [];
+    let resultActions: ReturnType<typeof mountResultActions> | null = null;
     let previewUrls: string[] = [];
     /** Id of the in-flight page-size probe, so its answer is never shown as a result. */
     let probeId = -1;
@@ -678,27 +679,6 @@ const dropTitle = takesExcel
 
     /** Identifies the grid's open documents across messages, unlike a job id. */
     let gridSession = 0;
-
-    interface SaveDialogElement extends HTMLElement {
-      ask(request: { name: string; siblings: string[]; index: number }): Promise<{
-        name: string;
-        all: string[] | null;
-      } | null>;
-    }
-
-    const saveDialog = root.querySelector('save-dialog') as SaveDialogElement | null;
-
-    /**
-     * Asks what the file should be called before it is written.
-     *
-     * If the dialog is somehow not there, saving still works with the name the
-     * tool produced — naming is a convenience, and losing it should never cost
-     * someone the file they just waited for.
-     */
-    async function saveAs(request: { name: string; siblings: string[]; index: number }) {
-      if (!saveDialog?.ask) return { name: request.name, all: null };
-      return saveDialog.ask(request);
-    }
 
     // Nothing should outlive the tab: a session holds a parsed PDF.
     window.addEventListener('pagehide', () => {
@@ -841,8 +821,9 @@ const dropTitle = takesExcel
     }
 
     function revoke() {
-      for (const url of urls) URL.revokeObjectURL(url);
-      urls = [];
+      resultActions?.dispose();
+      resultActions = null;
+      downloads.replaceChildren();
     }
 
     function setBusy(value: boolean) {
@@ -1183,68 +1164,7 @@ const dropTitle = takesExcel
       );
 
       revoke();
-      downloads.dataset.many = String(res.files.length > 6);
-
-      const produced = res.files.map((file) => file.name);
-      // Names chosen in the dialog, so a second click on the same result does
-      // not ask again for something already answered.
-      const chosen = new Map<number, string>();
-
-      downloads.replaceChildren(
-        ...res.files.map((file, i) => {
-          const url = URL.createObjectURL(
-            new Blob([file.bytes as BlobPart], { type: file.type ?? 'application/pdf' })
-          );
-          urls.push(url);
-          const a = document.createElement('a');
-          a.className = i === 0 ? 'btn btn--primary' : 'btn btn--quiet';
-          a.href = url;
-          a.download = file.name;
-          a.textContent = res.files.length === 1 ? 'Save the file' : file.name;
-
-          a.addEventListener('click', async (event) => {
-            if (a.dataset.confirmed === 'true') {
-              // The second, synthetic click — let it through and reset.
-              delete a.dataset.confirmed;
-              return;
-            }
-
-            event.preventDefault();
-
-            const answer = await saveAs({
-              name: chosen.get(i) ?? file.name,
-              siblings: produced,
-              index: i,
-            });
-            if (!answer) return;
-
-            if (answer.all) {
-              answer.all.forEach((name, at) => chosen.set(at, name));
-              relabel(chosen);
-            } else {
-              chosen.set(i, answer.name);
-            }
-
-            a.download = answer.all ? (answer.all[i] ?? answer.name) : answer.name;
-            a.dataset.confirmed = 'true';
-            a.click();
-          });
-
-          return a;
-        })
-      );
-
-      /** Keeps the visible list matching what each link will actually save. */
-      function relabel(names: Map<number, string>) {
-        if (res.files.length === 1) return;
-        [...downloads.children].forEach((node, at) => {
-          const link = node as HTMLAnchorElement;
-          const name = names.get(at);
-          if (!name) return;
-          link.download = name;
-          link.textContent = name;
-        });
-      }
+      resultActions = mountResultActions(downloads, res.files);
 
       receipt.textContent = `${res.pages} pages · ${Math.round(res.durationMs)}ms · 0 bytes sent`;
       appendWorkflowAction(downloads, res.files);
@@ -1258,8 +1178,7 @@ const dropTitle = takesExcel
         input.focus();
       });
       downloads.append(restart);
-      result.hidden = false;
-      result.focus({ preventScroll: true });
+      revealResult(result);
     }
 
     function renderMetadata(report: import('../lib/pdf/metadata').MetadataReport) {
@@ -1344,8 +1263,7 @@ const dropTitle = takesExcel
           }
 
           const blob = await response.blob();
-          const objectUrl = URL.createObjectURL(blob);
-          urls.push(objectUrl);
+          revoke();
 
           pct.textContent = 'Rendered';
           sizes.textContent = `${size(blob.size)}`;
@@ -1358,15 +1276,10 @@ const dropTitle = takesExcel
             })
           );
 
-          const link = document.createElement('a');
-          link.className = 'btn btn--primary';
-          link.href = objectUrl;
-          link.download = 'page.pdf';
-          link.textContent = 'Save the PDF';
-          downloads.replaceChildren(link);
+          resultActions = mountResultActions(downloads, [{ name: 'page.pdf', bytes: blob }]);
 
           receipt.textContent = 'rendered remotely · no document uploaded';
-          result.hidden = false;
+          revealResult(result);
         } catch (error) {
           fail((error as Error).message);
         } finally {

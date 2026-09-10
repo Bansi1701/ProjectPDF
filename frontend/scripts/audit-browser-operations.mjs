@@ -346,7 +346,18 @@ async function auditWorkflows(browser) {
         const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth);
         if (overflow > 2) throw new Error(`${slug}: workflow result overflows the mobile viewport by ${overflow}px`);
       }
-      if (index < steps.length - 1) await page.getByRole('button', { name: /^Continue to / }).click();
+      if (index < steps.length - 1) {
+        if (recipe === 'shrink-pdf-under-upload-limit' && index === 0) {
+          await page.locator('[data-file-rename]').first().click();
+          await page.locator('[data-save-name]').fill('Renamed workflow');
+          await page.locator('[data-save-confirm]').click();
+        }
+        await page.getByRole('button', { name: /^Continue to / }).click();
+        if (recipe === 'shrink-pdf-under-upload-limit' && index === 0) {
+          await page.waitForURL((url) => url.pathname.endsWith('/compress-pdf/') && !url.searchParams.has('from'));
+          await page.locator('[data-files]').filter({ hasText: 'Renamed workflow.pdf' }).waitFor({ state: 'attached' });
+        }
+      }
       else if (!await page.getByText('Workflow complete. Review and save your finished file.').isVisible()) throw new Error(`${recipe}: completion missing`);
     }
     if (errors.length) throw new Error(`${recipe}: ${errors.join('; ')}`);
@@ -401,9 +412,104 @@ async function auditHandoffClaims(browser) {
   }
 }
 
+async function auditSaving(browser) {
+  for (const width of [320, 390]) {
+    const context = await browser.newContext({ viewport: { width, height: 844 }, acceptDownloads: true });
+    try {
+      // Native device dialogs are mocked, never mistaken for real-phone QA.
+      await context.addInitScript(() => {
+        window.__saveAudit = { mode: 'success', share: null, picker: null, written: 0, revoked: [] };
+        const original = URL.revokeObjectURL;
+        URL.revokeObjectURL = (url) => { window.__saveAudit.revoked.push(url); original.call(URL, url); };
+        Object.defineProperty(navigator, 'canShare', { configurable: true, value: ({ files }) => files?.length === 1 && files[0] instanceof File });
+        Object.defineProperty(navigator, 'share', { configurable: true, value: async ({ files }) => {
+          window.__saveAudit.share = { name: files[0].name, size: files[0].size, type: files[0].type, active: navigator.userActivation.isActive };
+          if (window.__saveAudit.mode === 'cancel') throw new DOMException('cancelled', 'AbortError');
+          if (window.__saveAudit.mode === 'error') throw new Error('unsupported');
+        }});
+        window.showSaveFilePicker = async ({ suggestedName }) => {
+          window.__saveAudit.picker = { name: suggestedName, active: navigator.userActivation.isActive };
+          if (window.__saveAudit.mode === 'cancel') throw new DOMException('cancelled', 'AbortError');
+          return { name: suggestedName, createWritable: async () => ({
+            write: async (blob) => { window.__saveAudit.written = blob.size; }, close: async () => {}, abort: async () => {},
+          }) };
+        };
+      });
+      const page = await context.newPage();
+      await page.goto(`${base}/split-pdf/`, { waitUntil: 'networkidle' });
+      await page.locator('[data-input]').setInputFiles(pdf);
+      await cases.find((item) => item.slug === 'split-pdf').prepare(page);
+      await page.locator('[data-run]:visible').last().click();
+      await page.locator('[data-result]').waitFor({ state: 'visible' });
+      if (await page.locator('[data-result-file]').count() !== 2) throw new Error('Split result should retain two files');
+      const first = page.locator('[data-result-file]').first();
+      await first.locator('[data-file-rename]').click();
+      await page.locator('[data-save-name]').fill('Mobile result');
+      await page.locator('[data-save-all]').check();
+      await page.locator('[data-save-confirm]').click();
+      const names = await page.locator('[data-file-download]').evaluateAll((links) => links.map((link) => link.download));
+      if (names.some((name) => !name.startsWith('Mobile result') || !name.endsWith('.pdf')) || new Set(names).size !== 2) throw new Error('Batch rename did not update distinct download names');
+      const pending = page.waitForEvent('download');
+      await first.locator('[data-file-download]').click();
+      const downloaded = await pending;
+      if (downloaded.suggestedFilename() !== names[0]) throw new Error('Downloaded filename differs from visible result');
+      const actual = await PDFDocument.load(await readFile(await downloaded.path()));
+      if (actual.getPageCount() !== 1) throw new Error('Downloaded PDF lost its expected page');
+      if (!await page.locator('[data-result]').isVisible() || await page.locator('dialog[open]').count()) throw new Error('Download unexpectedly hid results or opened Rename');
+      await first.locator('[data-file-share]').click();
+      await first.locator('[role=status]').filter({ hasText: 'handed to your device' }).waitFor();
+      const shared = await page.evaluate(() => window.__saveAudit.share);
+      if (!shared.active || shared.name !== names[0] || shared.size === 0 || shared.type !== 'application/pdf') throw new Error('Native share lost gesture, bytes or filename');
+      await first.locator('[data-file-picker]').click();
+      await first.locator('[role=status]').filter({ hasText: 'Saved as' }).waitFor();
+      if (!await page.evaluate(() => window.__saveAudit.picker.active && window.__saveAudit.written === window.__saveAudit.share.size)) throw new Error('Picker lost gesture or file bytes');
+      await page.evaluate(() => { window.__saveAudit.mode = 'cancel'; });
+      await first.locator('[data-file-share]').click();
+      await first.locator('[role=status]').filter({ hasText: 'cancelled' }).waitFor();
+      await first.locator('[data-file-picker]').click();
+      await first.locator('[role=status]').filter({ hasText: 'Save cancelled' }).waitFor();
+      await page.evaluate(() => { window.__saveAudit.mode = 'error'; });
+      await first.locator('[data-file-share]').click();
+      await first.locator('[role=status]').filter({ hasText: 'Try Download or Open' }).waitFor();
+      const popupEvent = page.waitForEvent('popup');
+      await first.locator('[data-file-open]').click();
+      const popup = await popupEvent;
+      if (!await page.locator('[data-result]').isVisible()) throw new Error('Open replaced the tool tab');
+      await popup.close();
+      const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - innerWidth);
+      if (overflow > 2) throw new Error(`Result overflows ${width}px viewport by ${overflow}px`);
+      const smallControls = await first.locator('.btn').evaluateAll((nodes) => nodes.filter((node) => !node.hidden && node.getBoundingClientRect().height < 43).length);
+      if (smallControls) throw new Error('Result has undersized touch controls');
+      const screenshots = fileURLToPath(new URL('../.tmp-test/mobile-saving/', import.meta.url));
+      await mkdir(screenshots, { recursive: true });
+      await page.locator('[data-result]').scrollIntoViewIfNeeded();
+      await page.screenshot({ path: join(screenshots, `saving-${width}.png`), fullPage: false });
+      const previous = await first.locator('[data-file-download]').getAttribute('href');
+      await page.getByRole('button', { name: 'Start over', exact: true }).click();
+      if (await page.locator('[data-result-file]').count() || !await page.evaluate((url) => window.__saveAudit.revoked.includes(url), previous)) throw new Error('Reset retained result or blob URL');
+      process.stdout.write(`✓ ${width}px mobile results: rename, download, open, native API mocks, cancellation and reset\n`);
+    } finally { await context.close(); }
+  }
+  const context = await browser.newContext();
+  try {
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => { throw new Error('unsupported'); } });
+      Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: undefined });
+    });
+    const page = await context.newPage();
+    await page.goto(`${base}/merge-pdf/`, { waitUntil: 'networkidle' });
+    await page.locator('[data-input]').setInputFiles([pdf, changedPdf]);
+    await page.locator('[data-run]:visible').last().click();
+    await page.locator('[data-result]').waitFor({ state: 'visible' });
+    if (await page.locator('[data-file-share]').isVisible() || await page.locator('[data-file-picker]').count()) throw new Error('Unsupported native APIs must not be offered');
+    process.stdout.write('✓ unsupported native save/share safely fall back to Download/Open\n');
+  } finally { await context.close(); }
+}
+
 const browser = await chromium.launch({ headless: true });
 const completed = [];
 try {
+  await auditSaving(browser);
   await auditWorkflows(browser);
   await auditHandoffClaims(browser);
   await auditEditorLayout(browser);
@@ -434,6 +540,8 @@ try {
 
     const downloads = await page.locator(test.downloads ?? '[data-downloads] a[download]').count();
     if (downloads === 0) throw new Error(`${test.slug}: completed without a downloadable result`);
+    if (await page.locator('[data-result-file]').count() !== downloads) throw new Error(`${test.slug}: missing persistent saving controls`);
+    if (await page.locator('[data-file-rename]').count() !== downloads) throw new Error(`${test.slug}: missing independent Rename`);
     if (test.expectPdfPages) {
       const bytes = await page.locator('[data-downloads] a[download]').first().evaluate(async (anchor) => {
         const response = await fetch(anchor.href);
@@ -449,6 +557,10 @@ try {
       }
     }
     if (runtimeErrors.length) throw new Error(`${test.slug}: ${runtimeErrors.join('; ')}`);
+    if (test.slug === 'scan-pdf' || test.slug === 'redact-pdf') {
+      await page.locator(test.slug === 'scan-pdf' ? '[data-scan-clear]' : '[data-clear]').click();
+      if (await page.locator('[data-result-file]').count()) throw new Error(`${test.slug}: reset retained finished files`);
+    }
     completed.push(test.slug);
     process.stdout.write(`✓ ${test.slug}\n`);
     await context.close();

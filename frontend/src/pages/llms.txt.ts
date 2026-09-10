@@ -8,8 +8,8 @@ import { canonical } from '../lib/seo';
 
 /**
  * The llms.txt convention: a Markdown index a language model or agent can read
- * in one request. The large crawlers still read HTML; coding agents, browsing
- * agents and a growing set of assistants read this first. Facts here must match
+ * in one request. This optional convention does not replace crawlable HTML
+ * or guarantee that any search service uses it. Facts here must match
  * the pages — they are generated from the same config, so they cannot drift.
  */
 const liveTools = TOOLS.filter((tool) => tool.status === 'live');
