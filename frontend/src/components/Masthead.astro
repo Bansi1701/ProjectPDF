@@ -104,7 +104,7 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
 
         <div class="all-panel__foot">
           <span class="privacy-note"><i aria-hidden="true"></i>Your files stay on this device</span>
-          <nav aria-label="Project information"><a href={`${base}/help/`}>Help Center</a><a href={`${base}/how-to/`}>Workflows</a><a href={`${base}/privacy/`}>Privacy</a><a href={`${base}/about/`}>About</a></nav>
+          <nav aria-label="Project information"><a href={`${base}/help/`}>Help Center</a><a href={`${base}/how-to/`}>Workflows</a><a href={`${base}/privacy/`}>Privacy</a><a href={`${base}/terms/`}>Terms</a><a href={`${base}/about/`}>About</a></nav>
         </div>
       </div>
     </details>
@@ -184,10 +184,10 @@ const headerSearchTools = NAVIGATION_GROUPS.flatMap((group) =>
   .menu-tool { display: grid; grid-template-columns: 1.8rem minmax(0, 1fr); align-items: center; gap: 0.45rem; min-height: 2.45rem; padding: 0.22rem; border-radius: 9px; color: var(--ink-2); font-size: var(--step--1); font-weight: var(--weight-medium); line-height: var(--leading-compact); text-decoration: none; transition: color 140ms ease, background 140ms ease, transform 140ms ease; }
   .menu-tool:hover, .menu-tool[aria-current='page'] { color: var(--ink); background: color-mix(in srgb, var(--group-color) 9%, var(--paper-sunk)); transform: translateX(2px); }
   .menu-tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .all-panel__foot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 0.25rem 0.1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
+  .all-panel__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.85rem 0.25rem 0.1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
   .privacy-note { display: inline-flex; align-items: center; gap: 0.45rem; }
   .privacy-note i { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 12%, transparent); }
-  .all-panel__foot nav { display: flex; gap: 1rem; }
+  .all-panel__foot nav { display: flex; flex-wrap: wrap; gap: 1rem; }
   .all-panel__foot a { color: var(--ink-2); font-weight: 600; text-decoration: none; }
   .all-panel__foot a:hover { color: var(--accent); }
   .mobile-popular, .mobile-tool-groups { display: none; }

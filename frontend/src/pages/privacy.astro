@@ -9,25 +9,28 @@ auditedNetworkRequests();
 // The deployment guide selects Cloudflare Pages for filozy.com; the github.io
 // build remains the GitHub Pages preview. Update this with any hosting move.
 const cloudflareHosting = Astro.site?.hostname === 'filozy.com';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 <LegalShell
   title="Privacy policy"
   eyebrow="Privacy"
-  updated="September 9, 2026"
+  updated="September 10, 2026"
   description="How Filozy handles documents, device preferences and basic website connection information."
 >
-  <div class="callout"><strong>In short</strong><p>Filozy's live document tools process your files in your browser. We do not receive, store, analyse or sell the contents of those documents.</p></div>
+  <div class="callout"><strong>In short</strong><p>Filozy's live document tools process your files in your browser. Using those local tools does not send us your documents. Email correspondence is separate, as explained below.</p><p>Document responsibilities and service limitations are explained in our <a href={`${base}/terms/`}>Terms of use</a>. Neither those terms nor this policy removes privacy rights or responsibilities that apply by law.</p></div>
 
   <h2>Who operates Filozy</h2>
   <p>Operator: Filozy.</p>
   <p>For privacy questions or requests, email <a href="mailto:admin.filozy@gmail.com">admin.filozy@gmail.com</a>. Please do not include document contents, passwords or identity documents unless they are specifically needed and requested.</p>
   <p>If you email us, we receive your email address and the information you send so we can respond and handle your request. Email is separate from the local PDF tools and is handled through Gmail; <a href="https://policies.google.com/privacy">Google's privacy policy</a> explains that service's processing. Correspondence is kept only as needed to handle the request and meet applicable legal obligations, not for advertising or profiling.</p>
+  <p>If you attach a document or paste its contents into an email, we receive that information too. Local-tool privacy protections do not apply to sending an email. Prefer a description of the problem or a sample with personal and confidential information removed.</p>
 
   <h2>Documents you choose</h2>
   <p>For tools marked as running on your device, the selected file, filename and finished result remain in your browser. Filozy does not create an account or keep a server copy of those documents. Unsaved work can be lost when you close the tab, clear site data or leave the page.</p>
+  <p>Filozy does not inspect, approve or verify the ownership or lawfulness of files opened in local tools, and does not receive their contents for storage, analysis or sale. You decide which documents to open and where to send the results. Only process information you are authorised to use, including information about other people. This does not remove our responsibilities for personal information we actually process.</p>
 
   <h2>Public web-page conversion</h2>
-  <p>If a web-page-to-PDF feature is available and you use it, the public URL you enter must be sent to a server so that page can be retrieved. Do not enter a private, authenticated or confidential address. Your own PDF documents are not involved in that request.</p>
+  <p>Public web-page-to-PDF conversion is not currently available. Unlike local document tools, it would send the URL to a server to retrieve the page and its linked resources. We will explain its processing before enabling it. Do not submit private, authenticated or confidential addresses, or links containing personal information or access tokens. Your own PDF documents are not involved in that request.</p>
 
   <h2>Cookies, analytics and advertising</h2>
   <p>Advertising is not active. The site includes an AdSense ownership-verification tag only; it does not load Google's ad script or send visitor information to Google. We will update this policy and configure the required privacy choices before enabling advertising.</p>
@@ -36,6 +39,7 @@ const cloudflareHosting = Astro.site?.hostname === 'filozy.com';
   <h2>Preferences saved on your device</h2>
   <p>If you choose a colour theme, preview size or favourite tools, that preference can be saved on your device for up to 12 months. Starting or continuing a workflow temporarily saves a copy of your PDF in this browser so the next tool can open it. The copy is deleted when claimed. Unclaimed copies expire after one hour and are removed the next time a workflow opens, or when you clear site data below. Expiry cannot delete data while your browser is closed. These preferences and workflow copies are not used for advertising or profiling.</p>
   <p>The OCR tool requests language files from this website when needed, without sending your document or recognized text. Like other websites, site files may remain in your browser's ordinary cache. Use your browser's site-data settings to clear that cache.</p>
+  <p>Browser storage is not a private vault or guaranteed secure deletion service. People with access to the same browser profile may be able to access saved data. Downloads, browser extensions, device backups and operating-system recovery features are controlled separately; clearing Filozy data cannot remove every copy they may hold. On a shared device, save results somewhere you control, clear local data and close the tool tabs when finished.</p>
 
   <div class="data-controls">
     <div><strong>Clear Filozy data on this device</strong><p>Removes saved preferences, unclaimed workflow files and the older OCR language cache. Close other Filozy tabs if asked. Downloaded files and your browser's ordinary website cache are not removed.</p></div>
@@ -52,8 +56,13 @@ const cloudflareHosting = Astro.site?.hostname === 'filozy.com';
   <h2>Children and sensitive information</h2>
   <p>The service is not directed to children and is not a regulated document repository. Keep your original files and avoid sharing confidential documents or passwords in public.</p>
 
+  <h2>Security and lawful requests</h2>
+  <p>Local processing reduces document transmission, but no website, browser, device or email service is risk-free. Keep your browser and device updated. Report a suspected security or privacy problem to <a href="mailto:admin.filozy@gmail.com">admin.filozy@gmail.com</a> without sending passwords or sensitive documents.</p>
+  <p>We may need to preserve or disclose information we actually hold, such as relevant correspondence, when required by applicable law or a valid legal process. That does not give us access to documents stored only in your browser. Our legal duties to protect personal information still apply.</p>
+
   <h2>Your choices and rights</h2>
   <p>You control the documents and preferences kept in your browser and can remove them using the controls above or your browser settings. Depending on the law that applies and the information processed, you may have rights to access, correct, delete or receive personal information, object to or restrict its use, and complain to a data-protection authority. Connection information processed by the hosting provider is covered by its privacy statement.</p>
+  <p>Send requests about correspondence or other information we hold to <a href="mailto:admin.filozy@gmail.com">admin.filozy@gmail.com</a>. We cannot retrieve or erase files kept only on your device remotely. You do not have to give up a privacy right, complaint or legal remedy to use a tool or contact us.</p>
 
   <h2>Policy changes</h2>
   <p>We will update the date above when this policy changes materially.</p>

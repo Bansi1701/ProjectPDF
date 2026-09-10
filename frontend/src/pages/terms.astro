@@ -1,39 +1,65 @@
 ---
 import LegalShell from '../components/LegalShell.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 ---
 <LegalShell
   title="Terms for using Filozy"
   eyebrow="Terms"
-  updated="September 9, 2026"
+  updated="September 10, 2026"
   description="Plain-language conditions for a free, browser-based PDF utility. These terms explain responsibilities and limits; they do not turn Filozy into a document custodian."
 >
-  <div class="callout"><strong>Summary, not a substitute</strong><p>Use Filozy only with documents you have the right to process. Keep your own originals. Review every output before relying on it. The software is provided without a service guarantee.</p></div>
+  <div class="callout"><strong>Before using a tool</strong><p>Only open documents you are authorised to process. Keep your originals and review results before sharing or relying on them. Filozy is a document utility, not a backup service or a verifier of your documents.</p><p>Your mandatory consumer and privacy rights remain protected. The responsibilities below do not excuse a breach of our own legal duties.</p></div>
   <p>Operator: Filozy.</p>
-  <p>Contact: <a href="mailto:admin.filozy@gmail.com">admin.filozy@gmail.com</a>. For information about personal data and privacy requests, read our <a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/privacy/`}>privacy policy</a>.</p>
+  <p>Contact: <a href="mailto:admin.filozy@gmail.com">admin.filozy@gmail.com</a>. For information about personal data and privacy requests, read our <a href={`${base}/privacy/`}>privacy policy</a>.</p>
 
   <h2>Acceptance and eligibility</h2>
-  <p>By using Filozy, you agree to these terms. If you do not agree, do not use the service. You must be able to form a binding agreement where you live, or use the service under the supervision of someone who can.</p>
+  <p>These terms govern use of Filozy. Read them before using a tool; if you do not agree, do not use the service. You must be legally able to agree to these terms. If you act for an organisation or another person, you must have authority to do so. The service is not directed to children.</p>
 
   <h2>Your documents and rights</h2>
-  <p>You retain ownership of your files and outputs. You are responsible for having permission to open, transform, sign, redact, unlock, or share them. Do not use the service to violate copyright, privacy, confidentiality, court orders, access controls, or other legal duties.</p>
+  <p>Filozy claims no ownership of your documents or outputs. Existing ownership and third-party rights remain unchanged; converting or editing a file does not give you new rights in it. You are responsible for having the permissions and other lawful authority needed to open, copy, transform, sign, redact, unlock or share the material, including personal information about other people.</p>
+  <p>We do not inspect, approve, authenticate or endorse documents opened in local tools. You are responsible for the content you supply, the changes you instruct the tool to make, and your later use or distribution of the result. Filozy does not certify that a document is accurate, lawful, original or suitable for a particular recipient. These responsibilities do not transfer our own legal obligations to you.</p>
+
+  <h2>Acceptable use</h2>
+  <p>Do not use Filozy to infringe copyright or other rights, breach confidentiality or court orders, impersonate someone, forge signatures, falsify records for deception, or process or distribute unlawful material. Unlocking or editing a document is permitted only when you have the right to do so; a tool is not permission to bypass someone else's access restrictions.</p>
+  <p>Do not introduce malicious code, attack the website, attempt unauthorised access, or deliberately interfere with other people's use. Report suspected vulnerabilities privately to our contact email without accessing other people's information.</p>
+
+  <h2>Check results before using them</h2>
+  <p>Keep the original and inspect the downloaded result, not just its preview. Check page order, text, numbers, layout, images, forms, links, annotations, hidden content and metadata. Conversion, compression, OCR, flattening and editing can change or remove information, and modifying a signed PDF can invalidate an existing digital signature.</p>
+  <p>Before sharing, filing or publishing, decide whether the output meets the requirements of its recipient, court, regulator, archive or other intended use. Obtain qualified advice or independent validation for high-stakes uses. A successful download is not a certification of correctness or compliance. Asking you to check results does not remove our responsibility for a defect where the law makes us responsible.</p>
 
   <h2>Electronic signatures and redaction</h2>
-  <p>A drawn or typed signature placed by Filozy is a visual mark, not a certificate-backed digital signature, identity verification, timestamp, or legal opinion. Redaction, metadata removal, OCR, PDF/A conversion, repair, and accessibility results must be inspected before the original is deleted or the output is filed, published, or produced in a legal matter.</p>
+  <p>A drawn, typed or imported signature placed by Filozy is a visual mark. Filozy does not verify the signer's identity, authority or consent, or provide a certificate-backed digital signature or trusted timestamp. Only apply a signature with the signer's authorisation. Whether a document is legally effective or accepted depends on the document, process and applicable law, not just the presence of a signature image.</p>
+  <p>Covering content with a shape, highlight, overlay or white box is not secure redaction. Use the dedicated Redact tool for content removal and check the exported file, including unmarked pages and any remaining metadata, attachments or hidden content. Repair, OCR, PDF/A conversion and accessibility tools do not by themselves certify legal, archival or accessibility compliance.</p>
 
   <h2>No storage or recovery service</h2>
-  <p>Live document tools work in the browser and Filozy does not keep a recoverable server copy. Closing a tab, clearing site data, a browser crash, or an expired workflow handoff can make unsaved work unavailable. Keep an original and download important results promptly.</p>
+  <p>Local document tools work in your browser, even where selecting a file is described as an upload. Filozy does not receive those files or keep a recoverable server copy. Temporary workflow copies may remain in browser storage as described in the privacy policy; they are not backups.</p>
+  <p>Closing a tab, clearing site data, a browser crash, device failure or an expired workflow handoff can make unsaved work unavailable. Keep independent originals and download important results promptly. Protect access to your device and browser profile. Filozy cannot remotely restore, recall or delete copies you download or share. Email attachments are separate from local processing.</p>
+
+  <h2>Public web-page conversion</h2>
+  <p>This feature is not currently available. If enabled, it would send a public URL to a server to retrieve the page and its resources, with processing explained before use. It must not be used for private, authenticated, confidential or access-controlled material, or links containing personal information or access tokens. You remain responsible for permission to copy the page.</p>
 
   <h2>Availability and changes</h2>
-  <p>The software may change, contain defects, reject unsupported files, or be unavailable without notice. A tool marked building or planned is not promised functionality. Features can be modified or removed to protect security, correctness, or maintainability.</p>
+  <p>There is no promised uptime or emergency recovery service. Unsupported or complex files, device memory limits and browser differences can prevent processing. A tool marked building or planned is not available functionality.</p>
+  <p>We may change or suspend features for maintenance, security, legal requirements or material misuse. Where reasonably practicable, we will explain a material service change before it takes effect; urgent security or legal action may require an immediate change. This does not remove obligations or remedies that apply by law.</p>
 
-  <h2>Disclaimer</h2>
-  <p>Filozy is provided “as is” and “as available,” without warranties of accuracy, fitness, non-infringement, merchantability, availability, or lossless results to the fullest extent permitted by law. It is not legal, compliance, archival, accessibility, security, or records-management advice.</p>
+  <h2>Service limits and warranties</h2>
+  <p>Filozy provides general-purpose document tools, not legal, financial, medical, security or records-management advice. We cannot promise that every file will process without error, retain every original feature, or meet a particular professional or regulatory standard.</p>
+  <p>We make no additional warranty beyond the service descriptions and commitments we expressly give and the guarantees required by law. This does not exclude any applicable duty to use reasonable care and skill, provide a service as described, or meet mandatory consumer guarantees.</p>
 
   <h2>Limitation of liability</h2>
-  <p>To the fullest extent permitted by law, Filozy's maintainers are not liable for indirect, incidental, special, consequential, exemplary, or lost-data damages arising from use or inability to use the service. Nothing in these terms excludes rights or liabilities that cannot lawfully be excluded.</p>
+  <p><strong>Rights that cannot be excluded come first.</strong> Nothing in these terms excludes or limits liability for fraud, fraudulent misrepresentation, death or personal injury caused by negligence, deliberate wrongdoing, or any other liability the law does not allow us to exclude. Mandatory consumer guarantees, privacy and data-protection rights, and legal remedies remain unaffected.</p>
+  <p>Filozy is not responsible for loss caused solely by your unlawful document use, unauthorised signing, or your own disclosure of a document, where no act or omission for which we are legally responsible contributed to that loss. This is not an exclusion of responsibility for our software defects, negligence or breach of legal duties where the law makes us responsible.</p>
+  <p>For business use, and only where applicable law permits this allocation, Filozy excludes liability for lost profits, lost business opportunities, business interruption and indirect or consequential business losses. This does not override the rights listed above, including consumer or small-business protections that apply to you. No automatic zero-liability cap applies just because a tool is free.</p>
 
   <h2>Open-source and third-party software</h2>
-  <p>Filozy includes third-party open-source libraries governed by their own licenses. External links and browser or operating-system behavior are controlled by their respective providers.</p>
-  <p><a href={`${import.meta.env.BASE_URL.replace(/\/$/, '')}/licenses/`}>Read the software and font notices.</a></p>
+  <p>Filozy includes third-party open-source libraries governed by their own licenses. Their notices do not replace mandatory rights you have against Filozy. Hosting, email, linked websites, browsers and operating systems have separate providers and policies. A link is not an endorsement. Nothing here limits responsibilities that applicable law places on Filozy for providers acting on its behalf.</p>
+  <p><a href={`${base}/licenses/`}>Read the software and font notices.</a></p>
+
+  <h2>Questions, rights concerns and disputes</h2>
+  <p>Email <a href="mailto:admin.filozy@gmail.com">admin.filozy@gmail.com</a> with the affected Filozy page, a description of the issue and a way to reply. For a rights concern, explain the right involved and your connection to it. Do not attach sensitive documents or passwords; a description or sanitised example is usually enough. We cannot remove or recover files that exist only on someone's device.</p>
+  <p>You may contact us to seek a resolution, but doing so is not a condition for contacting a regulator, bringing a lawful claim or exercising another remedy. These terms do not impose mandatory arbitration, a class-action waiver, a shortened legal claim period, or an exclusive foreign court. Applicable law determines your rights and where a claim may be brought.</p>
+
+  <h2>Changes to these terms</h2>
+  <p>We will publish revisions here with an updated date. Changes apply to future use, not retrospectively to remove rights relating to an earlier event. Where the law requires additional notice or agreement, that requirement still applies. If a term is unenforceable, we will not rely on it; the other terms continue only where they can lawfully operate without it.</p>
 
 </LegalShell>
