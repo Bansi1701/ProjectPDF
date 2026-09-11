@@ -64,6 +64,7 @@ jobs:
           npm run audit:compression
           npm run audit:split-contrast
           npm run audit:editor-usability
+          npm run audit:batch-results
           npm run audit:help-browser
           npm run audit:browser
 

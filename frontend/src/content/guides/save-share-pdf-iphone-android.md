@@ -46,7 +46,13 @@ If a PDF opens in a browser viewer, use that viewer’s sharing or saving contro
 
 ## Multiple output files and renaming
 
-Split and extraction tasks may create more than one file. Each result has its own actions. Rename a file before downloading or sharing it; the extension stays appropriate for the output. Where the rename dialog offers an apply-to-all option, review the numbered filenames before confirming.
+Split and extraction tasks may create more than one file. The result shows the total count, total size, and numbered file cards. All cards remain expanded on the page rather than inside a small scrolling list.
+
+- **Save all (ZIP)** prepares one archive. Choose **Download all (ZIP)** when it is ready, then extract the archive in your Files app. Packaging does not change the files inside it.
+- **Share all** opens your device's share menu when it supports the batch. Otherwise save the ZIP and share it from your Files app. Some devices can share a prepared ZIP directly.
+- **Open all** opens one viewer listing every result. Select a file to preview it. Unsupported formats can be downloaded and opened in their own app. This avoids opening a burst of browser tabs.
+
+Each result also keeps its own actions. Rename a file before downloading or sharing it; the extension stays appropriate for the output. Where the rename dialog offers an apply-to-all option, review the numbered filenames before confirming. After renaming, prepare the ZIP again so it includes the new names.
 
 Saving one result does not automatically save every other result. Check the number of output files and keep the page open until you have the copies you need.
 

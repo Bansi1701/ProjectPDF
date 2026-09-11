@@ -568,9 +568,9 @@ const dropTitle = takesExcel
     </div>
 
     <p class="result__why" data-why hidden></p>
-    <ul class="result__notes" data-notes></ul>
-
     <div class="result__actions" data-downloads></div>
+
+    <ul class="result__notes" data-notes aria-label="Processing notes"></ul>
 
     <p class="result__receipt" data-receipt></p>
   </section>
@@ -1824,7 +1824,7 @@ const dropTitle = takesExcel
 
   .result__headline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.4rem 1rem; }
   .result__pct {
-    font-size: var(--step-3); font-weight: 600;
+    font-size: var(--step-1); font-weight: 600;
     letter-spacing: -0.03em; color: var(--ok);
   }
   .result__pct[data-weak='true'] { color: var(--ink-2); }
@@ -1852,11 +1852,6 @@ const dropTitle = takesExcel
 
   .result__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; }
 
-  /* One file per page means a 40-page export is 40 buttons. Contain them. */
-  .result__actions[data-many='true'] {
-    max-height: 15rem; overflow-y: auto;
-    padding: 0.6rem; border: 1px solid var(--line); border-radius: var(--radius);
-  }
 
   .result__receipt {
     font-family: var(--font-mono); font-size: var(--step--2); color: var(--muted);

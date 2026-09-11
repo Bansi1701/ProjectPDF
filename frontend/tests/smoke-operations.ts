@@ -20,6 +20,8 @@ import type { InputFile, OpResult, OpSuccess } from '../src/lib/pdf/types';
 import { watermark } from '../src/lib/pdf/watermark';
 import { pageCopySafetyError } from '../src/lib/pdf/pageCopySafety';
 import { testCompression } from './compression-preservation';
+import { batchNames, resultArchive, previewableResult } from '../src/lib/resultBatch';
+import { unzipSync } from 'fflate';
 
 const checks: string[] = [];
 
@@ -308,7 +310,20 @@ const signaturePng = Uint8Array.from(
 
 await testCompression();
 pass('compression preserves objects, fields, metadata and signatures; reports target limits');
-assert.equal(checks.length, 22);
+{
+  const names = batchNames(['same.pdf', 'SAME.pdf', `${'a'.repeat(250)}.pdf`, `${'a'.repeat(250)}.pdf`, '../unsafe.txt']);
+  assert.equal(new Set(names.map(name => name.toLowerCase())).size, 5);
+  assert.ok(names.every(name => !name.includes('/') && !name.includes('\\')));
+  const files = names.map((name, index) => ({ name, blob: new Blob([`Unchanged file ${index}`]), url: '' }));
+  const zip = await resultArchive(files, () => false, () => {});
+  const entries = unzipSync(new Uint8Array(await zip.arrayBuffer()));
+  assert.deepEqual(Object.keys(entries), names);
+  Object.values(entries).forEach((bytes, index) => assert.equal(new TextDecoder().decode(bytes), `Unchanged file ${index}`));
+  await assert.rejects(() => resultArchive(files, () => true, () => {}), /Results closed/);
+  assert.equal(previewableResult('text/html'), false); assert.equal(previewableResult('image/svg+xml'), false);
+  pass('batch ZIP preserves every file and avoids filename collisions');
+}
+assert.equal(checks.length, 23);
 process.stdout.write(`Operation smoke: ${checks.length} groups passed.\n`);
 }
 

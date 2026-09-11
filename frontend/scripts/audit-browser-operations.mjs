@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PDFDocument, StandardFonts, rgb } from '@cantoo/pdf-lib';
 import { Resvg } from '@resvg/resvg-js';
-import { zipSync } from 'fflate';
+import { zipSync, unzipSync } from 'fflate';
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 
@@ -559,12 +559,12 @@ try {
       }),
     ]);
 
-    const downloads = await page.locator(test.downloads ?? '[data-downloads] a[download]').count();
+    const downloads = await page.locator(test.downloads ?? '[data-file-download]').count();
     if (downloads === 0) throw new Error(`${test.slug}: completed without a downloadable result`);
     if (await page.locator('[data-result-file]').count() !== downloads) throw new Error(`${test.slug}: missing persistent saving controls`);
     if (await page.locator('[data-file-rename]').count() !== downloads) throw new Error(`${test.slug}: missing independent Rename`);
     if (test.expectPdfPages) {
-      const bytes = await page.locator('[data-downloads] a[download]').first().evaluate(async (anchor) => {
+      const bytes = await page.locator('[data-file-download]').first().evaluate(async (anchor) => {
         const response = await fetch(anchor.href);
         return Array.from(new Uint8Array(await response.arrayBuffer()));
       });
@@ -576,6 +576,15 @@ try {
       if (!first || Math.abs(first.getWidth() - 360) > 0.1 || Math.abs(first.getHeight() - 480) > 0.1) {
         throw new Error(`${test.slug}: output changed the source page dimensions`);
       }
+    }
+    if (downloads > 1) {
+      for (const action of ['batch-save-all', 'share-all', 'open-all']) if (!await page.locator(`[data-${action}]`).isVisible()) throw new Error(`${test.slug}: missing ${action}`);
+      await page.locator('[data-batch-save-all]').click();
+      await page.locator('[data-download-all]').waitFor({ state: 'visible' });
+      const zip = await page.locator('[data-download-all]').evaluate(async a => Array.from(new Uint8Array(await (await fetch(a.href)).arrayBuffer())));
+      const entries = Object.values(unzipSync(Uint8Array.from(zip)));
+      const originals = await page.locator('[data-file-download]').evaluateAll(async links => Promise.all(links.map(async a => Array.from(new Uint8Array(await (await fetch(a.href)).arrayBuffer())))));
+      if (entries.length !== downloads || entries.some((bytes, i) => Buffer.compare(Buffer.from(bytes), Buffer.from(originals[i])) !== 0)) throw new Error(`${test.slug}: ZIP did not preserve all output bytes`);
     }
     if (runtimeErrors.length) throw new Error(`${test.slug}: ${runtimeErrors.join('; ')}`);
     if (test.slug === 'scan-pdf' || test.slug === 'redact-pdf') {
