@@ -30,3 +30,30 @@ Google says there are no special AI markup requirements and that Google Search d
 ## Cloudflare review, 10 September 2026
 
 The dashboard reported Quick Wins 4/5, valid robots.txt and a missing Markdown-negotiation feature requiring Pro or higher. No paid upgrade was purchased. Technical/advanced checks include accounts, APIs and commerce, which are not requirements for discovery of this free local-processing toolkit. Do not expose document-processing APIs or add login simply to improve this score. These are dated dashboard observations and should be rechecked after hosting changes.
+
+## Verifying ownership with search engines
+
+Six consoles are wired. Each reads a repository variable
+(**Settings → Secrets and variables → Actions → Variables**); an unset one
+emits no tag at all, so there is no cost to leaving any of them blank.
+
+| Console | Repository variable | Where to get the token |
+| --- | --- | --- |
+| Google Search Console | `GOOGLE_SITE_VERIFICATION` | search.google.com/search-console → add property → HTML tag |
+| Bing Webmaster Tools | `BING_SITE_VERIFICATION` | bing.com/webmasters → add site → meta tag |
+| Yandex Webmaster | `YANDEX_SITE_VERIFICATION` | webmaster.yandex.com → add site → meta tag |
+| Naver Search Advisor | `NAVER_SITE_VERIFICATION` | searchadvisor.naver.com |
+| Baidu Ziyuan | `BAIDU_SITE_VERIFICATION` | ziyuan.baidu.com |
+| Pinterest | `PINTEREST_SITE_VERIFICATION` | pinterest.com/settings/claim |
+
+Paste the token value only — not the whole `<meta>` tag — then redeploy.
+
+**Google is worth doing as a Domain property rather than a URL prefix.** It
+covers every subdomain and both schemes at once, and it verifies by DNS TXT
+record instead of a meta tag, so it keeps working even if the HTML changes.
+Cloudflare holds the DNS for filozy.com, so that record can be added directly
+to the zone.
+
+After verifying Google: submit `sitemap-index.xml`, then use **URL inspection →
+Request indexing** on the homepage and the five biggest tools. Bing needs no
+sitemap submission — IndexNow already notifies it on every deploy.

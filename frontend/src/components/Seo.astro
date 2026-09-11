@@ -26,10 +26,19 @@ const schemas = home ? [websiteLd(), organizationLd()] : [];
 const USP = 'Free, no upload, no account — it runs in your browser.';
 const metaDescription = tool && description.length + USP.length < 160 ? `${description} ${USP}` : description;
 
-/* Ownership proofs for Search Console and Bing Webmaster Tools. Set as
-   repository variables so the deploy carries them; absent locally. */
-const googleVerification = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION || '';
-const bingVerification = import.meta.env.PUBLIC_BING_SITE_VERIFICATION || '';
+/* Ownership proofs for every webmaster console worth registering with. Each
+   is a repository variable, so a token can be added without touching code and
+   an unset one emits nothing. Google and Bing matter most — Bing's index is
+   what ChatGPT search reads — but Yandex, Naver, Baidu and Pinterest cost one
+   line each and cover the engines that dominate outside the anglosphere. */
+const verifications: [string, string][] = [
+  ['google-site-verification', import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION || ''],
+  ['msvalidate.01', import.meta.env.PUBLIC_BING_SITE_VERIFICATION || ''],
+  ['yandex-verification', import.meta.env.PUBLIC_YANDEX_SITE_VERIFICATION || ''],
+  ['naver-site-verification', import.meta.env.PUBLIC_NAVER_SITE_VERIFICATION || ''],
+  ['baidu-site-verification', import.meta.env.PUBLIC_BAIDU_SITE_VERIFICATION || ''],
+  ['p:domain_verify', import.meta.env.PUBLIC_PINTEREST_SITE_VERIFICATION || ''],
+].filter((pair): pair is [string, string] => Boolean(pair[1]));
 ---
 
 <title>{title}</title>
@@ -37,8 +46,7 @@ const bingVerification = import.meta.env.PUBLIC_BING_SITE_VERIFICATION || '';
 {keywords.length > 0 && <meta name="keywords" content={keywords.join(', ')} />}
 {noindex ? <meta name="robots" content="noindex, nofollow" /> : <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />}
 <link rel="canonical" href={canonicalUrl} />
-{googleVerification && <meta name="google-site-verification" content={googleVerification} />}
-{bingVerification && <meta name="msvalidate.01" content={bingVerification} />}
+{verifications.map(([name, content]) => <meta name={name} content={content} />)}
 
 <meta property="og:title" content={title} />
 <meta property="og:description" content={metaDescription} />
