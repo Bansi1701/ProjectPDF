@@ -282,17 +282,28 @@ const dropTitle = takesExcel
 
     {
       mode === 'ocr' && (
-        <label class="check">
-          <input type="checkbox" data-searchable checked />
-          <span>
-            Also make a searchable PDF
+        <Fragment>
+          <label class="check">
+            <input type="checkbox" data-searchable checked />
+            <span>
+              Also make a searchable PDF
+              <small>
+                Keeps your scan exactly as it is and puts the recognised words behind it,
+                invisibly. Roughly 5 MB of recognition engine downloads the first time you run
+                this — from this site, not a CDN.
+              </small>
+            </span>
+          </label>
+
+          <label class="field">
+            <span>Pages to recognise</span>
+            <input data-ocr-pages placeholder="All pages — or 1-3, 7" />
             <small>
-              Keeps your scan exactly as it is and puts the recognised words behind it,
-              invisibly. Roughly 5 MB of recognition engine downloads the first time you run
-              this — from this site, not a CDN.
+              Recognition is the slowest thing here, around a second a page on a laptop and
+              several on a phone. If you only need page 40 of a long scan, say so.
             </small>
-          </span>
-        </label>
+          </label>
+        </Fragment>
       )
     }
 
@@ -324,6 +335,15 @@ const dropTitle = takesExcel
             <input data-user-password type="password" autocomplete="new-password" />
             <small data-strength>
               This is the one that encrypts. Leave it empty to set permissions only.
+            </small>
+          </label>
+
+          <label class="field">
+            <span>Type it again</span>
+            <input data-confirm-password type="password" autocomplete="new-password" />
+            <small data-confirm-note>
+              Encryption is real: a typo here cannot be undone or recovered, and the file
+              would never open again.
             </small>
           </label>
 
@@ -1228,6 +1248,26 @@ const dropTitle = takesExcel
       });
     }
 
+    // Say whether the two entries agree while they are being typed, rather
+    // than only refusing at the end.
+    const confirmPw = root.querySelector<HTMLInputElement>('[data-confirm-password]');
+    const confirmNote = root.querySelector<HTMLElement>('[data-confirm-note]');
+    if (pw && confirmPw && confirmNote && mode === 'protect') {
+      const baseline = confirmNote.textContent ?? '';
+      const compare = () => {
+        if (!confirmPw.value) {
+          confirmNote.textContent = baseline;
+          confirmNote.dataset.state = '';
+          return;
+        }
+        const same = pw.value === confirmPw.value;
+        confirmNote.textContent = same ? 'Both entries match.' : 'These do not match yet.';
+        confirmNote.dataset.state = same ? 'ok' : 'bad';
+      };
+      pw.addEventListener('input', compare);
+      confirmPw.addEventListener('input', compare);
+    }
+
     // The URL tool has no file to pick, so the dropzone and worker are unused.
     if (mode === 'url-to-pdf') {
       fileUi.hidden = true;
@@ -1459,6 +1499,19 @@ const dropTitle = takesExcel
                 ? { mode: 'text', keywords: splitValue }
                 : { mode: 'every', every: splitNumber };
 
+      /* AES-256 has no recovery path. A mistyped password does not produce a
+         weaker file, it produces a file nobody can ever open — so the two
+         entries must agree before anything is encrypted. */
+      if (mode === 'protect') {
+        const first = root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '';
+        const again = root.querySelector<HTMLInputElement>('[data-confirm-password]')?.value ?? '';
+        if (first !== again) {
+          fail('The two passwords do not match. Nothing was encrypted.');
+          root.querySelector<HTMLInputElement>('[data-confirm-password]')?.focus();
+          return;
+        }
+      }
+
       const metadataField = (name: string) =>
         root.querySelector<HTMLInputElement>(`[data-metadata-field="${name}"]`)?.value ?? '';
       const header = root.querySelector<HTMLInputElement>('[data-header]')?.value?.trim() ?? '';
@@ -1475,6 +1528,7 @@ const dropTitle = takesExcel
         startNumber: Number(root.querySelector<HTMLInputElement>('[data-start-number]')?.value ?? 1),
         prefix: root.querySelector<HTMLInputElement>('[data-prefix]')?.value ?? '',
         searchable: root.querySelector<HTMLInputElement>('[data-searchable]')?.checked ?? true,
+        ocrPages: root.querySelector<HTMLInputElement>('[data-ocr-pages]')?.value?.trim() ?? '',
         fieldValues: readFields(),
         flatten: root.querySelector<HTMLInputElement>('[data-flatten]')?.checked ?? false,
         userPassword: root.querySelector<HTMLInputElement>('[data-user-password]')?.value ?? '',
@@ -1555,6 +1609,11 @@ const dropTitle = takesExcel
 </script>
 
 <style>
+  /* Match feedback on the Protect confirm field: colour alone would not
+     carry for a colour-blind reader, so the wording changes too. */
+  [data-confirm-note][data-state='ok'] { color: var(--ok, #1c6b4c); }
+  [data-confirm-note][data-state='bad'] { color: var(--seal, #a03028); }
+
   .tool {
     padding-block: clamp(2rem, 1.5rem + 2vw, 3rem) clamp(3.5rem, 3rem + 4vw, 6rem);
     display: grid;
