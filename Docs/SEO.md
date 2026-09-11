@@ -57,3 +57,34 @@ to the zone.
 After verifying Google: submit `sitemap-index.xml`, then use **URL inspection →
 Request indexing** on the homepage and the five biggest tools. Bing needs no
 sitemap submission — IndexNow already notifies it on every deploy.
+
+## Cloudflare can rewrite robots.txt at the edge
+
+The zone setting `is_robots_txt_managed` makes Cloudflare **prepend its own
+block to the robots.txt this repo builds**. When it was on, the served file
+carried `Disallow: /` for GPTBot, ClaudeBot, CCBot, Google-Extended, Bytespider,
+Amazonbot, Applebot-Extended and meta-externalagent — above our own `Allow`
+rules for the same agents.
+
+This is worth knowing because it is invisible here: `dist/robots.txt` is
+correct, every build audit passes, and only the live URL shows the difference.
+It is also separate from *blocking* — `ai_bots_protection` was already
+`disabled`, so nothing was stopped at the edge; the site was simply asking the
+AI crawlers we most want to reach to stay away, and they honour robots.txt.
+
+Checked and changed through the API (account-scoped tokens reject `PATCH` here,
+so use `PUT`):
+
+```
+GET  /zones/{zone}/bot_management          # read is_robots_txt_managed
+PUT  /zones/{zone}/bot_management          # {"is_robots_txt_managed": false}
+```
+
+Verify against the live host, never the build output:
+
+```
+curl -s https://filozy.com/robots.txt | grep -c Disallow    # must be 0
+```
+
+Recheck after any change in the Cloudflare dashboard's bot or AI-crawler
+sections — toggles there can switch it back on.
