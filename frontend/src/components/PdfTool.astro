@@ -446,15 +446,15 @@ const dropTitle = takesExcel
     {
       mode === 'compress' && (
         <fieldset class="field field--turns field--compression">
-          <legend>Preserve document content</legend>
-          <p>Smart font compaction with page-by-page verification. No glyph remapping or image-quality loss.</p>
+          <legend>Compression level</legend>
+          <p>Choose the optimization effort. Maximum is the default; every level preserves document content and image quality.</p>
+          <div class="compression-levels" role="radiogroup" aria-label="Compression level">
+            <label><input type="radio" name="compression-level" value="maximum" checked /><span><strong>Maximum</strong><small>Deepest safe optimization</small></span></label>
+            <label><input type="radio" name="compression-level" value="balanced" /><span><strong>Balanced</strong><small>Focus on larger fonts in shorter files</small></span></label>
+            <label><input type="radio" name="compression-level" value="minimal" /><span><strong>Minimal</strong><small>Fast structural cleanup only</small></span></label>
+          </div>
           <label>Target size (optional)<input type="number" data-compression-target min="0.001" step="any" placeholder="e.g. 2" inputmode="decimal" aria-describedby="compression-limit-note" /></label>
           <label>Size unit<select data-compression-unit aria-label="Target size unit"><option value="1000000">MB</option><option value="1000">KB</option></select></label>
-          <div class="compression-targets" role="group" aria-label="Set a reduction target">
-            <span>Try a size target:</span>
-            {[30, 50, 70].map(percent => <button type="button" class="button button--ghost" data-compression-percent={percent}>{percent}% smaller</button>)}
-            <small>Targets, not guaranteed reductions. Content preservation comes first.</small>
-          </div>
           <small id="compression-limit-note">1 MB = 1,000,000 bytes. Leave blank for safe compression. Some PDFs cannot meet a smaller limit without quality loss; we will tell you instead of changing the content.</small>
         </fieldset>
       )
@@ -626,16 +626,6 @@ const dropTitle = takesExcel
     const runLabel = runBtn.textContent ?? 'Run tool';
 
     let files: File[] = [];
-    root.querySelectorAll<HTMLButtonElement>('[data-compression-percent]').forEach(button => {
-      button.addEventListener('click', () => {
-        if (busy || !files[0]) return;
-        const target = root.querySelector<HTMLInputElement>('[data-compression-target]')!;
-        const unit = root.querySelector<HTMLSelectElement>('[data-compression-unit]')!;
-        unit.value = '1000';
-        target.value = String(Math.max(1, Math.floor(files[0].size * (1 - Number(button.dataset.compressionPercent) / 100))) / 1000);
-        target.focus();
-      });
-    });
     let worker: Worker | null = null;
     let jobId = 0;
     let nextRequestId = 0;
@@ -1504,6 +1494,7 @@ const dropTitle = takesExcel
         cropPages,
         imagePreset: (picked('image-preset') ?? 'lossless') as WorkerRequest['imagePreset'],
         compressionTargetBytes: mode === 'compress' ? compressionTargetBytes : undefined,
+        compressionLevel: mode === 'compress' ? (picked('compression-level') ?? 'maximum') as WorkerRequest['compressionLevel'] : undefined,
         flattenOptions: {
           fields: root.querySelector<HTMLInputElement>('[data-flatten-part="fields"]')?.checked ?? true,
           annotations: root.querySelector<HTMLInputElement>('[data-flatten-part="annotations"]')?.checked ?? true,
@@ -1635,8 +1626,15 @@ const dropTitle = takesExcel
   .field--compression > p, .field--compression > small { flex-basis: 100%; overflow-wrap: anywhere; }
   .field--compression label { min-width: 0; max-width: 100%; flex-wrap: wrap; }
   .field--compression input { min-width: 0; max-width: 100%; width: 8rem; }
-  .compression-targets { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: .5rem; min-width: 0; }
-  .compression-targets small { flex-basis: 100%; }
+  .compression-levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex: 1 1 100%; gap: .65rem; min-width: 0; }
+  .compression-levels label { display: flex; align-items: flex-start; flex-wrap: nowrap; gap: .6rem; padding: .9rem; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--paper-raised); cursor: pointer; }
+  .compression-levels label:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .compression-levels label:has(input:focus-visible) { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .compression-levels input { width: 1rem; flex: 0 0 1rem; margin-top: .2rem; accent-color: var(--accent); }
+  .compression-levels span { min-width: 0; }
+  .compression-levels strong, .compression-levels small { display: block; }
+  .compression-levels small { color: var(--ink-2); margin-top: .25rem; }
+  @media (max-width: 600px) { .compression-levels { grid-template-columns: 1fr; } }
 
   .files {
     margin: 0; padding-left: 1.2rem; display: grid; gap: 0.3rem;

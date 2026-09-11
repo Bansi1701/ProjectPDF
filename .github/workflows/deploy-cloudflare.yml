@@ -62,6 +62,7 @@ jobs:
           npx astro preview --host 127.0.0.1 --port 4326 --background
           npm run audit:browser-operations
           npm run audit:compression
+          npm run audit:split-contrast
           npm run audit:help-browser
           npm run audit:browser
 

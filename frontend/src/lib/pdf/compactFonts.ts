@@ -34,7 +34,7 @@ export function sameGlyphs(a: Uint8Array, b: Uint8Array): boolean {
   } catch { return false; }
 }
 
-export async function compactFonts(doc: PDFDocument, wasm?: BufferSource): Promise<Set<string>> {
+export async function compactFonts(doc: PDFDocument, wasm?: BufferSource, limits = { minEncodedBytes: 0, maxDecodedBytes: 4_000_000 }): Promise<Set<string>> {
   const changed = new Set<string>();
   // Preserve font programs used for future interactive form input as well.
   if (doc.catalog.has(PDFName.of('AcroForm'))) return changed;
@@ -46,10 +46,10 @@ export async function compactFonts(doc: PDFDocument, wasm?: BufferSource): Promi
   }
   for (const ref of refs.values()) {
     const stream = doc.context.lookup(ref);
-    if (!(stream instanceof PDFRawStream)) continue;
+    if (!(stream instanceof PDFRawStream) || stream.contents.length < limits.minEncodedBytes) continue;
     try {
       const font = decodePDFRawStream(stream).decode();
-      if (font.length > 4_000_000 || ['fvar', 'CFF ', 'CFF2', 'COLR', 'SVG '].some(tag => tableOffset(font, tag))) continue;
+      if (font.length > limits.maxDecodedBytes || ['fvar', 'CFF ', 'CFF2', 'COLR', 'SVG '].some(tag => tableOffset(font, tag))) continue;
       const count = glyphCount(font);
       if (!count || !tableOffset(font, 'glyf') || !tableOffset(font, 'loca')) continue;
       const rebuilt = subsetFont(await loadHb(wasm), font, new Set(Array.from({ length: count }, (_, i) => i)), true).font;

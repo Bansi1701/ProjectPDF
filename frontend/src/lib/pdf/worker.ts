@@ -72,7 +72,8 @@ async function run(request: WorkerRequest): Promise<OpResult> {
       return (await import('./compress')).compress(
         request.files,
         'lossless',
-        request.compressionTargetBytes
+        request.compressionTargetBytes,
+        request.compressionLevel ?? 'maximum'
       );
     case 'merge':
       return (await import('./organise')).merge(request.files);

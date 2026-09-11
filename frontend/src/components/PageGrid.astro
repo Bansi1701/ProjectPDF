@@ -335,15 +335,18 @@ const { mode } = Astro.props;
 
   .page-cell__cut {
     position: absolute;
-    right: -0.55rem;
-    top: 8%;
-    bottom: 8%;
-    width: 1.1rem;
+    right: -0.75rem;
+    top: 45%;
+    width: 44px;
+    height: 44px;
     display: grid;
     place-items: center;
-    border: 0;
-    background: transparent;
-    color: var(--line);
+    border: 1.5px solid var(--ink-2);
+    border-radius: 12px;
+    background: var(--paper-raised);
+    color: var(--ink);
+    box-shadow: var(--shadow-paper);
+    z-index: 3;
     cursor: pointer;
     font-size: 0.9rem;
     line-height: 1;
@@ -351,19 +354,15 @@ const { mode } = Astro.props;
   }
 
   .page-cell__cut:hover { color: var(--accent); }
+  .page-cell__cut:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .page-cell__cut svg { width: 22px; height: 22px; pointer-events: none; }
 
   .page-cell[data-cut='true'] .page-cell__cut {
     color: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent);
   }
 
-  .page-cell[data-cut='true'] .page-cell__cut::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--accent);
-  }
 
   .page-view {
     border: 1px solid var(--line);
@@ -484,13 +483,12 @@ const { mode } = Astro.props;
     }
 
     .page-cell__cut {
-      width: 1.65rem;
-      aspect-ratio: 1 / 1;
-      height: auto;
+      width: 44px;
+      height: 44px;
       right: 0.1rem;
       font-size: 0.95rem;
-      border-radius: 999px;
-      background: color-mix(in srgb, var(--paper-raised) 84%, transparent);
+      border-radius: 12px;
+      background: var(--paper-raised);
     }
   }
 
@@ -515,7 +513,7 @@ const { mode } = Astro.props;
     .page-grid__btn { min-height: 2.75rem; padding: 0.55rem 0.75rem; }
     .page-cell__tool { min-width: 2.75rem; min-height: 2.75rem; padding: 0.4rem; }
     .page-cell__pick { width: 2.75rem; height: 2.75rem; }
-    .page-cell__cut { right: -0.55rem; width: 2.75rem; }
+    .page-cell__cut { right: 0.1rem; width: 44px; height: 44px; }
   }
 </style>
 
@@ -734,7 +732,10 @@ const { mode } = Astro.props;
         cut.type = 'button';
         cut.className = 'page-cell__cut';
         cut.dataset.gridCut = '';
-        cut.textContent = '✂';
+        // Monochrome vector avoids platform emoji colors and follows theme ink.
+        cut.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="m8.2 8.2 12 12M8.2 15.8 20.2 3.8M14 10l-2 2"/></svg>';
+        cut.setAttribute('aria-label', 'Cut after this page');
+        cut.setAttribute('aria-pressed', 'false');
         cut.title = 'Cut after this page';
         el.append(cut);
       }
@@ -1164,6 +1165,13 @@ const { mode } = Astro.props;
           pick.setAttribute('title', label);
         }
         cell.el.dataset.cut = String(this.cuts.has(index));
+        const cut = cell.el.querySelector<HTMLButtonElement>('[data-grid-cut]');
+        if (cut) {
+          const selected = this.cuts.has(index);
+          cut.setAttribute('aria-pressed', String(selected));
+          cut.setAttribute('aria-label', `${selected ? 'Remove cut' : 'Cut'} after page ${index + 1}`);
+          cut.title = `${selected ? 'Remove cut' : 'Cut'} after page ${index + 1}`;
+        }
         delete cell.el.dataset.drop;
 
         const label = cell.el.querySelector('.page-cell__label');

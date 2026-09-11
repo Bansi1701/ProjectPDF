@@ -26,8 +26,8 @@ try {
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(`${base}/compress-pdf/`);
     await page.locator('[data-input]').setInputFiles({ name: 'regression.pdf', mimeType: 'application/pdf', buffer: original });
-    await page.locator('[data-compression-percent="50"]').click();
-    assert.equal(Number(await page.locator('[data-compression-target]').inputValue()) * 1000, Math.floor(original.length / 2));
+    assert.equal(await page.locator('[data-compression-percent]').count(), 0);
+    assert.ok(await page.locator('input[name="compression-level"][value="maximum"]').isChecked());
     await page.locator('[data-compression-target]').fill('1');
     await page.locator('[data-compression-unit]').selectOption('1000');
     await page.locator('[data-run]').click();
@@ -45,8 +45,16 @@ try {
     await page.locator('[data-compression-unit]').selectOption('1000000');
     await page.locator('[data-run]').click();
     await page.locator('[data-notes]').filter({ hasText: 'Target met:' }).waitFor({ state: 'visible' });
-    const unchanged = await page.locator('[data-file-download]').first().evaluate(async link => Array.from(new Uint8Array(await (await fetch(link.href)).arrayBuffer())));
-    assert.deepEqual(Buffer.from(unchanged), original, 'An already-under-target file stays byte-identical');
+    const metBytes = await page.locator('[data-file-download]').first().evaluate(async link => Array.from(new Uint8Array(await (await fetch(link.href)).arrayBuffer())));
+    assert.equal(metBytes.length, bytes.length, 'Maximum still optimizes even when the original already meets the optional limit');
+    for (const level of ['balanced', 'minimal']) {
+      await page.locator(`input[name="compression-level"][value="${level}"]`).check();
+      await page.locator('[data-run]').click();
+      await page.locator('[data-notes]').filter({ hasText: new RegExp(`${level} compression`, 'i') }).waitFor({ state: 'visible' });
+      const output = await page.locator('[data-file-download]').first().evaluate(async link => Array.from(new Uint8Array(await (await fetch(link.href)).arrayBuffer())));
+      assert.ok(output.length >= bytes.length && output.length <= original.length);
+      if (level === 'minimal') assert.doesNotMatch(await page.locator('[data-result]').innerText(), /Compacted .*embedded font programs/);
+    }
     await context.close();
     console.log(`PASS compression upload, unmet target, downloadable PDF and layout at ${width}px`);
   }

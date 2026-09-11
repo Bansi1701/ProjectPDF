@@ -465,10 +465,11 @@ export interface WorkerRequest {
   headerFooterOptions?: HeaderFooterOptions;
   splitByOptions?: SplitByOptions;
   grayscaleOptions?: GrayscaleOptions;
-  /** Compress only: how hard to squeeze the pictures. */
+  /** Legacy request field. Compression no longer reduces image quality. */
   imagePreset?: import('./compressimages').ImagePreset;
   /** Optional compression ceiling, never permission to reduce quality. */
   compressionTargetBytes?: number;
+  compressionLevel?: import('./compress').CompressionLevel;
   watermarkOptions?: import('./watermark').WatermarkOptions;
   autoCropOptions?: AutoCropOptions;
   /** Reorder only: zero-based page indexes in their new order. */

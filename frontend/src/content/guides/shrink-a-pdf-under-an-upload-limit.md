@@ -32,7 +32,7 @@ Extractable text and a correct page count alone cannot prove that a PDF still lo
 - **Target not reached:** the safest available output is still larger than the limit. Its content was not sacrificed to force the size.
 - **Original preserved:** repacking did not save space, a preservation check failed, or the document requires protection from rewriting. The downloaded bytes are unchanged.
 
-If the original already meets the target, no rewrite is needed. Signed documents, signature fields and XFA forms are returned unchanged because a rewrite may invalidate their integrity. Password-protected PDFs require an authorized unlocked copy.
+The selected level still attempts compression even when the original already meets your optional target. Maximum uses the broadest supported font optimization; Balanced checks larger fonts in documents of up to 20 pages; Minimal only repacks the structure. All levels preserve content and image quality. Signed documents, signature fields and XFA forms are returned unchanged because a rewrite may invalidate their integrity. Password-protected PDFs require an authorized unlocked copy.
 
 ## Step three: review before sending
 

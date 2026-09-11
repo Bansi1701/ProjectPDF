@@ -37,7 +37,14 @@ export async function testCompression() {
   assert.match(tooSmall.summary, /Target not reached/);
   const met = result(await compress(input(bytes), 'lossless', bytes.length));
   assert.equal(met.targetMet, true);
-  assert.deepEqual(met.files[0].bytes, bytes);
+  assert.ok(met.bytesOut < bytes.length, 'Still optimize when the input already meets the optional limit');
+  assert.ok(matchesSnapshot(snapshot, await PDFDocument.load(met.files[0].bytes, { updateMetadata: false })));
+  for (const level of ['maximum', 'balanced', 'minimal'] as const) {
+    const safe = result(await compress(input(bytes), 'lossless', undefined, level));
+    assert.ok(matchesSnapshot(snapshot, await PDFDocument.load(safe.files[0].bytes, { updateMetadata: false })));
+    assert.match(safe.notes![0].toLowerCase(), new RegExp(`${level} compression`));
+  }
+  assert.equal((await compress(input(bytes), 'lossless', undefined, 'invalid' as never)).ok, false);
   assert.equal((await compress(input(bytes), 'lossless', NaN)).ok, false);
   assert.equal((await compress(input(bytes), 'lossless', -1)).ok, false);
   for (const preset of ['balanced', 'smallest'] as const) {

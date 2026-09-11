@@ -4,9 +4,11 @@ import type { ImagePreset } from './compressimages';
 import type { InputFile, OpResult, OpSuccess } from './types';
 import { snapshotDocument, matchesSnapshot } from './compressionSafety';
 
-export async function compress(files: InputFile[], _preset: ImagePreset = 'lossless', targetBytes?: number): Promise<OpResult> {
+export type CompressionLevel = 'maximum' | 'balanced' | 'minimal';
+export async function compress(files: InputFile[], _preset: ImagePreset = 'lossless', targetBytes?: number, level: CompressionLevel = 'maximum'): Promise<OpResult> {
   const file = files[0];
   if (!file || files.length !== 1) return { ok: false, error: 'Choose one PDF to compress.' };
+  if (!['maximum', 'balanced', 'minimal'].includes(level)) return { ok: false, error: 'Choose Maximum, Balanced or Minimal compression.' };
   if (targetBytes !== undefined && (!Number.isSafeInteger(targetBytes) || targetBytes < 1)) return { ok: false, error: 'Enter a positive target size in KB or MB.' };
   const started = performance.now();
   const input = new Uint8Array(file.bytes);
@@ -21,7 +23,7 @@ export async function compress(files: InputFile[], _preset: ImagePreset = 'lossl
   if (!pages) return { ok: false, error: 'This PDF has no pages.' };
   const finish = (bytes: Uint8Array, explanation: string, unchanged: boolean): OpSuccess => {
     const targetMet = targetBytes === undefined ? undefined : bytes.length <= targetBytes;
-    const notes = ['No glyph renumbering, image-quality reduction, metadata stripping or content removal.'];
+    const notes = [`${level[0].toUpperCase() + level.slice(1)} compression. No glyph renumbering, image-quality reduction, metadata stripping or content removal.`];
     if (targetBytes !== undefined) notes.push(targetMet
       ? `Target met: ${bytes.length.toLocaleString('en-US')} bytes is within your ${targetBytes.toLocaleString('en-US')}-byte limit.`
       : `Target not reached: the safest available result is ${bytes.length.toLocaleString('en-US')} bytes, above your ${targetBytes.toLocaleString('en-US')}-byte limit. We did not reduce quality or remove content to force the size. Try a larger limit or split the PDF if the recipient allows it.`);
@@ -41,7 +43,6 @@ export async function compress(files: InputFile[], _preset: ImagePreset = 'lossl
       return finish(input, 'Signed PDFs, signature fields and XFA forms are returned unchanged to protect their integrity.', true);
     }
   }
-  if (targetBytes !== undefined && input.length <= targetBytes) return finish(input, 'Your original already meets the requested size. No rewrite was needed.', true);
   try {
     const snapshot = snapshotDocument(doc);
     const repacked = await doc.save({ useObjectStreams: true, addDefaultPage: false, updateFieldAppearances: false, objectsPerTick: 200 });
@@ -50,10 +51,12 @@ export async function compress(files: InputFile[], _preset: ImagePreset = 'lossl
     if (reopened.getPageCount() !== pages || !matchesSnapshot(snapshot, reopened)) return finish(input, 'The preservation check detected a document change. We discarded that result and returned your original unchanged.', true);
     // A stronger font pass keeps all glyph IDs, outlines and metrics. It never
     // rewrites page text. Only offer it after an all-page visual/text check.
-    if (pages <= 80 && typeof OffscreenCanvas !== 'undefined') {
+    if (level !== 'minimal' && pages <= (level === 'balanced' ? 20 : 80) && typeof OffscreenCanvas !== 'undefined') {
       try {
         const { compactFonts } = await import('./compactFonts');
-        const fonts = await compactFonts(reopened);
+        const fonts = await compactFonts(reopened, undefined, level === 'balanced'
+          ? { minEncodedBytes: 32_768, maxDecodedBytes: 2_000_000 }
+          : undefined);
         if (fonts.size) {
           const optimized = await reopened.save({ useObjectStreams: true, addDefaultPage: false, updateFieldAppearances: false, objectsPerTick: 200 });
           const verified = await PDFDocument.load(optimized, { updateMetadata: false, throwOnInvalidObject: true });
