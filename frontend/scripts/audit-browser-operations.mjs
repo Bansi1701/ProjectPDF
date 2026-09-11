@@ -152,7 +152,14 @@ const cases = [
   { slug: 'pdf-forms', files: [formPdf], timeout: 45_000,
     prepare: async (page) => page.locator('[data-field="AuditField"]').fill('After') },
   { slug: 'protect-pdf', files: [pdf], timeout: 45_000,
-    prepare: async (page) => page.locator('[data-user-password]').fill(fixturePassword) },
+    prepare: async (page) => {
+      await page.locator('[data-user-password]').fill(fixturePassword);
+      await page.locator('[data-confirm-password]').fill(`${fixturePassword}-mismatch`);
+      await page.locator('[data-run]:visible').last().click();
+      await page.locator('[data-error]').filter({ hasText: 'The two passwords do not match' }).waitFor({ state: 'visible' });
+      if (await page.locator('[data-result]').isVisible()) throw new Error('Mismatched passwords must not produce a file');
+      await page.locator('[data-confirm-password]').fill(fixturePassword);
+    } },
   { slug: 'unlock-pdf', files: [protectedPdf], timeout: 45_000,
     prepare: async (page) => page.locator('[data-user-password]').fill(fixturePassword) },
   { slug: 'repair-pdf', files: [pdf], timeout: 45_000, expectPdfPages: 2 },
