@@ -425,6 +425,8 @@ const { profile = 'full' } = Astro.props;
     private editingSignatureId = '';
     private inspectorDirty = false;
     private inspectorSelection = '';
+    private selectionControlsId = '';
+    private selectionControlsTimer: number | undefined;
     private textSession: { id: string; before: EditableMark; isNew: boolean; snapshot: boolean } | null = null;
     private textMeasure = (text: string, size: number): number => text.length * size * .55;
     private textCharacters = new Set<number>();
@@ -446,6 +448,15 @@ const { profile = 'full' } = Astro.props;
     private feedback = this.querySelector<HTMLElement>('[data-editor-feedback]')!;
 
     connectedCallback() {
+      // Keep chrome discoverable without repainting document objects on hover.
+      this.addEventListener('pointermove', event => {
+        const target = event.target instanceof Element ? event.target : null;
+        const hit = target?.closest('[data-mark-id]');
+        if (hit?.getAttribute('data-mark-id') === this.selectedId || target === this.textInput) this.revealSelectionControls();
+      });
+      for (const name of ['pointerdown', 'pointerup', 'keydown', 'input', 'focusin'] as const) {
+        this.addEventListener(name, () => this.revealSelectionControls());
+      }
       this.profile = this.dataset.editorProfile === 'sign' ? 'sign' : 'full';
       document.addEventListener('pointerdown', this.dismissMenus);
       this.querySelectorAll<HTMLElement>('[data-editor-menu], #editor-signature-panel').forEach(panel => {
@@ -663,6 +674,7 @@ const { profile = 'full' } = Astro.props;
     private fitSignaturePad: (() => void) | null = null;
 
     disconnectedCallback() {
+      window.clearTimeout(this.selectionControlsTimer);
       document.removeEventListener('pointerdown', this.dismissMenus);
       this.closeMenus();
       if (this.fitSignaturePad) window.removeEventListener('resize', this.fitSignaturePad);
@@ -2520,14 +2532,14 @@ const { profile = 'full' } = Astro.props;
       if (rotation) selection.setAttribute('transform', this.markTransform(mark, center, rotation));
       nodes.push(selection);
 
-      const touch = Math.max(18, 44 * 1000 / Math.max(1, this.overlay.getBoundingClientRect().width));
-      const handleSize = Math.max(8, touch * 0.22);
+      const bounds = this.overlay.getBoundingClientRect();
+      const pixelX = 1000 / Math.max(1, bounds.width), pixelY = 1000 / Math.max(1, bounds.height);
       const addHandle = (manipulator: Manipulator, point: Point, kind: SelectionKind = 'resize', label: string = manipulator): void => {
         const visiblePoint = rotation ? this.rotateMarkPoint(mark, point, center, rotation) : point;
-        const outer = this.svg('circle', {
+        const outer = this.svg('ellipse', {
           cx: String(visiblePoint.x * 1000),
           cy: String(visiblePoint.y * 1000),
-          r: String(touch / 2),
+          rx: String(22 * pixelX), ry: String(22 * pixelY),
           class: 'editor-selection__hit',
         });
         outer.dataset.markId = mark.id;
@@ -2536,10 +2548,10 @@ const { profile = 'full' } = Astro.props;
         outer.dataset.selectionLabel = label;
         nodes.push(outer);
 
-        const inner = this.svg('circle', {
+        const inner = this.svg('ellipse', {
           cx: String(visiblePoint.x * 1000),
           cy: String(visiblePoint.y * 1000),
-          r: String(handleSize / 2),
+          rx: String(4 * pixelX), ry: String(4 * pixelY),
           class: 'editor-selection__handle',
         });
         inner.dataset.markId = mark.id;
@@ -2595,6 +2607,10 @@ const { profile = 'full' } = Astro.props;
     }
 
     private renderMarks(): void {
+      if (this.selectionControlsId !== this.selectedId) {
+        this.selectionControlsId = this.selectedId;
+        this.revealSelectionControls();
+      }
       const visible = [...this.marks, ...(this.draft ? [this.draft] : [])].filter((mark) => mark.page === this.activePage);
       const nodes: SVGElement[] = [];
       const pageHeight = Number(this.pageStage.dataset.pageHeight || 792);
@@ -2644,7 +2660,7 @@ const { profile = 'full' } = Astro.props;
           } else node.textContent = mark.text;
           if (selected) node.setAttribute('visibility', 'hidden');
           if (!selected && !mark.text.trim()) {
-            const blank = this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String((mark.width ?? .35) * 1000), height: String((mark.height ?? .1) * 1000), fill: 'transparent', stroke: '#64748b', 'stroke-dasharray': '6 4', 'vector-effect': 'non-scaling-stroke', class: 'editor-mark' });
+            const blank = this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String((mark.width ?? .35) * 1000), height: String((mark.height ?? .1) * 1000), fill: 'transparent', stroke: 'none', 'vector-effect': 'non-scaling-stroke', class: 'editor-mark' });
             blank.dataset.markId = mark.id;
             if (mark.rotation) blank.setAttribute('transform', this.markTransform(mark, rectCenter(this.markRect(mark)), mark.rotation));
             nodes.push(blank);
@@ -2765,6 +2781,17 @@ const { profile = 'full' } = Astro.props;
       this.positionTextEditor();
     }
 
+    private revealSelectionControls(): void {
+      window.clearTimeout(this.selectionControlsTimer);
+      this.dataset.selectionIdle = 'false';
+      if (!this.selectedId || !this.isConnected) return;
+      this.selectionControlsTimer = window.setTimeout(() => {
+        // Never interrupt a held mouse/touch drag, even if the pointer pauses.
+        if (this.selectionDrag || this.dragStart) { this.revealSelectionControls(); return; }
+        this.dataset.selectionIdle = 'true';
+      }, 10000);
+    }
+
     private rotateMarkPoint(mark: EditableMark, point: Point, center: Point, rotation: number): Point {
       if (mark.kind !== 'text' || mark.layout !== 'box') return rotatePoint(point, center, degreesToRadians(rotation));
       const aspect = Number(this.pageStage.dataset.pageWidth || 612) / Number(this.pageStage.dataset.pageHeight || 792);
@@ -2879,7 +2906,7 @@ const { profile = 'full' } = Astro.props;
   .editor__text-frame[hidden] { display: none; }
   .editor__text-frame button { pointer-events: auto; touch-action: none; cursor: grab; }
   .editor__text-handle { position: absolute; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; transform: translate(-50%, -50%); }
-  .editor__text-handle::after { content: ''; position: absolute; inset: 16px; background: white; border: 2px solid var(--accent); border-radius: 3px; }
+  .editor__text-handle::after { content: ''; position: absolute; inset: 17px; background: white; border: 2px solid var(--accent); border-radius: 50%; }
   .editor__text-handle[data-text-handle='nw'] { left: 0; top: 0; cursor: nwse-resize; }
   .editor__text-handle[data-text-handle='n'] { left: 50%; top: 0; cursor: ns-resize; }
   .editor__text-handle[data-text-handle='ne'] { left: 100%; top: 0; cursor: nesw-resize; }
@@ -3061,7 +3088,7 @@ const { profile = 'full' } = Astro.props;
   .editor__viewport[data-panning='true'] .editor__page svg[data-tool='pan'] { cursor: grabbing; }
   :global(.editor-mark) { pointer-events: stroke; }
   :global(text.editor-mark), :global(rect.editor-mark) { pointer-events: all; }
-  :global(.editor-mark.is-selected) { filter: drop-shadow(0 0 3px rgb(225 29 72 / 0.9)); stroke-dasharray: 7 4; }
+  :global(.editor-mark.is-selected) { filter: drop-shadow(0 0 3px rgb(225 29 72 / 0.9)); }
   :global(.editor-guide) { pointer-events: none; fill: var(--accent); opacity: 0.43; font-weight: 700; }
   :global(.editor-guide--watermark) { font-size: 82px; letter-spacing: 0.05em; text-transform: uppercase; }
   :global(.editor-guide--number) { font: 500 22px var(--font-mono); fill: var(--ink); opacity: 0.8; }
@@ -3106,6 +3133,16 @@ const { profile = 'full' } = Astro.props;
   :global(.editor-selection__hit[data-manipulator='callout-anchor']) { cursor: crosshair; }
   :global(.editor-guide-line) { stroke: color-mix(in oklab, var(--accent) 55%, white); stroke-width: 1.25; stroke-dasharray: 6 6; pointer-events: none; }
   :global(.editor-mark.is-selected) { filter: drop-shadow(0 0 0.7rem color-mix(in oklab, var(--accent) 24%, transparent)); }
+  .editor__text-frame, :global(.editor-selection), :global(.editor-selection__handle) { transition: opacity .18s ease; }
+  :global(live-pdf-editor[data-selection-idle='true']) .editor__text-frame,
+  :global(live-pdf-editor[data-selection-idle='true'] .editor-selection),
+  :global(live-pdf-editor[data-selection-idle='true'] .editor-selection__handle) { opacity: 0; }
+  :global(live-pdf-editor[data-selection-idle='true']) .editor__text-frame button,
+  :global(live-pdf-editor[data-selection-idle='true'] .editor-selection__hit) { pointer-events: none; }
+  :global(live-pdf-editor[data-selection-idle='true'] .editor-mark.is-selected) { filter: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .editor__text-frame, :global(.editor-selection), :global(.editor-selection__handle) { transition: none; }
+  }
 
   .editor__footer { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding: 0.75rem 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--step--2); }
   .editor__footer [data-editor-count]:not(:only-child) { color: var(--ink-2); font-weight: 500; }

@@ -14,6 +14,25 @@ const browser = await chromium.launch({ headless: true });
 const readMarks = page => page.locator('live-pdf-editor').evaluate(editor => editor.getEdits());
 const openMenu = async (page, name) => page.locator(name === 'signature' ? '[data-editor-signature-trigger]' : `[data-editor-menu-trigger="${name}"]`).click();
 const showOptions = async page => { if (!await page.locator('.editor__properties').evaluate(panel => panel.open)) await page.locator('.editor__properties > summary').click(); };
+const checkSelectionFade = async (page, text = false, touch = false) => {
+  const editor = page.locator('live-pdf-editor');
+  const content = await readMarks(page);
+  const chrome = page.locator(text ? '[data-editor-text-frame]' : '.editor-selection__handle').first();
+  const target = page.locator(text ? '[data-editor-onpage-text]' : '.editor-mark.is-selected').first();
+  await target.dispatchEvent('pointermove', { pointerType: 'mouse' });
+  assert.equal(await editor.getAttribute('data-selection-idle'), 'false');
+  await page.clock.fastForward(9000);
+  assert.equal(await editor.getAttribute('data-selection-idle'), 'false', 'Controls stay for the first nine seconds');
+  await page.clock.fastForward(1300);
+  assert.equal(await editor.getAttribute('data-selection-idle'), 'true', 'Selection fades after ten idle seconds');
+  await page.waitForFunction(selector => getComputedStyle(document.querySelector(selector)).opacity === '0', text ? '[data-editor-text-frame]' : '.editor-selection__handle');
+  assert.equal(await chrome.evaluate(el => getComputedStyle(el).opacity), '0');
+  assert.equal(await page.locator(text ? '[data-text-handle="e"]' : '.editor-selection__hit').first().evaluate(el => getComputedStyle(el).pointerEvents), 'none', 'Invisible handles cannot intercept clicks');
+  assert.deepEqual(await readMarks(page), content, 'Fading never changes document content');
+  if (text) { if (touch) await target.tap(); else await target.hover(); }
+  else await target.dispatchEvent('pointermove', { pointerType: 'mouse' });
+  assert.equal(await editor.getAttribute('data-selection-idle'), 'false', 'Hover or touch restores controls');
+};
 const place = async page => {
   const overlay = page.locator('[data-editor-overlay]');
   await overlay.scrollIntoViewIfNeeded();
@@ -39,12 +58,15 @@ try {
     await page.evaluate(theme => document.documentElement.dataset.theme = theme, theme);
     await page.locator('[data-input]').setInputFiles({ name: 'editor-test.pdf', mimeType: 'application/pdf', buffer: fixture });
     await page.locator('[data-editor-loading]').waitFor({ state: 'hidden', timeout: 30000 });
+    await page.clock.install();
     await page.locator('[data-editor-action="insert-text"]').first().click();
     await place(page);
     const input = page.locator('[data-editor-onpage-text]');
     assert.ok(await input.isVisible(), 'Place an empty box before typing');
     assert.equal(await input.inputValue(), '', 'A new text box is blank');
     assert.equal(await input.getAttribute('placeholder'), null, 'No sample text inside the box');
+    assert.equal(await page.locator('[data-text-handle="e"]').evaluate(el => getComputedStyle(el, '::after').borderRadius), '50%', 'Text handles are round dots');
+    await checkSelectionFade(page, true, width < 760);
     await page.locator('[data-editor-inline-size]').fill('24');
     await page.locator('[data-editor-inline-size]').press('Tab');
     assert.ok(await input.isVisible(), 'A blank box must survive focusing and changing the font size');
@@ -129,6 +151,7 @@ try {
   await page.goto(`${base}/edit-pdf/`);
   await page.locator('[data-input]').setInputFiles({ name: 'all-tools.pdf', mimeType: 'application/pdf', buffer: fixture });
   await page.locator('[data-editor-loading]').waitFor({ state: 'hidden', timeout: 30000 });
+  await page.clock.install();
   const actions = {
     comment: ['comment', 'replace', 'text-comment', 'insert-text'],
     markup: ['highlight', 'underline', 'strike'],
@@ -142,6 +165,7 @@ try {
     if (typing || menu === 'stamp') await place(page); else await drag(page);
     if (typing) { await page.locator('[data-editor-onpage-text]').fill(`Test ${action}`); await page.locator('[data-editor-text-done]').click(); }
     assert.equal((await readMarks(page)).length, 1, `${action} places one mark`);
+    await checkSelectionFade(page, typing);
     await showOptions(page);
     await page.locator('[data-editor-color]').evaluate(input => { input.value = '#1267b1'; input.dispatchEvent(new Event('input', { bubbles: true })); });
     assert.equal((await readMarks(page))[0].color, '#1267b1', `${action} can be recolored after placement`);
@@ -162,6 +186,7 @@ try {
   await page.locator('[data-editor-tool="whiteout"]').click();
   await drag(page);
   assert.equal((await readMarks(page))[0].kind, 'whiteout');
+  await checkSelectionFade(page);
   await reset();
   for (const kind of ['signature', 'initials', 'date', 'drawn', 'upload']) {
     await openMenu(page, 'signature');
@@ -192,6 +217,7 @@ try {
     }
     const mark = (await readMarks(page))[0];
     assert.ok(mark && mark.kind.startsWith('signature'), `${kind} places a signature`);
+    await checkSelectionFade(page);
     if (kind === 'date') assert.equal(mark.signatureRole, 'date');
     await page.locator('[data-editor-signature-size-select]').selectOption('large');
     assert.ok((await readMarks(page))[0].width > mark.width, `${kind} has working size presets`);
@@ -209,6 +235,8 @@ try {
   const handle = page.locator('[data-text-handle="e"]');
   await handle.scrollIntoViewIfNeeded(); const h = await handle.boundingBox();
   await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2); await page.mouse.down();
+  await page.clock.fastForward(11000);
+  assert.equal(await page.locator('live-pdf-editor').getAttribute('data-selection-idle'), 'false', 'A held drag keeps handles available past ten seconds');
   await page.mouse.move(h.x + h.width / 2 + 70, h.y + h.height / 2, { steps: 6 }); await page.mouse.up();
   assert.ok((await readMarks(page))[0].width > before.width, 'Text resize handle changes box width');
   assert.equal((await readMarks(page))[0].size, before.size, 'Resizing a text box does not squash its font');
@@ -224,5 +252,5 @@ try {
   assert.equal((await readMarks(page)).length, count, 'Panning does not create edits');
   await page.locator('[data-editor-zoom-reset]').click();
   assert.equal(await page.locator('[data-editor-zoom]').innerText(), '100%');
-  console.log('PASS whiteout, box resize, rotation, pan and Fit');
+  console.log('PASS selection fade/restore across all tools, held drag safety, whiteout, box resize, rotation, pan and Fit');
 } finally { await browser.close(); }
