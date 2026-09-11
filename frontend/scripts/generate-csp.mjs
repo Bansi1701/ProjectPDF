@@ -57,14 +57,18 @@ for (const file of htmlFiles(dist)) {
 
 const policy = [
   "default-src 'self'",
-  `script-src 'self' 'wasm-unsafe-eval' ${[...hashes].sort().join(' ')}`,
+  // static.cloudflareinsights.com is the Web Analytics beacon: cookieless,
+  // no fingerprinting, no cross-site tracking. It is the one third-party
+  // script on the site and the privacy policy names it.
+  `script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com ${[...hashes].sort().join(' ')}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self'",
   "media-src 'self' blob: mediastream:",
-  // Same-origin engine and asset fetches only. Add the advertising origins
-  // here at the same time as the ad script, never before.
-  "connect-src 'self' blob: data:",
+  // Same-origin engine and asset fetches, plus where the analytics beacon
+  // reports to. Add the advertising origins here at the same time as the ad
+  // script, never before.
+  "connect-src 'self' blob: data: https://cloudflareinsights.com https://static.cloudflareinsights.com",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
   "object-src 'none'",
