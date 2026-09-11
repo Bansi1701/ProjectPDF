@@ -13,6 +13,7 @@ const measureFont = await doc.embedFont(StandardFonts.Helvetica);
 const browser = await chromium.launch({ headless: true });
 const readMarks = page => page.locator('live-pdf-editor').evaluate(editor => editor.getEdits());
 const openMenu = async (page, name) => page.locator(name === 'signature' ? '[data-editor-signature-trigger]' : `[data-editor-menu-trigger="${name}"]`).click();
+const showOptions = async page => { if (!await page.locator('.editor__properties').evaluate(panel => panel.open)) await page.locator('.editor__properties > summary').click(); };
 const place = async page => {
   const overlay = page.locator('[data-editor-overlay]');
   await overlay.scrollIntoViewIfNeeded();
@@ -30,7 +31,7 @@ const drag = async page => {
 };
 try {
   for (const width of [1280, 390, 320]) for (const theme of ['light', 'dark']) {
-    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    const context = await browser.newContext({ viewport: { width, height: 900 }, hasTouch: width < 760 });
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -42,6 +43,29 @@ try {
     await place(page);
     const input = page.locator('[data-editor-onpage-text]');
     assert.ok(await input.isVisible(), 'Place an empty box before typing');
+    assert.equal(await input.inputValue(), '', 'A new text box is blank');
+    assert.equal(await input.getAttribute('placeholder'), null, 'No sample text inside the box');
+    await page.locator('[data-editor-inline-size]').fill('24');
+    await page.locator('[data-editor-inline-size]').press('Tab');
+    assert.ok(await input.isVisible(), 'A blank box must survive focusing and changing the font size');
+    assert.equal(await page.locator('[data-editor-inline-size]').inputValue(), '24');
+    const emptyFrame = page.locator('[data-editor-text-frame]');
+    await emptyFrame.scrollIntoViewIfNeeded();
+    const startWidth = (await emptyFrame.boundingBox()).width;
+    const edge = await page.locator('[data-text-handle="e"]').boundingBox();
+    await page.mouse.move(edge.x + edge.width / 2, edge.y + edge.height / 2); await page.mouse.down();
+    await page.mouse.move(edge.x + edge.width / 2 + 25, edge.y + edge.height / 2, { steps: 6 }); await page.mouse.up();
+    assert.ok((await emptyFrame.boundingBox()).width > startWidth, 'Resize a blank text box before typing');
+    assert.equal(await input.inputValue(), '');
+    assert.equal((await readMarks(page)).length, 0, 'Blank boxes are not exported');
+    const startX = (await emptyFrame.boundingBox()).x;
+    const mover = page.locator('[data-text-move]'); await mover.scrollIntoViewIfNeeded(); const moveBounds = await mover.boundingBox();
+    await page.mouse.move(moveBounds.x + moveBounds.width / 2, moveBounds.y + moveBounds.height / 2); await page.mouse.down();
+    await page.mouse.move(moveBounds.x + moveBounds.width / 2 + 15, moveBounds.y + moveBounds.height / 2 + 10, { steps: 5 }); await page.mouse.up();
+    assert.ok((await emptyFrame.boundingBox()).x > startX, 'Move bar works before typing');
+    await page.locator('[data-editor-inline-size]').fill('');
+    assert.ok(await input.isVisible(), 'Clearing the size field must not delete the box');
+    await page.locator('[data-editor-inline-size]').fill('24'); await page.locator('[data-editor-inline-size]').press('Tab');
     const text = 'First line\nSecond line wraps neatly across this text box.';
     await input.fill(text);
     assert.equal((await readMarks(page))[0].text, text);
@@ -59,6 +83,11 @@ try {
     await input.fill(`${text}\nEdit again`);
     await input.press('Escape');
     assert.equal((await readMarks(page))[0].text, text, 'Escape cancels the current text session');
+    await showOptions(page);
+    await page.locator('[data-editor-size]').fill(''); await page.locator('[data-editor-size]').press('Tab');
+    await page.locator('[data-editor-w]').fill('40'); await page.locator('[data-editor-w]').press('Tab');
+    assert.equal((await readMarks(page))[0].size, 19, 'An empty numeric field never shrinks text to an invisible size');
+    assert.equal((await readMarks(page))[0].text, text, 'Object settings must preserve newlines in on-page text');
     await page.locator('[data-editor-duplicate]').click();
     assert.equal((await readMarks(page)).length, 2);
     await page.locator('[data-editor-undo]').click();
@@ -113,6 +142,7 @@ try {
     if (typing || menu === 'stamp') await place(page); else await drag(page);
     if (typing) { await page.locator('[data-editor-onpage-text]').fill(`Test ${action}`); await page.locator('[data-editor-text-done]').click(); }
     assert.equal((await readMarks(page)).length, 1, `${action} places one mark`);
+    await showOptions(page);
     await page.locator('[data-editor-color]').evaluate(input => { input.value = '#1267b1'; input.dispatchEvent(new Event('input', { bubbles: true })); });
     assert.equal((await readMarks(page))[0].color, '#1267b1', `${action} can be recolored after placement`);
     await page.locator('[data-editor-duplicate]').click();
@@ -176,12 +206,13 @@ try {
   await page.locator('[data-editor-onpage-text]').fill('Rotate and resize this box');
   await page.locator('[data-editor-text-done]').click();
   const before = (await readMarks(page))[0];
-  const handle = page.locator('.editor-selection__hit[data-manipulator="e"]');
+  const handle = page.locator('[data-text-handle="e"]');
   await handle.scrollIntoViewIfNeeded(); const h = await handle.boundingBox();
   await page.mouse.move(h.x + h.width / 2, h.y + h.height / 2); await page.mouse.down();
   await page.mouse.move(h.x + h.width / 2 + 70, h.y + h.height / 2, { steps: 6 }); await page.mouse.up();
   assert.ok((await readMarks(page))[0].width > before.width, 'Text resize handle changes box width');
   assert.equal((await readMarks(page))[0].size, before.size, 'Resizing a text box does not squash its font');
+  await showOptions(page);
   await page.locator('[data-editor-rotation]').fill('45'); await page.locator('[data-editor-rotation]').press('Tab');
   assert.equal((await readMarks(page))[0].rotation, 45);
   assert.match(await page.locator('text.editor-mark').getAttribute('transform'), /^matrix\(/, 'Rotation accounts for portrait page proportions');

@@ -289,7 +289,8 @@ async function auditEditorLayout(browser) {
         stageWidth: stage?.width ?? 0,
         viewportInnerWidth: document.querySelector('[data-editor-viewport]')?.clientWidth ?? 0,
         toolbarBeforePages: Boolean(tools && pages && tools.top < pages.top),
-        inspectorBesideCanvas: Boolean(viewportBox && properties && properties.left >= viewportBox.right - 2),
+        inspectorBelowCanvas: Boolean(viewportBox && properties && properties.top >= viewportBox.bottom - 2 && Math.abs(properties.width - viewportBox.width) < 3),
+        optionsCollapsed: document.querySelector('.editor__properties') instanceof HTMLDetailsElement && !document.querySelector('.editor__properties').open,
         thumbWidth: thumb?.width ?? 0,
         emptyActionsHidden: actions instanceof HTMLElement && actions.hidden,
       };
@@ -301,8 +302,8 @@ async function auditEditorLayout(browser) {
     }
     if (!layout.toolbarBeforePages) throw new Error(`edit-pdf ${viewport.name}: tool rail is not above the document workspace`);
     if (!layout.emptyActionsHidden) throw new Error(`edit-pdf ${viewport.name}: object actions are visible without a selection`);
-    if (viewport.name === 'desktop' && !layout.inspectorBesideCanvas) {
-      throw new Error('edit-pdf desktop: properties inspector is not beside the document canvas');
+    if (!layout.inspectorBelowCanvas || !layout.optionsCollapsed) {
+      throw new Error(`edit-pdf ${viewport.name}: object options should be collapsed below the full-width document canvas`);
     }
     if (viewport.name === 'mobile' && layout.thumbWidth > 100) {
       throw new Error(`edit-pdf mobile: a page thumbnail expanded to ${Math.round(layout.thumbWidth)}px`);

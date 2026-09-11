@@ -4,7 +4,7 @@ howTo:
   - name: "Choose one PDF"
     text: "Select one PDF from the dropzone. Filozy reads it locally and shows the relevant preview or controls before changing anything."
   - name: "Type directly on the page"
-    text: "Choose Text and click the PDF to place a text box. Type inside it, including new lines, then choose Done. Select the box to change its colour or font size, drag it to move it, or use its handles to resize and rotate it. Choose Edit text to keep writing."
+    text: "Choose Text and click the PDF to place a blank text box. You can change its font size or drag its outline handles before typing: the empty box stays on the page. Type inside it, including new lines. Use Move box to reposition it, and Colour or Font size above the page to change its appearance. Open Object options for precise positioning, rotation and layers. Blank boxes are not included in the download."
   - name: "Create and check the result"
     text: "Run the tool, review the reported page count, size, or notes, then save the newly created file while keeping the original."
 faqs:

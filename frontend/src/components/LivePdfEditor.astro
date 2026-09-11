@@ -17,7 +17,8 @@ const { profile = 'full' } = Astro.props;
   <header class="editor__topbar">
     <div>
       <p class="editor__eyebrow">{profile === 'sign' ? 'Signature workspace' : 'Live document workspace'}</p>
-      <h2>{profile === 'sign' ? 'Place a signature on the page' : 'Edit the page before you export'}</h2>
+      <h2>{profile === 'sign' ? 'Place a signature on the page' : 'Your document. Your workspace.'}</h2>
+      <p class="editor__intro">{profile === 'sign' ? 'Add your signature, adjust it, then save a copy.' : 'Add a blank text box, type on the page, and drag its handles to fit.'}</p>
     </div>
     <div class="editor__topbar-meta">
       {profile === 'full' && (
@@ -53,7 +54,7 @@ const { profile = 'full' } = Astro.props;
           <div class="editor__tool-group">
             <button class="editor__tool-menu" type="button" data-editor-menu-trigger="comment" aria-expanded="false" aria-controls="editor-menu-comment" title="Comments and text tools">
               <span class="editor__tool-icon editor__tool-icon--comment" aria-hidden="true">⌁</span>
-              <span>Comment</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
+              <span>Notes</span><span class="editor__tool-chevron" aria-hidden="true">⌄</span>
             </button>
             <div class="editor__popover" id="editor-menu-comment" data-editor-menu="comment" hidden>
               <div class="editor__popover-heading"><strong>Comment</strong><span>Add context to the page</span></div>
@@ -193,8 +194,11 @@ const { profile = 'full' } = Astro.props;
         </div>
         <div class="editor__text-toolbar" data-editor-text-toolbar aria-label="Selected text controls" hidden>
           <label>Colour<input type="color" data-editor-inline-color aria-label="Text colour" /></label>
-          <label>Size<input type="number" data-editor-inline-size aria-label="Text size in points" min="4" max="144" step="1" /></label>
+          <label>Font size<input type="number" data-editor-inline-size aria-label="Text size in points" min="4" max="144" step="1" /></label>
+          <button type="button" data-editor-text-smaller aria-label="Decrease font size">A−</button>
+          <button type="button" data-editor-text-larger aria-label="Increase font size">A+</button>
           <button type="button" data-editor-text-done>Done</button>
+          <span class="editor__text-tip">Drag the outline handles to resize the box, not the letters.</span>
         </div>
       </div>
 
@@ -202,12 +206,19 @@ const { profile = 'full' } = Astro.props;
         <div class="editor__page" data-editor-page-stage>
           <canvas data-editor-canvas></canvas>
           <svg data-editor-overlay viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-label="Editable page layer"></svg>
-          <textarea class="editor__onpage-text" data-editor-onpage-text aria-label="Type text on the PDF page" placeholder="Type here…" maxlength="5000" spellcheck="true" hidden></textarea>
+          <textarea class="editor__onpage-text" data-editor-onpage-text aria-label="Type text on the PDF page" maxlength="5000" spellcheck="true" hidden></textarea>
+          <div class="editor__text-frame" data-editor-text-frame hidden>
+            <button type="button" class="editor__text-move" data-text-move aria-label="Move text box">Move box</button>
+            <button type="button" class="editor__text-rotate" data-text-rotate aria-label="Rotate text box">↻</button>
+            {['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'].map(handle => <button type="button" class="editor__text-handle" data-text-handle={handle} aria-label={`Resize text box ${handle}`} />)}
+          </div>
         </div>
         <p class="editor__loading" data-editor-loading role="status" aria-live="polite" aria-atomic="true">Choose a PDF to open the workspace.</p>
       </div>
 
-      <div class="editor__properties">
+      <details class="editor__properties">
+        <summary>Object options <span>Position, appearance &amp; layers</span></summary>
+        <div class="editor__properties-body">
         <div class="editor__inspector-copy">
           <strong data-editor-inspector-title>No object selected</strong>
           <p data-editor-inspector-subtitle>Choose an edit to adjust size, color, order, and placement.</p>
@@ -300,7 +311,8 @@ const { profile = 'full' } = Astro.props;
 
         <p data-editor-hint id="editor-workspace-hint">Click an edit to select it. Drag the object or its handles to adjust it.</p>
         <p class="editor__feedback" data-editor-feedback role="status" aria-live="polite"></p>
-      </div>
+        </div>
+      </details>
     </section>
   </div>
 
@@ -412,9 +424,11 @@ const { profile = 'full' } = Astro.props;
     private drawnSignature: { bytes: Uint8Array; dataUrl: string; aspect: number } | null = null;
     private editingSignatureId = '';
     private inspectorDirty = false;
+    private inspectorSelection = '';
     private textSession: { id: string; before: EditableMark; isNew: boolean; snapshot: boolean } | null = null;
     private textMeasure = (text: string, size: number): number => text.length * size * .55;
     private textCharacters = new Set<number>();
+    private textColor = '#0f172a';
     private textInput = this.querySelector<HTMLTextAreaElement>('[data-editor-onpage-text]')!;
     private textToolbar = this.querySelector<HTMLElement>('[data-editor-text-toolbar]')!;
     private dismissMenus = (event: Event): void => {
@@ -438,7 +452,19 @@ const { profile = 'full' } = Astro.props;
         if (typeof panel.showPopover === 'function') panel.setAttribute('popover', 'manual');
       });
       this.textInput.addEventListener('input', () => this.updateOnPageText());
+      this.textInput.addEventListener('focus', () => { if (!this.textSession) this.beginTextEdit(this.selectedId); });
       this.textInput.addEventListener('blur', () => this.finishTextEdit());
+      this.querySelector('[data-editor-text-frame]')?.addEventListener('pointerdown', (event) => {
+        const pointer = event as PointerEvent;
+        if (!(pointer.target instanceof HTMLElement) || !pointer.target.closest('button')) return;
+        pointer.preventDefault(); this.finishTextEdit(); this.pointerDown(pointer);
+      });
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-text-smaller], [data-editor-text-larger]').forEach(button => button.addEventListener('click', () => {
+        const mark = this.selectedMark(); if (mark?.kind !== 'text') return;
+        const size = this.querySelector<HTMLInputElement>('[data-editor-inline-size]')!;
+        size.value = String(Math.max(4, Math.min(144, mark.size + (button.hasAttribute('data-editor-text-larger') ? 1 : -1))));
+        size.dispatchEvent(new Event('change', { bubbles: true }));
+      }));
       this.textInput.addEventListener('keydown', event => {
         if (event.isComposing) return;
         if (event.key === 'Escape' || ((event.ctrlKey || event.metaKey) && event.key === 'Enter')) {
@@ -458,10 +484,15 @@ const { profile = 'full' } = Astro.props;
         input.addEventListener('change', () => {
           const mark = this.selectedMark();
           if (mark?.kind !== 'text') return;
-          const size = Number(this.querySelector<HTMLInputElement>('[data-editor-inline-size]')!.value);
-          if (!Number.isFinite(size) || size < 4 || size > 144) return;
+          const sizeInput = this.querySelector<HTMLInputElement>('[data-editor-inline-size]')!;
+          const requestedSize = Number(sizeInput.value);
+          const validSize = Boolean(sizeInput.value) && Number.isFinite(requestedSize) && requestedSize >= 4 && requestedSize <= 144;
+          if (!validSize) sizeInput.value = String(mark.size);
+          if (!validSize && input === sizeInput) return;
+          const size = validSize ? requestedSize : mark.size;
           this.snapshot();
           mark.color = this.querySelector<HTMLInputElement>('[data-editor-inline-color]')!.value;
+          this.textColor = mark.color;
           mark.size = size;
           this.fitTextBox(mark);
           this.changed();
@@ -550,7 +581,7 @@ const { profile = 'full' } = Astro.props;
       inspectorInputs.forEach((selector) => {
         this.querySelectorAll<HTMLInputElement | HTMLSelectElement>(selector).forEach((input) => {
           input.addEventListener('focus', () => { this.inspectorDirty = false; });
-          if (input instanceof HTMLInputElement) input.addEventListener('input', () => this.commitInspectorUpdate());
+          if (input instanceof HTMLInputElement && input.type !== 'number') input.addEventListener('input', () => this.commitInspectorUpdate());
           input.addEventListener('change', () => {
             this.commitInspectorUpdate();
             this.inspectorDirty = false;
@@ -1742,6 +1773,10 @@ const { profile = 'full' } = Astro.props;
 
     private syncInspector(): void {
       const mark = this.selectedMark();
+      if (this.inspectorSelection !== (mark?.id ?? '')) {
+        this.querySelector<HTMLDetailsElement>('.editor__properties')!.open = Boolean(mark && mark.kind !== 'text');
+        this.inspectorSelection = mark?.id ?? '';
+      }
       const editText = this.querySelector<HTMLButtonElement>('[data-editor-edit-text]');
       if (editText) editText.hidden = mark?.kind !== 'text';
       const title = this.querySelector<HTMLElement>('[data-editor-inspector-title]');
@@ -1763,7 +1798,7 @@ const { profile = 'full' } = Astro.props;
 
       const setValue = (selector: string, value: string): void => {
         const input = this.querySelector<HTMLInputElement | HTMLSelectElement>(selector);
-        if (input && input.value !== value) input.value = value;
+        if (input && document.activeElement !== input && input.value !== value) input.value = value;
       };
 
       const enableAll = Boolean(mark);
@@ -1878,24 +1913,28 @@ const { profile = 'full' } = Astro.props;
       }
 
       const current = this.markRect(mark);
+      const numeric = (selector: string, fallback: number): number => {
+        const input = this.querySelector<HTMLInputElement>(selector);
+        return input?.value && input.validity.valid && Number.isFinite(Number(input.value)) ? Number(input.value) : fallback;
+      };
       const nextRect = clampRect({
-        x: Number(this.querySelector<HTMLInputElement>('[data-editor-x]')?.value ?? current.x * 100) / 100,
-        y: Number(this.querySelector<HTMLInputElement>('[data-editor-y]')?.value ?? current.y * 100) / 100,
-        width: Number(this.querySelector<HTMLInputElement>('[data-editor-w]')?.value ?? current.width * 100) / 100,
-        height: Number(this.querySelector<HTMLInputElement>('[data-editor-h]')?.value ?? current.height * 100) / 100,
+        x: numeric('[data-editor-x]', current.x * 100) / 100,
+        y: numeric('[data-editor-y]', current.y * 100) / 100,
+        width: numeric('[data-editor-w]', current.width * 100) / 100,
+        height: numeric('[data-editor-h]', current.height * 100) / 100,
       }, mark.kind === 'signature' || mark.kind === 'signature-text' ? 0.03 : 0.02);
 
       const color = this.querySelector<HTMLInputElement>('[data-editor-color]')?.value ?? mark.color ?? '#e11d48';
       const fill = this.querySelector<HTMLInputElement>('[data-editor-fill]')?.value ?? mark.fill ?? '#ffffff';
-      const opacity = clamp01(Number(this.querySelector<HTMLInputElement>('[data-editor-opacity]')?.value ?? `${mark.opacity ?? 1}`));
-      const size = Math.max(1, Number(this.querySelector<HTMLInputElement>('[data-editor-size]')?.value ?? `${mark.size ?? 16}`));
-      const strokeWidth = Math.max(0.25, Number(this.querySelector<HTMLInputElement>('[data-editor-width]')?.value ?? `${mark.strokeWidth ?? 2}`));
-      const rawRotation = Number(this.querySelector<HTMLInputElement>('[data-editor-rotation]')?.value ?? `${mark.rotation ?? 0}`);
+      const opacity = clamp01(numeric('[data-editor-opacity]', mark.opacity ?? 1));
+      const size = Math.max(4, numeric('[data-editor-size]', mark.size ?? 16));
+      const strokeWidth = Math.max(0.25, numeric('[data-editor-width]', mark.strokeWidth ?? 2));
+      const rawRotation = numeric('[data-editor-rotation]', mark.rotation ?? 0);
       const rotation = ((rawRotation % 360) + 360) % 360;
       const signatureRole = (this.querySelector<HTMLSelectElement>('[data-editor-signature-role-select]')?.value ?? mark.signatureRole ?? 'signature') as SignatureRole;
       const lockAspectRatio = this.querySelector<HTMLSelectElement>('[data-editor-signature-lock-select]')?.value !== 'false';
       const signatureSize = this.querySelector<HTMLSelectElement>('[data-editor-signature-size-select]')?.value ?? 'custom';
-      const text = this.querySelector<HTMLInputElement>('[data-editor-text]')?.value ?? mark.text ?? '';
+      const text = mark.kind === 'text' ? mark.text : this.querySelector<HTMLInputElement>('[data-editor-text]')?.value ?? mark.text ?? '';
       const nextMark = this.applyRectGeometry({
         ...mark,
         text,
@@ -1946,6 +1985,7 @@ const { profile = 'full' } = Astro.props;
       }
 
       this.marks = this.marks.map((item) => (item.id === mark.id ? nextMark : item));
+      if (nextMark.kind === 'text') this.textColor = nextMark.color;
       if (nextMark.kind === 'text' && nextMark.layout === 'box') this.fitTextBox(nextMark);
       this.changed();
     }
@@ -2176,7 +2216,7 @@ const { profile = 'full' } = Astro.props;
           text: '',
           layout: 'box',
           size: Number(this.querySelector<HTMLSelectElement>('[data-editor-size]')!.value),
-          color,
+          color: this.textColor,
           width: .35,
           height: .1,
         });
@@ -2442,10 +2482,11 @@ const { profile = 'full' } = Astro.props;
     }
 
     private refreshState(): void {
-      const count = this.marks.length;
+      const count = this.marks.filter(mark => mark.kind !== 'text' || mark.text.trim()).length;
+      const blanks = this.marks.length - count;
       this.querySelector<HTMLElement>('[data-editor-count]')!.textContent = count
-        ? `${count} quick edit${count === 1 ? '' : 's'} will be included in the output`
-        : 'No quick edits yet';
+        ? `${count} edit${count === 1 ? '' : 's'} ready${blanks ? ` · ${blanks} blank boxes not exported` : ''}`
+        : blanks ? `${blanks} blank text box${blanks === 1 ? '' : 'es'} · type on the page to include text` : 'No edits yet';
       this.querySelector<HTMLButtonElement>('[data-editor-undo]')!.disabled = this.history.length === 0;
       this.querySelector<HTMLButtonElement>('[data-editor-redo]')!.disabled = this.future.length === 0;
       this.querySelector<HTMLButtonElement>('[data-editor-duplicate]')!.disabled = !this.selectedId;
@@ -2463,6 +2504,7 @@ const { profile = 'full' } = Astro.props;
     private appendSelectionOverlay(nodes: SVGElement[]): void {
       const mark = this.selectedMark();
       if (!mark || mark.page !== this.activePage) return;
+      if (mark.kind === 'text' && mark.layout === 'box') return; // Physical-size HTML handles stay usable while typing.
       const { rect, center, rotation } = this.selectionBoxMarkup(mark);
       const box = this.isBoxLike(mark) || mark.kind === 'polygon' || mark.kind === 'cloud' || mark.kind === 'ink' || mark.kind === 'callout';
       const selection = this.svg('rect', {
@@ -2600,7 +2642,13 @@ const { profile = 'full' } = Astro.props;
               node.append(span);
             });
           } else node.textContent = mark.text;
-          if (this.textSession?.id === mark.id) node.setAttribute('visibility', 'hidden');
+          if (selected) node.setAttribute('visibility', 'hidden');
+          if (!selected && !mark.text.trim()) {
+            const blank = this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String((mark.width ?? .35) * 1000), height: String((mark.height ?? .1) * 1000), fill: 'transparent', stroke: '#64748b', 'stroke-dasharray': '6 4', 'vector-effect': 'non-scaling-stroke', class: 'editor-mark' });
+            blank.dataset.markId = mark.id;
+            if (mark.rotation) blank.setAttribute('transform', this.markTransform(mark, rectCenter(this.markRect(mark)), mark.rotation));
+            nodes.push(blank);
+          }
         } else if (mark.kind === 'stamp') {
           const glyphs: Record<string, string> = { check: '✓', cross: '×', dot: '•', circle: '○', crossout: '╳' };
           node = this.svg('text', { x: String((mark.x + mark.width / 2) * 1000), y: String((mark.y + mark.height * 0.82) * 1000), 'text-anchor': 'middle', fill: mark.color, opacity: String(mark.opacity ?? 1), 'font-size': String(mark.height * 1000), 'font-weight': '700', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
@@ -2787,9 +2835,6 @@ const { profile = 'full' } = Astro.props;
       if (cancel) {
         this.marks = session.isNew ? this.marks.filter(item => item.id !== session.id) : this.marks.map(item => item.id === session.id ? session.before : item);
         if (session.isNew || session.snapshot) this.history.pop();
-      } else if (mark?.kind === 'text' && !mark.text.trim()) {
-        this.marks = this.marks.filter(item => item.id !== session.id);
-        if (session.isNew) this.history.pop();
       }
       if (!this.marks.some(item => item.id === this.selectedId)) this.selectedId = '';
       this.textInput.hidden = true;
@@ -2800,12 +2845,23 @@ const { profile = 'full' } = Astro.props;
       const mark = this.selectedMark();
       const visible = mark?.kind === 'text' && mark.page === this.activePage;
       this.textToolbar.hidden = !visible;
+      const frame = this.querySelector<HTMLElement>('[data-editor-text-frame]')!;
+      frame.hidden = !visible; this.textInput.hidden = !visible;
       if (!visible) return;
       this.querySelector<HTMLButtonElement>('[data-editor-text-done]')!.textContent = this.textSession ? 'Done' : 'Edit text';
       const pageHeight = Number(this.pageStage.dataset.pageHeight || 792);
       const pixels = this.pageStage.clientHeight / pageHeight;
-      if (this.textSession?.id === mark.id) {
+      if (document.activeElement !== this.textInput) this.textInput.value = mark.text;
+      {
         Object.assign(this.textInput.style, { left: `${mark.x * 100}%`, top: `${mark.y * 100}%`, width: `${(mark.width ?? .35) * 100}%`, height: `${(mark.height ?? .1) * 100}%`, fontSize: `${mark.size * pixels}px`, color: mark.color, opacity: String(mark.opacity ?? 1), transform: `rotate(${mark.rotation ?? 0}deg)` });
+        Object.assign(frame.style, { left: this.textInput.style.left, top: this.textInput.style.top, width: this.textInput.style.width, height: this.textInput.style.height, transform: this.textInput.style.transform });
+        frame.dataset.controlsBelow = String(mark.y * this.pageStage.clientHeight < 52);
+        frame.querySelectorAll<HTMLElement>('button').forEach(button => {
+          button.dataset.markId = mark.id;
+          button.dataset.selectionKind = button.hasAttribute('data-text-move') ? 'move' : button.hasAttribute('data-text-rotate') ? 'rotate' : 'resize';
+          if (button.hasAttribute('data-text-rotate')) button.dataset.manipulator = 'rotate';
+          if (button.dataset.textHandle) button.dataset.manipulator = button.dataset.textHandle;
+        });
       }
       this.querySelector<HTMLInputElement>('[data-editor-inline-color]')!.value = mark.color;
       const size = this.querySelector<HTMLInputElement>('[data-editor-inline-size]')!;
@@ -2818,13 +2874,33 @@ const { profile = 'full' } = Astro.props;
 
 <style>
   @font-face { font-family: FilozyDocumentText; src: url('/pdfjs/standard_fonts/LiberationSans-Regular.ttf') format('truetype'); font-display: swap; }
-  .editor__onpage-text { position: absolute; z-index: 5; box-sizing: border-box; padding: 0; margin: 0; border: 0; outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 0; resize: none; background: transparent; font-family: FilozyDocumentText, Arial, sans-serif; line-height: 1.2; white-space: pre-wrap; overflow-wrap: anywhere; transform-origin: center; touch-action: auto; }
+  .editor__onpage-text { position: absolute; z-index: 5; box-sizing: border-box; padding: 0; margin: 0; border: 0; outline: none; border-radius: 0; resize: none; background: transparent; font-family: FilozyDocumentText, Arial, sans-serif; line-height: 1.2; white-space: pre-wrap; overflow-wrap: anywhere; transform-origin: center; touch-action: auto; }
+  .editor__text-frame { position: absolute; z-index: 6; box-sizing: border-box; border: 1.5px solid var(--accent); pointer-events: none; transform-origin: center; }
+  .editor__text-frame[hidden] { display: none; }
+  .editor__text-frame button { pointer-events: auto; touch-action: none; cursor: grab; }
+  .editor__text-handle { position: absolute; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; transform: translate(-50%, -50%); }
+  .editor__text-handle::after { content: ''; position: absolute; inset: 16px; background: white; border: 2px solid var(--accent); border-radius: 3px; }
+  .editor__text-handle[data-text-handle='nw'] { left: 0; top: 0; cursor: nwse-resize; }
+  .editor__text-handle[data-text-handle='n'] { left: 50%; top: 0; cursor: ns-resize; }
+  .editor__text-handle[data-text-handle='ne'] { left: 100%; top: 0; cursor: nesw-resize; }
+  .editor__text-handle[data-text-handle='e'] { left: 100%; top: 50%; cursor: ew-resize; }
+  .editor__text-handle[data-text-handle='se'] { left: 100%; top: 100%; cursor: nwse-resize; }
+  .editor__text-handle[data-text-handle='s'] { left: 50%; top: 100%; cursor: ns-resize; }
+  .editor__text-handle[data-text-handle='sw'] { left: 0; top: 100%; cursor: nesw-resize; }
+  .editor__text-handle[data-text-handle='w'] { left: 0; top: 50%; cursor: ew-resize; }
+  .editor__text-move { position: absolute; left: 0; top: -52px; height: 44px; padding: 0 .65rem; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); font: 500 .75rem var(--font-sans); white-space: nowrap; }
+  .editor__text-rotate { position: absolute; right: 0; top: -52px; width: 44px; height: 44px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); font-size: 1.25rem; }
+  .editor__text-frame[data-controls-below='true'] .editor__text-move, .editor__text-frame[data-controls-below='true'] .editor__text-rotate { top: auto; bottom: -52px; }
+  .editor__text-frame button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .editor__intro { margin: .4rem 0 0; font-size: var(--step--1); color: var(--muted); }
+  .editor__text-tip { flex: 1 1 100%; font-size: var(--step--2); color: var(--ink-2); }
   .editor__onpage-text[hidden], .editor__text-toolbar[hidden], [data-editor-edit-text][hidden] { display: none; }
   .editor__text-toolbar { display: flex; flex: 1 1 100%; align-items: center; gap: .7rem; flex-wrap: wrap; padding: .5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
   .editor__text-toolbar label { display: flex; align-items: center; gap: .4rem; font-size: var(--step--2); color: var(--ink-2); }
   .editor__text-toolbar input { box-sizing: border-box; min-height: 44px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); font: inherit; width: 4.5rem; padding: .35rem; }
   .editor__text-toolbar input[type='color'] { width: 44px; }
   .editor__viewbar .editor__text-toolbar button { min-width: 4rem; width: auto; min-height: 44px; padding: .4rem .7rem; color: var(--ink); }
+  .editor__viewbar .editor__text-toolbar [data-editor-text-smaller], .editor__viewbar .editor__text-toolbar [data-editor-text-larger] { min-width: 44px; width: 44px; padding: .3rem; }
   [data-editor-edit-text] { min-height: 44px; border: 1px solid var(--accent); border-radius: 10px; background: var(--paper-raised); color: var(--accent); font: inherit; cursor: pointer; }
   .editor {
     display: grid;
@@ -2968,7 +3044,7 @@ const { profile = 'full' } = Astro.props;
   :global(.editor-thumb canvas) { display: block; width: 100%; min-height: 4.6rem; background: white; border-radius: 3px; }
   :global(.editor-thumb span) { font: var(--weight-medium) var(--step--2) var(--font-mono); }
 
-  .editor__workarea { grid-column: 2; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 18rem); grid-template-rows: auto minmax(0, 1fr); min-width: 0; }
+  .editor__workarea { grid-column: 2; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; min-width: 0; }
   .editor__viewbar { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: .65rem; padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--line); background: var(--paper-raised); }
   .editor__pager, .editor__zoom { display: flex; align-items: center; gap: 0.55rem; color: var(--muted); font-size: var(--step--2); }
   .editor__viewbar button { width: 2rem; height: 2rem; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-raised); color: var(--ink); cursor: pointer; }
@@ -2993,17 +3069,20 @@ const { profile = 'full' } = Astro.props;
   .editor__loading[hidden] { display: none; }
 
   .editor__properties {
-    display: grid;
-    grid-column: 2;
-    grid-row: 1 / -1;
+    display: block;
+    grid-column: 1;
+    grid-row: 3;
     align-content: start;
     gap: 0.8rem;
     padding: 0.9rem 1rem 1rem;
-    border-left: 1px solid var(--line);
-    background: linear-gradient(180deg, color-mix(in oklab, var(--paper-raised) 92%, white), var(--paper-raised));
-    max-height: 70vh;
-    overflow-y: auto;
+    border-top: 1px solid var(--line);
+    background: var(--paper-raised);
+    max-height: none;
+    overflow: visible;
   }
+  .editor__properties > summary { cursor: pointer; min-height: 44px; align-content: center; color: var(--ink); font: 600 var(--step--1) var(--font-sans); }
+  .editor__properties > summary span { margin-left: .5rem; color: var(--muted); font-weight: 400; }
+  .editor__properties-body { display: grid; gap: .8rem; padding-top: .6rem; }
   .editor__inspector-copy { display: grid; gap: 0.18rem; }
   .editor__inspector-copy strong { color: var(--ink); font: 700 var(--step-0) var(--font-display); letter-spacing: var(--tracking-tight); }
   .editor__inspector-copy p { margin: 0; color: var(--muted); font-size: var(--step--2); line-height: 1.45; }
@@ -3046,8 +3125,10 @@ const { profile = 'full' } = Astro.props;
     .editor__quick-actions button { min-height: 2.75rem; flex: 1 1 0; }
     .editor__privacy { display: none; }
     .editor__shell { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; }
-    .editor__tools { position: sticky; grid-column: 1; grid-row: 1; top: 4.5rem; z-index: 8; flex-direction: row; flex-wrap: wrap; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
-    .editor__tools button { min-width: 4rem; min-height: 2.75rem; padding-block: 0.55rem; scroll-snap-align: start; font-size: var(--step--2); }
+    .editor__tools { position: relative; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); grid-column: 1; grid-row: 1; z-index: 8; gap: .15rem; padding: .4rem; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+    .editor__tools > button, .editor__tools > .editor__tool-group > button { width: 100%; min-width: 0; min-height: 52px; padding: .35rem .1rem; font-size: var(--step--2); }
+    .editor__tools .editor__tool-rule { display: none; }
+    .editor__tools .editor__tool-chevron { display: none; }
     .editor__tool-rail-label, .editor__tool-footnote { display: none; }
     .editor__tool-group { position: static; }
     .editor__popover {
@@ -3084,6 +3165,8 @@ const { profile = 'full' } = Astro.props;
     .editor__viewbar button { width: 2.75rem; height: 2.75rem; }
     .editor__footer span:last-child { display: none; }
     .editor__properties { grid-column: 1; grid-row: 3; padding: 0.8rem; max-height: none; border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+    .editor__properties > summary span { display: block; margin-left: 1rem; margin-top: .2rem; }
+    .editor__viewport { padding: 3rem 1.25rem 1.25rem; }
     .editor__inspector-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .editor__inspector-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .editor__signature-actions { display: contents; }
