@@ -138,6 +138,8 @@ export type EditMark =
   | (EditGeometry & {
       id: string;
       kind: 'text';
+      /** Modern top-aligned, wrapped text box; absent on legacy marks. */
+      layout?: 'box';
       page: number;
       x: number;
       y: number;

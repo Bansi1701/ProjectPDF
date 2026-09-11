@@ -24,6 +24,7 @@
     "test:operations": "node scripts/run-operation-smoke.mjs",
     "audit:compression": "node scripts/audit-compression.mjs",
     "audit:split-contrast": "node scripts/audit-split-contrast.mjs",
+    "audit:editor-usability": "node scripts/audit-editor-usability.mjs",
     "audit:storage": "node scripts/audit-storage.mjs",
     "audit:ads": "node scripts/audit-ad-readiness.mjs",
     "audit:bundles": "node scripts/audit-bundles.mjs",

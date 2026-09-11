@@ -3,8 +3,8 @@ intro: "Use Edit PDF to choose one PDF, place text, signatures, highlights, draw
 howTo:
   - name: "Choose one PDF"
     text: "Select one PDF from the dropzone. Filozy reads it locally and shows the relevant preview or controls before changing anything."
-  - name: "Review the settings"
-    text: "Use the page preview and available options to decide exactly how edit pdf should handle this document."
+  - name: "Type directly on the page"
+    text: "Choose Text and click the PDF to place a text box. Type inside it, including new lines, then choose Done. Select the box to change its colour or font size, drag it to move it, or use its handles to resize and rotate it. Choose Edit text to keep writing."
   - name: "Create and check the result"
     text: "Run the tool, review the reported page count, size, or notes, then save the newly created file while keeping the original."
 faqs:
@@ -16,6 +16,10 @@ faqs:
     answer: "Check the visible preview and the result summary. Every placed object stays movable, resizable, rotatable, and editable until the new PDF is exported. Keep the original until the new output has been opened and verified."
   - question: "Do I need an account or subscription?"
     answer: "No account is required for this browser-side tool. It runs on the device and does not use a document-upload allowance or daily server quota."
+  - question: "Can I edit the text already printed in my PDF?"
+    answer: "You can edit text boxes added during this session. Original PDF text is not rewritten. Replace text area and Whiteout add a visual cover; they do not securely remove the content underneath. Use Redact PDF for sensitive information."
+  - question: "How do I use the editor on a phone?"
+    answer: "The toolbar wraps to keep tools visible, and tool menus open within the screen. Tap the page with Text selected to start typing. Use Colour and Size for the selected text, Done to finish, and Fit to return to the page-width view. Undo and Redo remain in the toolbar."
 related:
   - "watermark-pdf"
   - "page-numbers"

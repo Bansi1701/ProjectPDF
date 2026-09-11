@@ -33,6 +33,10 @@ const { profile = 'full' } = Astro.props;
   <div class="editor__shell">
     <nav class="editor__tools" aria-label="Page editing tools">
       <div class="editor__tool-rail-label">TOOLS</div>
+      {profile === 'full' && <button class="editor__tool-primary" type="button" data-editor-action="insert-text" data-editor-tool="text" aria-pressed="false" title="Add a text box and type on the page">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6V4h14v2M12 4v16M8 20h8" /></svg>
+        <span>Text</span>
+      </button>}
       <button class="editor__tool-primary" type="button" data-editor-tool="select" aria-pressed="true" title="Select and move">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 12.5 9.2-6.1 1.2-3.2 5.4L5 3Z"></path></svg>
         <span>Select</span>
@@ -156,6 +160,9 @@ const { profile = 'full' } = Astro.props;
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8 5 12l4 4"></path><path d="M5 12h8a6 6 0 0 1 6 6"></path></svg>
         <span>Undo</span>
       </button>
+      <button class="editor__tool-secondary" type="button" data-editor-redo title="Redo last edit" disabled>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 8 4 4-4 4M19 12h-8a6 6 0 0 0-6 6" /></svg><span>Redo</span>
+      </button>
       <button class="editor__tool-secondary" type="button" data-editor-delete title="Delete selected edit" disabled>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M9 7V4h6v3M8 10v8M12 10v8M16 10v8M7 7l1 14h8l1-14"></path></svg>
         <span>Delete</span>
@@ -182,6 +189,12 @@ const { profile = 'full' } = Astro.props;
           <button type="button" data-editor-zoom-out aria-label="Zoom out">−</button>
           <span data-editor-zoom>100%</span>
           <button type="button" data-editor-zoom-in aria-label="Zoom in">+</button>
+          <button type="button" data-editor-zoom-reset aria-label="Fit page width">Fit</button>
+        </div>
+        <div class="editor__text-toolbar" data-editor-text-toolbar aria-label="Selected text controls" hidden>
+          <label>Colour<input type="color" data-editor-inline-color aria-label="Text colour" /></label>
+          <label>Size<input type="number" data-editor-inline-size aria-label="Text size in points" min="4" max="144" step="1" /></label>
+          <button type="button" data-editor-text-done>Done</button>
         </div>
       </div>
 
@@ -189,6 +202,7 @@ const { profile = 'full' } = Astro.props;
         <div class="editor__page" data-editor-page-stage>
           <canvas data-editor-canvas></canvas>
           <svg data-editor-overlay viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-label="Editable page layer"></svg>
+          <textarea class="editor__onpage-text" data-editor-onpage-text aria-label="Type text on the PDF page" placeholder="Type here…" maxlength="5000" spellcheck="true" hidden></textarea>
         </div>
         <p class="editor__loading" data-editor-loading role="status" aria-live="polite" aria-atomic="true">Choose a PDF to open the workspace.</p>
       </div>
@@ -204,6 +218,7 @@ const { profile = 'full' } = Astro.props;
             <span>Text</span>
             <input data-editor-text value="Add your text" maxlength="160" />
           </label>
+          <button type="button" data-editor-edit-text hidden>Edit text on page</button>
           <label data-editor-color-control>
             <span>Colour</span>
             <input data-editor-color type="color" value="#e11d48" />
@@ -218,21 +233,11 @@ const { profile = 'full' } = Astro.props;
           </label>
           <label data-editor-size-control>
             <span>Size</span>
-            <select data-editor-size>
-              <option value="10">10 pt</option>
-              <option value="12">12 pt</option>
-              <option value="16" selected>16 pt</option>
-              <option value="22">22 pt</option>
-              <option value="30">30 pt</option>
-            </select>
+            <input type="number" data-editor-size value="16" min="4" max="144" step="1" aria-label="Font size in points" />
           </label>
           <label data-editor-width-control hidden>
             <span>Stroke</span>
-            <select data-editor-width>
-              <option value="1">Fine</option>
-              <option value="2" selected>Regular</option>
-              <option value="4">Bold</option>
-            </select>
+            <input type="number" data-editor-width value="2" min="0.25" max="32" step="0.25" />
           </label>
           <label data-editor-rotation-control>
             <span>Rotation</span>
@@ -286,7 +291,6 @@ const { profile = 'full' } = Astro.props;
           <button type="button" class="btn btn--quiet" data-editor-backward>Backward</button>
           <button type="button" class="btn btn--quiet" data-editor-forward>Forward</button>
           <button type="button" class="btn btn--quiet" data-editor-delete>Delete</button>
-          <button type="button" class="btn btn--quiet" data-editor-redo disabled>Redo</button>
           <span class="editor__signature-actions" data-editor-signature-actions hidden>
             <button type="button" class="btn btn--quiet" data-editor-edit-signature>Edit signature</button>
             <button type="button" class="btn btn--quiet" data-editor-add-initials>Add initials</button>
@@ -309,6 +313,7 @@ const { profile = 'full' } = Astro.props;
 <script>
   import { documentOptions, loadPdfjs, type PdfjsApi } from '../lib/pdf/pdfjs';
   import type { EditMark } from '../lib/pdf/types';
+  import { wrapEditorText, textLineHeight, textBaseline } from '../lib/pdf/textLayout';
   import {
     clamp01,
     clampRect,
@@ -374,6 +379,7 @@ const { profile = 'full' } = Astro.props;
     originalRect: Rect;
     originalPoints?: Point[];
     originalRotation: number;
+    mutated?: boolean;
   }
 
   interface ToolGuide {
@@ -406,6 +412,14 @@ const { profile = 'full' } = Astro.props;
     private drawnSignature: { bytes: Uint8Array; dataUrl: string; aspect: number } | null = null;
     private editingSignatureId = '';
     private inspectorDirty = false;
+    private textSession: { id: string; before: EditableMark; isNew: boolean; snapshot: boolean } | null = null;
+    private textMeasure = (text: string, size: number): number => text.length * size * .55;
+    private textCharacters = new Set<number>();
+    private textInput = this.querySelector<HTMLTextAreaElement>('[data-editor-onpage-text]')!;
+    private textToolbar = this.querySelector<HTMLElement>('[data-editor-text-toolbar]')!;
+    private dismissMenus = (event: Event): void => {
+      if (!(event.target instanceof Element) || !event.target.closest('[data-editor-menu], #editor-signature-panel, [data-editor-menu-trigger], [data-editor-signature-trigger], [data-editor-edit-signature]')) this.closeMenus();
+    };
     private selectionGuides: { x: number[]; y: number[] } = { x: [], y: [] };
     private resizeObserver: ResizeObserver | null = null;
 
@@ -419,8 +433,46 @@ const { profile = 'full' } = Astro.props;
 
     connectedCallback() {
       this.profile = this.dataset.editorProfile === 'sign' ? 'sign' : 'full';
+      document.addEventListener('pointerdown', this.dismissMenus);
+      this.querySelectorAll<HTMLElement>('[data-editor-menu], #editor-signature-panel').forEach(panel => {
+        if (typeof panel.showPopover === 'function') panel.setAttribute('popover', 'manual');
+      });
+      this.textInput.addEventListener('input', () => this.updateOnPageText());
+      this.textInput.addEventListener('blur', () => this.finishTextEdit());
+      this.textInput.addEventListener('keydown', event => {
+        if (event.isComposing) return;
+        if (event.key === 'Escape' || ((event.ctrlKey || event.metaKey) && event.key === 'Enter')) {
+          event.preventDefault(); event.stopPropagation();
+          this.finishTextEdit(event.key === 'Escape');
+          this.viewport.focus({ preventScroll: true });
+        }
+      });
+      this.querySelector('[data-editor-text-done]')?.addEventListener('pointerdown', event => event.preventDefault());
+      this.querySelector('[data-editor-text-done]')?.addEventListener('click', () => {
+        if (!this.textSession) this.beginTextEdit(this.selectedId);
+        else { this.finishTextEdit(); this.viewport.focus({ preventScroll: true }); }
+      });
+      this.querySelector('[data-editor-edit-text]')?.addEventListener('click', () => this.beginTextEdit(this.selectedId));
+      for (const selector of ['[data-editor-inline-color]', '[data-editor-inline-size]']) {
+        const input = this.querySelector<HTMLInputElement>(selector)!;
+        input.addEventListener('change', () => {
+          const mark = this.selectedMark();
+          if (mark?.kind !== 'text') return;
+          const size = Number(this.querySelector<HTMLInputElement>('[data-editor-inline-size]')!.value);
+          if (!Number.isFinite(size) || size < 4 || size > 144) return;
+          this.snapshot();
+          mark.color = this.querySelector<HTMLInputElement>('[data-editor-inline-color]')!.value;
+          mark.size = size;
+          this.fitTextBox(mark);
+          this.changed();
+        });
+      }
+      this.overlay.addEventListener('dblclick', event => {
+        const hit = this.selectedManipulator(event.target);
+        if (hit?.id && this.marks.find(mark => mark.id === hit.id)?.kind === 'text') this.beginTextEdit(hit.id);
+      });
       this.querySelectorAll<HTMLButtonElement>('[data-editor-tool]').forEach((button) => {
-        button.addEventListener('click', () => this.setTool(button.dataset.editorTool as Tool));
+        if (!button.hasAttribute('data-editor-action')) button.addEventListener('click', () => this.setTool(button.dataset.editorTool as Tool));
       });
       this.querySelectorAll<HTMLButtonElement>('[data-editor-menu-trigger]').forEach((button) => {
         button.addEventListener('click', () => this.toggleMenu(button.dataset.editorMenuTrigger ?? ''));
@@ -468,6 +520,7 @@ const { profile = 'full' } = Astro.props;
       this.querySelector<HTMLButtonElement>('[data-editor-next]')?.addEventListener('click', () => void this.setPage(this.activePage + 1));
       this.querySelector<HTMLButtonElement>('[data-editor-zoom-out]')?.addEventListener('click', () => this.setZoom(this.zoom - 0.15));
       this.querySelector<HTMLButtonElement>('[data-editor-zoom-in]')?.addEventListener('click', () => this.setZoom(this.zoom + 0.15));
+      this.querySelector<HTMLButtonElement>('[data-editor-zoom-reset]')?.addEventListener('click', () => this.setZoom(1));
       this.querySelector<HTMLButtonElement>('[data-editor-undo]')?.addEventListener('click', () => this.undo());
       this.querySelector<HTMLButtonElement>('[data-editor-redo]')?.addEventListener('click', () => this.redo());
       this.querySelectorAll<HTMLButtonElement>('[data-editor-delete]').forEach((button) => button.addEventListener('click', () => this.deleteSelected()));
@@ -528,6 +581,17 @@ const { profile = 'full' } = Astro.props;
           expanded.focus();
           return;
         }
+        if (expanded && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key) && (event.target as HTMLElement).tagName === 'BUTTON') {
+          const panel = this.querySelector<HTMLElement>(`#${expanded.getAttribute('aria-controls')}`);
+          const items = [...(panel?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])];
+          if (items.length) {
+            event.preventDefault();
+            const index = items.indexOf(document.activeElement as HTMLButtonElement);
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? items.length - 1 : (index + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
+            items[next].focus();
+            return;
+          }
+        }
         // Native text-field editing shortcuts must not undo canvas objects.
         if ((event.target as HTMLElement).matches('input, textarea, select, [contenteditable="true"]')) return;
         if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'z') {
@@ -568,6 +632,8 @@ const { profile = 'full' } = Astro.props;
     private fitSignaturePad: (() => void) | null = null;
 
     disconnectedCallback() {
+      document.removeEventListener('pointerdown', this.dismissMenus);
+      this.closeMenus();
       if (this.fitSignaturePad) window.removeEventListener('resize', this.fitSignaturePad);
       this.resizeObserver?.disconnect();
       this.resizeObserver = null;
@@ -1106,6 +1172,12 @@ const { profile = 'full' } = Astro.props;
           data: new Uint8Array(await file.arrayBuffer()),
           ...documentOptions(),
         }).promise;
+        // Use the PDF export font's metrics for wrapping, not character counts.
+        const { PDFDocument, StandardFonts } = await import('@cantoo/pdf-lib');
+        const metricsDocument = await PDFDocument.create();
+        const font = await metricsDocument.embedFont(StandardFonts.Helvetica);
+        this.textMeasure = (text, size) => font.widthOfTextAtSize(text, size);
+        this.textCharacters = new Set(font.getCharacterSet());
         this.buildThumbs();
         await this.renderPage();
       } catch (error) {
@@ -1116,6 +1188,7 @@ const { profile = 'full' } = Astro.props;
     }
 
     async release(): Promise<void> {
+      this.finishTextEdit();
       this.renderToken += 1;
       this.drawnSignature = null;
       this.editingSignatureId = '';
@@ -1140,7 +1213,7 @@ const { profile = 'full' } = Astro.props;
     }
 
     getEdits(): EditMark[] {
-      return structuredClone(this.marks);
+      return structuredClone(this.marks.filter(mark => mark.kind !== 'text' || mark.text.trim()));
     }
 
     setToolPreview(guide: ToolGuide): void {
@@ -1200,6 +1273,7 @@ const { profile = 'full' } = Astro.props;
     }
 
     private async setPage(page: number): Promise<void> {
+      this.finishTextEdit();
       if (!this.doc) return;
       const next = Math.max(1, Math.min(page, this.doc.numPages));
       if (next === this.activePage && !this.pageStage.hidden) return;
@@ -1259,7 +1333,7 @@ const { profile = 'full' } = Astro.props;
     }
 
     private setZoom(value: number): void {
-      this.zoom = Math.max(0.55, Math.min(1.75, Math.round(value * 20) / 20));
+      this.zoom = Math.max(0.55, Math.min(3, Math.round(value * 20) / 20));
       this.applyZoom();
     }
 
@@ -1278,13 +1352,23 @@ const { profile = 'full' } = Astro.props;
           ? this.querySelector<HTMLButtonElement>('[data-editor-signature-trigger]')
           : this.querySelector<HTMLButtonElement>(`[data-editor-menu-trigger="${name}"]`);
         trigger?.setAttribute('aria-expanded', 'true');
+        const mobile = window.innerWidth <= 760;
+        const bounds = trigger?.getBoundingClientRect();
+        const width = Math.min(name === 'signature' ? 400 : 360, window.innerWidth - 24);
+        Object.assign(panel.style, { position: 'fixed', margin: '0', width: `${width}px`, maxHeight: 'min(70dvh, 580px)', left: `${mobile ? (window.innerWidth - width) / 2 : Math.max(12, Math.min(bounds?.left ?? 12, window.innerWidth - width - 12))}px`, right: 'auto', top: mobile ? 'auto' : `${Math.max(12, Math.min(bounds?.bottom ?? 80, window.innerHeight - 100)) + 8}px`, bottom: mobile ? '12px' : 'auto' });
+        if (typeof panel.showPopover === 'function') panel.showPopover();
+        if (!mobile) panel.style.top = `${Math.max(12, Math.min((bounds?.bottom ?? 80) + 8, window.innerHeight - panel.getBoundingClientRect().height - 12))}px`;
         // A hidden pad measures zero, so it can only be fitted once it is shown.
         if (name === 'signature') this.fitSignaturePad?.();
+        else panel.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
       }
     }
 
     private closeMenus(): void {
-      this.querySelectorAll<HTMLElement>('[data-editor-menu], #editor-signature-panel').forEach((panel) => { panel.hidden = true; });
+      this.querySelectorAll<HTMLElement>('[data-editor-menu], #editor-signature-panel').forEach((panel) => {
+        if (typeof panel.hidePopover === 'function' && panel.matches(':popover-open')) panel.hidePopover();
+        panel.hidden = true;
+      });
       this.querySelectorAll<HTMLButtonElement>('[data-editor-menu-trigger], [data-editor-signature-trigger]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
     }
 
@@ -1318,7 +1402,7 @@ const { profile = 'full' } = Astro.props;
         case 'text':
           if (action === 'text-comment') textInput.value = 'Comment: ';
           this.setTool('text');
-          this.setFeedback('Type your text below, then click on the page.');
+          this.setFeedback('Click the page to add a text box, then type inside it.');
           break;
         case 'highlight':
           this.markupStyle = 'highlight';
@@ -1366,6 +1450,7 @@ const { profile = 'full' } = Astro.props;
           this.setFeedback(`${action === 'circle-stamp' ? 'Circle' : action[0].toUpperCase() + action.slice(1)} stamp selected. Click on the page to place it.`);
           break;
       }
+      this.querySelectorAll<HTMLButtonElement>('[data-editor-action]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.editorAction === action)));
     }
 
     private applyZoom(): void {
@@ -1387,6 +1472,7 @@ const { profile = 'full' } = Astro.props;
     }
 
     private setTool(tool: Tool): void {
+      this.finishTextEdit();
       this.tool = tool;
       this.selectedId = '';
       this.inspectorDirty = false;
@@ -1404,7 +1490,7 @@ const { profile = 'full' } = Astro.props;
       const hints: Record<Tool, string> = {
         select: 'Click an edit to select it. Drag the object or its handles to move, resize, or rotate it.',
         pan: 'Drag the page to move around the workspace.',
-        text: 'Type the text below, then click where it should appear.',
+        text: 'Click the page to add a text box, then type inside it. Double-click a placed box to edit it again.',
         stamp: 'Choose a stamp, then click where it should appear.',
         highlight: 'Drag over the area you want to highlight.',
         ink: 'Draw directly on the page with a mouse, pen, or finger.',
@@ -1559,6 +1645,11 @@ const { profile = 'full' } = Astro.props;
       }
 
       if (mark.kind === 'text') {
+        if (mark.layout === 'box') {
+          const next = { ...mark, ...rect };
+          this.fitTextBox(next);
+          return next;
+        }
         const heightScale = rect.height / previousHeight;
         return {
           ...mark,
@@ -1651,6 +1742,8 @@ const { profile = 'full' } = Astro.props;
 
     private syncInspector(): void {
       const mark = this.selectedMark();
+      const editText = this.querySelector<HTMLButtonElement>('[data-editor-edit-text]');
+      if (editText) editText.hidden = mark?.kind !== 'text';
       const title = this.querySelector<HTMLElement>('[data-editor-inspector-title]');
       const subtitle = this.querySelector<HTMLElement>('[data-editor-inspector-subtitle]');
       const hint = this.querySelector<HTMLElement>('[data-editor-hint]');
@@ -1708,7 +1801,7 @@ const { profile = 'full' } = Astro.props;
         const needsSize = needsText;
         const needsStroke = this.profile === 'full' && ['ink', 'rectangle', 'line', 'arrow', 'callout'].includes(this.tool);
         if (colorControl) colorControl.hidden = !activePlacement;
-        if (textControl) textControl.hidden = !needsText;
+        if (textControl) textControl.hidden = !this.replaceMode;
         if (sizeControl) sizeControl.hidden = !needsSize;
         if (widthControl) widthControl.hidden = !needsStroke;
         if (rotationControl) rotationControl.hidden = true;
@@ -1762,7 +1855,7 @@ const { profile = 'full' } = Astro.props;
 
       if (colorControl) colorControl.hidden = false;
       geometryControls.forEach((control) => { control.hidden = false; });
-      if (textControl) textControl.hidden = !(['text', 'signature-text', 'replace-text'].includes(mark.kind));
+      if (textControl) textControl.hidden = !(['signature-text', 'replace-text', 'callout'].includes(mark.kind));
       if (sizeControl) sizeControl.hidden = !(['text', 'signature-text', 'replace-text'].includes(mark.kind));
       if (widthControl) widthControl.hidden = !['ink', 'rectangle', 'line', 'arrow', 'callout', 'highlight', 'whiteout', 'underline', 'strike', 'strike-through', 'strikethrough', 'circle', 'polygon', 'cloud', 'stamp'].includes(mark.kind);
       if (rotationControl) rotationControl.hidden = false;
@@ -1777,6 +1870,8 @@ const { profile = 'full' } = Astro.props;
     private commitInspectorUpdate(): void {
       const mark = this.selectedMark();
       if (!mark) return;
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement && active.type === 'number' && (!active.value || !active.validity.valid)) return;
       if (!this.inspectorDirty) {
         this.snapshot();
         this.inspectorDirty = true;
@@ -1851,6 +1946,7 @@ const { profile = 'full' } = Astro.props;
       }
 
       this.marks = this.marks.map((item) => (item.id === mark.id ? nextMark : item));
+      if (nextMark.kind === 'text' && nextMark.layout === 'box') this.fitTextBox(nextMark);
       this.changed();
     }
 
@@ -1938,7 +2034,6 @@ const { profile = 'full' } = Astro.props;
           const mark = this.marks.find((item) => item.id === manipulatorHit.id);
           if (!mark) return;
           this.selectedId = mark.id;
-          this.snapshot();
           this.inspectorDirty = false;
           this.selectionGuides = { x: [], y: [] };
           this.selectionDrag = {
@@ -1960,7 +2055,6 @@ const { profile = 'full' } = Astro.props;
         const markHit = manipulatorHit?.id ? this.marks.find((item) => item.id === manipulatorHit.id) : undefined;
         this.selectedId = manipulatorHit?.id ?? '';
         if (markHit) {
-          this.snapshot();
           this.inspectorDirty = false;
           this.selectionGuides = { x: [], y: [] };
           this.selectionDrag = {
@@ -2059,10 +2153,10 @@ const { profile = 'full' } = Astro.props;
           text,
           size: this.signatureStyle === 'signature' ? 22 : 18,
           color,
-          signatureRole: this.signatureStyle === 'initials' ? 'initials' : 'signature',
+          signatureRole: this.signatureStyle === 'date' ? 'date' : this.signatureStyle === 'initials' ? 'initials' : 'signature',
           signatureSource: 'typed',
           lockAspectRatio: true,
-          aspectRatio: width / (this.signatureStyle === 'initials' ? 0.055 : 0.075),
+          aspectRatio: width / (this.signatureStyle === 'signature' ? 0.075 : 0.055),
         });
         this.setTool('select');
         this.selectedId = idValue;
@@ -2072,28 +2166,25 @@ const { profile = 'full' } = Astro.props;
       }
 
       if (this.tool === 'text') {
-        const text = this.querySelector<HTMLInputElement>('[data-editor-text]')!.value.trim();
-        if (!text) {
-          this.history.pop();
-          this.querySelector<HTMLInputElement>('[data-editor-text]')!.focus();
-          return;
-        }
+        event.preventDefault();
         this.marks.push({
           id: idValue,
           kind: 'text',
           page: this.activePage,
-          x: at.x,
-          y: at.y,
-          text,
+          x: Math.min(at.x, .65),
+          y: Math.min(at.y, .88),
+          text: '',
+          layout: 'box',
           size: Number(this.querySelector<HTMLSelectElement>('[data-editor-size]')!.value),
           color,
-          width: Math.min(0.52, Math.max(0.09, text.length * 0.019)),
-          height: 0.04,
+          width: .35,
+          height: .1,
         });
         this.setTool('select');
         this.selectedId = idValue;
         this.inspectorDirty = false;
         this.changed();
+        this.beginTextEdit(idValue, true);
         return;
       }
 
@@ -2137,18 +2228,25 @@ const { profile = 'full' } = Astro.props;
       const at = this.point(event);
       if (this.selectionDrag) {
         const drag = this.selectionDrag;
+        if (!drag.mutated) {
+          const rect = this.overlay.getBoundingClientRect();
+          if (Math.hypot((at.x - drag.start.x) * rect.width, (at.y - drag.start.y) * rect.height) < 2) return;
+          this.snapshot();
+          drag.mutated = true;
+        }
         const original = drag.original;
         let nextMark = structuredClone(original);
         let guides = { x: [] as number[], y: [] as number[] };
         const snapDisabled = event.altKey;
         const logicalAt = drag.originalRotation
-          ? rotatePoint(at, rectCenter(drag.originalRect), -degreesToRadians(drag.originalRotation))
+          ? this.rotateMarkPoint(original, at, rectCenter(drag.originalRect), -drag.originalRotation)
           : at;
 
         if (drag.kind === 'rotate') {
           const center = rectCenter(drag.originalRect);
-          const originAngle = Math.atan2(drag.start.y - center.y, drag.start.x - center.x);
-          const nextAngle = Math.atan2(at.y - center.y, at.x - center.x);
+          const aspect = original.kind === 'text' && original.layout === 'box' ? Number(this.pageStage.dataset.pageWidth || 612) / Number(this.pageStage.dataset.pageHeight || 792) : 1;
+          const originAngle = Math.atan2(drag.start.y - center.y, (drag.start.x - center.x) * aspect);
+          const nextAngle = Math.atan2(at.y - center.y, (at.x - center.x) * aspect);
           const rotation = drag.originalRotation + radiansToDegrees(nextAngle - originAngle);
           const normalizedRotation = ((rotation % 360) + 360) % 360;
           const rotated = { ...original, rotation: normalizedRotation } as EditableMark;
@@ -2298,7 +2396,7 @@ const { profile = 'full' } = Astro.props;
       if (this.selectionDrag) {
         const original = this.selectionDrag.original;
         this.marks = this.marks.map((mark) => mark.id === original.id ? original : mark);
-        this.history.pop();
+        if (this.selectionDrag.mutated) this.history.pop();
       } else if (this.draft) {
         this.history.pop();
       }
@@ -2377,13 +2475,13 @@ const { profile = 'full' } = Astro.props;
         class: 'editor-selection',
       });
       selection.dataset.markId = mark.id;
-      if (rotation) selection.setAttribute('transform', `rotate(${rotation} ${center.x * 1000} ${center.y * 1000})`);
+      if (rotation) selection.setAttribute('transform', this.markTransform(mark, center, rotation));
       nodes.push(selection);
 
       const touch = Math.max(18, 44 * 1000 / Math.max(1, this.overlay.getBoundingClientRect().width));
       const handleSize = Math.max(8, touch * 0.22);
       const addHandle = (manipulator: Manipulator, point: Point, kind: SelectionKind = 'resize', label: string = manipulator): void => {
-        const visiblePoint = rotation ? rotatePoint(point, center, degreesToRadians(rotation)) : point;
+        const visiblePoint = rotation ? this.rotateMarkPoint(mark, point, center, rotation) : point;
         const outer = this.svg('circle', {
           cx: String(visiblePoint.x * 1000),
           cy: String(visiblePoint.y * 1000),
@@ -2487,7 +2585,22 @@ const { profile = 'full' } = Astro.props;
             'font-size': String((mark.size / pageHeight) * 1000),
             class: selected ? 'editor-mark is-selected' : 'editor-mark',
           });
-          node.textContent = mark.text;
+          if (mark.layout === 'box') {
+            node.setAttribute('font-family', 'FilozyDocumentText, Arial, sans-serif');
+            node.setAttribute('xml:space', 'preserve');
+            this.textLines(mark).forEach((line, index) => {
+              const span = this.svg('tspan', { x: String(mark.x * 1000), y: String((mark.y + (textBaseline(mark.size) + index * textLineHeight(mark.size)) / pageHeight) * 1000) });
+              if (line) {
+                let width: number;
+                try { width = this.textMeasure(line, mark.size); } catch { width = line.length * mark.size * .55; }
+                span.setAttribute('textLength', String(width / Number(this.pageStage.dataset.pageWidth || 612) * 1000));
+                span.setAttribute('lengthAdjust', 'spacingAndGlyphs');
+              }
+              span.textContent = line;
+              node.append(span);
+            });
+          } else node.textContent = mark.text;
+          if (this.textSession?.id === mark.id) node.setAttribute('visibility', 'hidden');
         } else if (mark.kind === 'stamp') {
           const glyphs: Record<string, string> = { check: '✓', cross: '×', dot: '•', circle: '○', crossout: '╳' };
           node = this.svg('text', { x: String((mark.x + mark.width / 2) * 1000), y: String((mark.y + mark.height * 0.82) * 1000), 'text-anchor': 'middle', fill: mark.color, opacity: String(mark.opacity ?? 1), 'font-size': String(mark.height * 1000), 'font-weight': '700', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
@@ -2495,7 +2608,13 @@ const { profile = 'full' } = Astro.props;
         } else if (mark.kind === 'line' || mark.kind === 'arrow') {
           const start = mark.start ?? { x: mark.x ?? 0, y: mark.y ?? 0 };
           const end = mark.end ?? { x: (mark.x ?? 0) + (mark.width ?? 0), y: (mark.y ?? 0) + (mark.height ?? 0) };
+          if (mark.kind === 'arrow') {
+            const marker = this.svg('marker', { id: `arrow-${mark.id}`, viewBox: '0 0 10 10', refX: '8', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto-start-reverse' });
+            marker.append(this.svg('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: mark.color }));
+            defs.append(marker);
+          }
           node = this.svg('polyline', { points: `${start.x * 1000},${start.y * 1000} ${end.x * 1000},${end.y * 1000}`, fill: 'none', stroke: mark.color, opacity: String(mark.opacity ?? 1), 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)), 'stroke-linecap': 'round', 'marker-end': mark.kind === 'arrow' ? 'url(#editor-arrowhead)' : '', class: selected ? 'editor-mark is-selected' : 'editor-mark' });
+          if (mark.kind === 'arrow') node.setAttribute('marker-end', `url(#arrow-${mark.id})`);
         } else if (mark.kind === 'callout') {
           const group = this.svg('g', { class: selected ? 'editor-mark is-selected' : 'editor-mark', opacity: String(mark.opacity ?? 1) });
           group.append(this.svg('rect', { x: String(mark.x * 1000), y: String(mark.y * 1000), width: String(mark.width * 1000), height: String(mark.height * 1000), rx: '12', fill: mark.fill ?? '#ffffff', opacity: String(mark.opacity ?? 0.92), stroke: mark.color, 'stroke-width': String(Math.max(1.5, mark.strokeWidth * 2.4)) }));
@@ -2588,13 +2707,109 @@ const { profile = 'full' } = Astro.props;
         const rotation = mark.rotation ?? 0;
         if (rotation) {
           const center = rectCenter(this.markRect(mark));
-          node.setAttribute('transform', `rotate(${rotation} ${center.x * 1000} ${center.y * 1000})`);
+          node.setAttribute('transform', this.markTransform(mark, center, rotation));
         }
         node.dataset.markId = mark.id;
         nodes.push(node);
       }
       this.appendSelectionOverlay(nodes);
       this.overlay.replaceChildren(...nodes);
+      this.positionTextEditor();
+    }
+
+    private rotateMarkPoint(mark: EditableMark, point: Point, center: Point, rotation: number): Point {
+      if (mark.kind !== 'text' || mark.layout !== 'box') return rotatePoint(point, center, degreesToRadians(rotation));
+      const aspect = Number(this.pageStage.dataset.pageWidth || 612) / Number(this.pageStage.dataset.pageHeight || 792);
+      const result = rotatePoint({ x: point.x * aspect, y: point.y }, { x: center.x * aspect, y: center.y }, degreesToRadians(rotation));
+      return { x: result.x / aspect, y: result.y };
+    }
+
+    private markTransform(mark: EditableMark, center: Point, rotation: number): string {
+      if (mark.kind !== 'text' || mark.layout !== 'box') return `rotate(${rotation} ${center.x * 1000} ${center.y * 1000})`;
+      // The SVG uses a square viewBox on a non-square page. Rotate in physical
+      // page coordinates so typing, selection and the PDF use the same angle.
+      const aspect = Number(this.pageStage.dataset.pageWidth || 612) / Number(this.pageStage.dataset.pageHeight || 792);
+      const cos = Math.cos(degreesToRadians(rotation)), sin = Math.sin(degreesToRadians(rotation));
+      const b = aspect * sin, c = -sin / aspect, x = center.x * 1000, y = center.y * 1000;
+      return `matrix(${cos} ${b} ${c} ${cos} ${x - cos * x - c * y} ${y - b * x - cos * y})`;
+    }
+
+    private textLines(mark: EditableMark): string[] {
+      const pageWidth = Number(this.pageStage.dataset.pageWidth || 612);
+      try { return wrapEditorText(mark.text ?? '', (mark.width ?? .35) * pageWidth, mark.size ?? 16, this.textMeasure); }
+      catch { return wrapEditorText(mark.text ?? '', (mark.width ?? .35) * pageWidth, mark.size ?? 16, (text, size) => text.length * size * .55); }
+    }
+
+    private fitTextBox(mark: EditableMark): void {
+      const pageHeight = Number(this.pageStage.dataset.pageHeight || 792);
+      const required = this.textLines(mark).length * textLineHeight(mark.size ?? 16) / pageHeight;
+      mark.height = Math.min(1 - (mark.y ?? 0), Math.max(mark.height ?? .04, required));
+      if (required > mark.height + .001) this.setFeedback('Text needs more space. Move the box up, make it wider, or reduce the font size before saving.');
+    }
+
+    private beginTextEdit(id: string, isNew = false): void {
+      if (this.textSession?.id === id) { this.textInput.focus(); return; }
+      const mark = this.marks.find(item => item.id === id);
+      if (mark?.kind !== 'text') return;
+      this.finishTextEdit();
+      this.selectedId = id;
+      this.textSession = { id, before: structuredClone(mark), isNew, snapshot: false };
+      this.textInput.value = mark.text;
+      this.textInput.hidden = false;
+      if (window.innerWidth <= 760) {
+        const pixels = mark.size * this.pageStage.clientHeight / Number(this.pageStage.dataset.pageHeight || 792);
+        if (pixels < 14) this.setZoom(Math.min(3, this.zoom * 16 / Math.max(1, pixels)));
+      }
+      this.syncInspector();
+      this.renderMarks();
+      this.textInput.focus({ preventScroll: true });
+      this.textInput.setSelectionRange(mark.text.length, mark.text.length);
+      if (window.innerWidth <= 760) requestAnimationFrame(() => { if (this.textSession?.id === id) this.textInput.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
+    }
+
+    private updateOnPageText(): void {
+      const session = this.textSession;
+      const mark = this.marks.find(item => item.id === session?.id);
+      if (!session || mark?.kind !== 'text') return;
+      if (!session.snapshot && !session.isNew) { this.snapshot(); session.snapshot = true; }
+      mark.text = this.textInput.value;
+      mark.layout = 'box';
+      this.fitTextBox(mark);
+      if (Array.from(mark.text).some(character => !'\r\n\t'.includes(character) && !this.textCharacters.has(character.codePointAt(0)!))) this.setFeedback('Some characters are not supported by this PDF font. Use Latin text without emoji before saving; unsupported characters will not be silently replaced.');
+      this.changed();
+    }
+
+    private finishTextEdit(cancel = false): void {
+      const session = this.textSession;
+      if (!session) return;
+      this.textSession = null;
+      const mark = this.marks.find(item => item.id === session.id);
+      if (cancel) {
+        this.marks = session.isNew ? this.marks.filter(item => item.id !== session.id) : this.marks.map(item => item.id === session.id ? session.before : item);
+        if (session.isNew || session.snapshot) this.history.pop();
+      } else if (mark?.kind === 'text' && !mark.text.trim()) {
+        this.marks = this.marks.filter(item => item.id !== session.id);
+        if (session.isNew) this.history.pop();
+      }
+      if (!this.marks.some(item => item.id === this.selectedId)) this.selectedId = '';
+      this.textInput.hidden = true;
+      this.changed();
+    }
+
+    private positionTextEditor(): void {
+      const mark = this.selectedMark();
+      const visible = mark?.kind === 'text' && mark.page === this.activePage;
+      this.textToolbar.hidden = !visible;
+      if (!visible) return;
+      this.querySelector<HTMLButtonElement>('[data-editor-text-done]')!.textContent = this.textSession ? 'Done' : 'Edit text';
+      const pageHeight = Number(this.pageStage.dataset.pageHeight || 792);
+      const pixels = this.pageStage.clientHeight / pageHeight;
+      if (this.textSession?.id === mark.id) {
+        Object.assign(this.textInput.style, { left: `${mark.x * 100}%`, top: `${mark.y * 100}%`, width: `${(mark.width ?? .35) * 100}%`, height: `${(mark.height ?? .1) * 100}%`, fontSize: `${mark.size * pixels}px`, color: mark.color, opacity: String(mark.opacity ?? 1), transform: `rotate(${mark.rotation ?? 0}deg)` });
+      }
+      this.querySelector<HTMLInputElement>('[data-editor-inline-color]')!.value = mark.color;
+      const size = this.querySelector<HTMLInputElement>('[data-editor-inline-size]')!;
+      if (document.activeElement !== size) size.value = String(Math.round(mark.size * 10) / 10);
     }
   }
 
@@ -2602,6 +2817,15 @@ const { profile = 'full' } = Astro.props;
 </script>
 
 <style>
+  @font-face { font-family: FilozyDocumentText; src: url('/pdfjs/standard_fonts/LiberationSans-Regular.ttf') format('truetype'); font-display: swap; }
+  .editor__onpage-text { position: absolute; z-index: 5; box-sizing: border-box; padding: 0; margin: 0; border: 0; outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 0; resize: none; background: transparent; font-family: FilozyDocumentText, Arial, sans-serif; line-height: 1.2; white-space: pre-wrap; overflow-wrap: anywhere; transform-origin: center; touch-action: auto; }
+  .editor__onpage-text[hidden], .editor__text-toolbar[hidden], [data-editor-edit-text][hidden] { display: none; }
+  .editor__text-toolbar { display: flex; flex: 1 1 100%; align-items: center; gap: .7rem; flex-wrap: wrap; padding: .5rem; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+  .editor__text-toolbar label { display: flex; align-items: center; gap: .4rem; font-size: var(--step--2); color: var(--ink-2); }
+  .editor__text-toolbar input { box-sizing: border-box; min-height: 44px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper-raised); color: var(--ink); font: inherit; width: 4.5rem; padding: .35rem; }
+  .editor__text-toolbar input[type='color'] { width: 44px; }
+  .editor__viewbar .editor__text-toolbar button { min-width: 4rem; width: auto; min-height: 44px; padding: .4rem .7rem; color: var(--ink); }
+  [data-editor-edit-text] { min-height: 44px; border: 1px solid var(--accent); border-radius: 10px; background: var(--paper-raised); color: var(--accent); font: inherit; cursor: pointer; }
   .editor {
     display: grid;
     gap: 0;
@@ -2691,18 +2915,19 @@ const { profile = 'full' } = Astro.props;
   .editor__tool-icon--draw { border: 0; font-size: 1.35rem; }
   .editor__tool-icon--stamp { border: 0; font-size: var(--step--2); letter-spacing: -0.08em; }
   .editor__tool-icon--signature { border: 0; font: italic 1.35rem/1 Georgia, serif; }
-  .editor__popover { position: absolute; z-index: 10; top: calc(100% + 0.55rem); left: 0; display: grid; width: 15.75rem; gap: 0.15rem; padding: 0.45rem; border: 1px solid var(--line-strong); border-radius: 13px; background: var(--paper-raised); box-shadow: 0 16px 40px rgb(15 23 42 / 0.18), 0 2px 7px rgb(15 23 42 / 0.08); }
+  .editor__popover { position: fixed; z-index: 40; inset: auto; display: grid; box-sizing: border-box; width: 22rem; gap: .3rem; padding: .7rem; border: 1px solid var(--line-strong); border-radius: 16px; overflow: auto; overscroll-behavior: contain; background: var(--paper-raised); color: var(--ink); box-shadow: 0 16px 40px rgb(15 23 42 / 0.18), 0 2px 7px rgb(15 23 42 / 0.08); }
   .editor__popover[hidden] { display: none; }
   .editor__popover-heading { display: grid; gap: 0.1rem; padding: 0.52rem 0.6rem 0.45rem; margin-bottom: 0.2rem; border-bottom: 1px solid var(--line); }
-  .editor__popover-heading strong { font: 600 var(--step--2) var(--font-display); color: var(--ink); }
+  .editor__popover-heading strong { font: 700 var(--step-0) var(--font-display); color: var(--ink); }
   .editor__popover-heading span { color: var(--muted); font-size: var(--step--2); }
-  .editor__popover button { display: grid; grid-template-columns: 1.55rem minmax(0, 1fr) auto; align-items: center; justify-items: start; gap: 0.45rem; width: 100%; padding: 0.46rem 0.48rem; border: 1px solid transparent; border-radius: 8px; color: var(--ink-2); text-align: left; }
+  .editor__popover button { display: grid; grid-template-columns: 2.1rem minmax(0, 1fr); align-items: center; justify-items: start; gap: .75rem; width: 100%; min-height: 56px; padding: .65rem; border: 1px solid transparent; border-radius: 12px; color: var(--ink); text-align: left; background: transparent; font: inherit; cursor: pointer; }
   .editor__popover button:hover { border-color: var(--line); background: var(--paper-sunk); color: var(--ink); }
   .editor__popover button > span:nth-child(2) { display: grid; gap: 0.08rem; min-width: 0; }
-  .editor__popover button strong { color: inherit; font-size: var(--step--2); font-weight: var(--weight-semibold); }
-  .editor__popover button small { overflow: hidden; color: var(--muted); font-size: var(--step--2); line-height: var(--leading-heading); text-overflow: ellipsis; white-space: nowrap; }
+  .editor__popover button strong { color: inherit; font-size: var(--step--1); font-weight: var(--weight-semibold); }
+  .editor__popover button small { color: var(--ink-2); font-size: var(--step--2); line-height: 1.45; white-space: normal; }
+  .editor__popover button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; background: var(--paper-sunk); }
   .editor__popover button em { color: var(--muted); font: var(--weight-medium) var(--step--2) var(--font-mono); text-transform: uppercase; }
-  .editor__menu-icon { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--accent); font: 600 var(--step--1)/1 var(--font-display); }
+  .editor__menu-icon { display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid var(--line-strong); border-radius: 9px; color: var(--accent); background: var(--paper); font: 600 var(--step-0)/1 var(--font-display); }
   .editor__menu-icon--yellow { color: #b7791f; background: #fef3c7; border-color: #fde68a; }
   .editor__menu-icon--ok { color: var(--ok); }
   .editor__menu-icon--bad { color: var(--accent); }
@@ -2744,7 +2969,7 @@ const { profile = 'full' } = Astro.props;
   :global(.editor-thumb span) { font: var(--weight-medium) var(--step--2) var(--font-mono); }
 
   .editor__workarea { grid-column: 2; grid-row: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(15rem, 18rem); grid-template-rows: auto minmax(0, 1fr); min-width: 0; }
-  .editor__viewbar { grid-column: 1; grid-row: 1; display: flex; justify-content: space-between; gap: 1rem; padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--line); background: var(--paper-raised); }
+  .editor__viewbar { grid-column: 1; grid-row: 1; display: flex; flex-wrap: wrap; justify-content: space-between; gap: .65rem; padding: 0.65rem 0.8rem; border-bottom: 1px solid var(--line); background: var(--paper-raised); }
   .editor__pager, .editor__zoom { display: flex; align-items: center; gap: 0.55rem; color: var(--muted); font-size: var(--step--2); }
   .editor__viewbar button { width: 2rem; height: 2rem; border: 1px solid var(--line); border-radius: 8px; background: var(--paper-raised); color: var(--ink); cursor: pointer; }
   .editor__viewbar button:disabled { opacity: 0.35; cursor: not-allowed; }
@@ -2821,7 +3046,7 @@ const { profile = 'full' } = Astro.props;
     .editor__quick-actions button { min-height: 2.75rem; flex: 1 1 0; }
     .editor__privacy { display: none; }
     .editor__shell { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(0, 1fr); min-height: 0; }
-    .editor__tools { position: sticky; grid-column: 1; grid-row: 1; top: 4.5rem; z-index: 8; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; overflow-y: visible; border-right: 0; border-bottom: 1px solid var(--line); scroll-snap-type: x proximity; scrollbar-width: thin; overscroll-behavior-inline: contain; }
+    .editor__tools { position: sticky; grid-column: 1; grid-row: 1; top: 4.5rem; z-index: 8; flex-direction: row; flex-wrap: wrap; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
     .editor__tools button { min-width: 4rem; min-height: 2.75rem; padding-block: 0.55rem; scroll-snap-align: start; font-size: var(--step--2); }
     .editor__tool-rail-label, .editor__tool-footnote { display: none; }
     .editor__tool-group { position: static; }

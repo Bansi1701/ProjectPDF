@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { PDFDocument, PDFName, StandardFonts } from '@cantoo/pdf-lib';
 
 import { crop } from '../src/lib/pdf/crop';
-import { editDocument, pageNumbers } from '../src/lib/pdf/edit';
+import { applyEdits, editDocument, pageNumbers } from '../src/lib/pdf/edit';
+import { wrapEditorText } from '../src/lib/pdf/textLayout';
 import { fillForm, probeForm } from '../src/lib/pdf/forms';
 import { flattenPdf } from '../src/lib/pdf/flatten';
 import { headerFooter } from '../src/lib/pdf/headerfooter';
@@ -173,6 +174,27 @@ const signaturePng = Uint8Array.from(
 }
 
 {
+  const doc = await PDFDocument.create();
+  doc.addPage([520, 720]);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const measure = (text: string, size: number) => font.widthOfTextAtSize(text, size);
+  for (const paragraph of ['Short text', 'A very long sentence that wraps around the text box.', 'LongUnbrokenWordWithManyLetters', 'Multiple    spaces']) {
+    const lines = wrapEditorText(paragraph, 100, 16, measure);
+    assert.equal(lines.join(''), paragraph, 'Wrapping must not discard characters');
+    assert.ok(lines.every(line => measure(line, 16) <= 100));
+  }
+  assert.deepEqual(wrapEditorText('First\n\nThird', 500, 16, measure), ['First', '', 'Third']);
+  const fixture = input('text-box.pdf', await doc.save());
+  const mark = { id: 'box-text', kind: 'text' as const, layout: 'box' as const, page: 1, x: .2, y: .2, width: .5, height: .3, text: 'First line\nSecond line', size: 19, color: '#1267b1', rotation: 45 };
+  assert.equal(await pageCount(new Uint8Array((await applyEdits([fixture], [mark]))[0].bytes)), 1);
+  await assert.rejects(() => applyEdits([fixture], [{ ...mark, height: .02 }]), /more lines than fit/);
+  await assert.rejects(() => applyEdits([fixture], [{ ...mark, text: 'W', width: .02, size: 144 }]), /too narrow/);
+  await assert.rejects(() => applyEdits([fixture], [{ ...mark, text: 'Unsupported \u{1F680}' }]), /characters.*cannot export/);
+  await assert.rejects(() => applyEdits([fixture], [{ ...mark, x: 0, y: 0 }]), /extends beyond the page/);
+  pass('on-page text wrapping, rotation and overflow safety');
+}
+
+{
   const mark = success(await watermark([alpha], { text: 'DRAFT', kind: 'text' }), 'watermark');
   const numbered = success(await pageNumbers([alpha], { start: 7, format: 'Page {page} of {pages}' }), 'page numbers');
   const headed = success(
@@ -286,7 +308,7 @@ const signaturePng = Uint8Array.from(
 
 await testCompression();
 pass('compression preserves objects, fields, metadata and signatures; reports target limits');
-assert.equal(checks.length, 21);
+assert.equal(checks.length, 22);
 process.stdout.write(`Operation smoke: ${checks.length} groups passed.\n`);
 }
 

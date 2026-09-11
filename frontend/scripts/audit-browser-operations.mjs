@@ -203,6 +203,8 @@ const cases = [
       await page.locator('[data-editor-menu-trigger="stamp"]').click();
       await page.locator('[data-editor-action="text"]').click();
       await page.locator('[data-editor-overlay]').click({ position: { x: 180, y: 150 } });
+      await page.locator('[data-editor-onpage-text]').fill('Browser regression text');
+      await page.locator('[data-editor-text-done]').click();
     },
   },
   {

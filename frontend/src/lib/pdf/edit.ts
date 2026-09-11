@@ -1,6 +1,7 @@
 import { PDFDocument, StandardFonts, degrees, rgb } from '@cantoo/pdf-lib';
 import { parsePageSet } from './pageset';
 import type { EditMark, InputFile, OpResult } from './types';
+import { wrapEditorText, textLineHeight, textBaseline } from './textLayout';
 
 const baseName = (name: string) => name.replace(/\.pdf$/i, '');
 const load = (file: InputFile) => PDFDocument.load(file.bytes, { updateMetadata: false });
@@ -214,6 +215,24 @@ export async function applyEdits(files: InputFile[], edits: EditMark[]): Promise
 
     if (mark.kind === 'text') {
       const size = safeSize(mark.size, 16);
+      if (mark.layout === 'box') {
+        const font = await doc.embedFont(StandardFonts.Helvetica);
+        const supported = new Set(font.getCharacterSet());
+        if (Array.from(mark.text).some(character => !'\r\n\t'.includes(character) && !supported.has(character.codePointAt(0)!))) throw new Error('This text contains characters the current PDF font cannot export. Use supported Latin characters before saving; your original is unchanged.');
+        const rect = box(width, height, { ...mark, width: mark.width ?? .35, height: mark.height ?? .1 });
+        let lines: string[];
+        try { lines = wrapEditorText(mark.text, rect.width, size, (text, points) => font.widthOfTextAtSize(text, points)); }
+        catch { throw new Error('This text contains characters the current PDF font cannot export. Use supported Latin characters before saving; your original is unchanged.'); }
+        if (lines.length * textLineHeight(size) > rect.height + .5) throw new Error('A text box has more lines than fit. Make the box taller or reduce the font size before saving.');
+        if (lines.some(line => font.widthOfTextAtSize(line, size) > rect.width + .5)) throw new Error('A text box is too narrow for its font size. Make it wider or reduce the font size before saving.');
+        const center = centerOf(rect);
+        if (rotatePoints(rectCorners(rect), center, -rotation).some(point => point.x < -.5 || point.y < -.5 || point.x > width + .5 || point.y > height + .5)) throw new Error('A rotated text box extends beyond the page. Move it inward or reduce its size before saving.');
+        lines.forEach((line, index) => {
+          const point = rotatePoint({ x: rect.x, y: rect.y + rect.height - textBaseline(size) - index * textLineHeight(size) }, center, -rotation);
+          if (line) page.drawText(line, { ...point, size, font, color: colour(mark.color), rotate: degrees(-rotation), opacity: safeOpacity(mark.opacity, 1) });
+        });
+        continue;
+      }
       const position = { x: clamp(mark.x) * width, y: height - clamp(mark.y) * height };
       const textBox = estimateTextBox(mark.text, size);
       const hasEditorBounds = Number.isFinite(mark.width) && Number.isFinite(mark.height);
