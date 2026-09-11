@@ -310,6 +310,8 @@ export interface OpSuccess {
   savings?: Savings;
   /** True when the input was already optimal and came back untouched. */
   unchanged?: boolean;
+  targetBytes?: number;
+  targetMet?: boolean;
   notes?: string[];
 
   // --- compare only ----------------------------------------------------
@@ -465,6 +467,8 @@ export interface WorkerRequest {
   grayscaleOptions?: GrayscaleOptions;
   /** Compress only: how hard to squeeze the pictures. */
   imagePreset?: import('./compressimages').ImagePreset;
+  /** Optional compression ceiling, never permission to reduce quality. */
+  compressionTargetBytes?: number;
   watermarkOptions?: import('./watermark').WatermarkOptions;
   autoCropOptions?: AutoCropOptions;
   /** Reorder only: zero-based page indexes in their new order. */

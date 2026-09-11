@@ -61,6 +61,7 @@ async function run(request: WorkerRequest): Promise<OpResult> {
     };
   }
   if (request.edits?.length) {
+    if (request.op === 'compress') return { ok: false, error: 'Compression preserves the original document. Apply edits separately in Edit PDF first.' };
     const { applyEdits, editDocument } = await import('./edit');
     if (request.op === 'edit') return editDocument(request.files, request.edits);
     request = { ...request, files: await applyEdits(request.files, request.edits) };
@@ -70,7 +71,8 @@ async function run(request: WorkerRequest): Promise<OpResult> {
     case 'compress':
       return (await import('./compress')).compress(
         request.files,
-        request.imagePreset ?? 'lossless'
+        'lossless',
+        request.compressionTargetBytes
       );
     case 'merge':
       return (await import('./organise')).merge(request.files);

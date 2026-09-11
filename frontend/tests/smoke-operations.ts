@@ -18,6 +18,7 @@ import { textDocToPdf } from '../src/lib/pdf/textdoc';
 import type { InputFile, OpResult, OpSuccess } from '../src/lib/pdf/types';
 import { watermark } from '../src/lib/pdf/watermark';
 import { pageCopySafetyError } from '../src/lib/pdf/pageCopySafety';
+import { testCompression } from './compression-preservation';
 
 const checks: string[] = [];
 
@@ -283,7 +284,9 @@ const signaturePng = Uint8Array.from(
   pass('repair output reopens successfully');
 }
 
-assert.equal(checks.length, 20);
+await testCompression();
+pass('compression preserves objects, fields, metadata and signatures; reports target limits');
+assert.equal(checks.length, 21);
 process.stdout.write(`Operation smoke: ${checks.length} groups passed.\n`);
 }
 

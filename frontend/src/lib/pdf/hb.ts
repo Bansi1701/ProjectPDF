@@ -48,8 +48,7 @@ export function loadHb(bytes?: BufferSource): Promise<HbExports> {
     cached = (async () => {
       // Served from our own origin (see scripts/copy-wasm.mjs) and fetched
       // only once a document turns out to have fonts worth rebuilding.
-      const base = import.meta.env.BASE_URL.replace(/\/$/, '');
-      const source = bytes ?? (await (await fetch(`${base}/wasm/harfbuzz-subset.wasm`)).arrayBuffer());
+      const source = bytes ?? (await (await fetch(`${import.meta.env.BASE_URL.replace(/\/$/, '')}/wasm/harfbuzz-subset.wasm`)).arrayBuffer());
       const { instance } = await WebAssembly.instantiate(source as BufferSource, {});
       return instance.exports as unknown as HbExports;
     })();
@@ -70,7 +69,7 @@ export interface SubsetResult {
  * id of an old id is its index in the sorted set. That assumption is verified
  * against the output's own metrics by `verifyWidths` before anything ships.
  */
-export function subsetFont(hb: HbExports, font: Uint8Array, keep: Set<number>): SubsetResult {
+export function subsetFont(hb: HbExports, font: Uint8Array, keep: Set<number>, retainIds = false): SubsetResult {
   const ordered = [...keep].sort((a, b) => a - b);
 
   const heap = () => new Uint8Array(hb.memory.buffer);
@@ -97,7 +96,8 @@ export function subsetFont(hb: HbExports, font: Uint8Array, keep: Set<number>): 
   for (const gid of ordered) hb.hb_set_add(glyphSet, gid);
   hb.hb_subset_input_set_flags(
     input,
-    HB_SUBSET_FLAGS_DEFAULT | HB_SUBSET_FLAGS_NO_LAYOUT_CLOSURE
+    // RETAIN_GIDS | NOTDEF_OUTLINE | GLYPH_NAMES | PASSTHROUGH_UNRECOGNIZED.
+    retainIds ? (0x02 | 0x40 | 0x80 | 0x20) : HB_SUBSET_FLAGS_DEFAULT | HB_SUBSET_FLAGS_NO_LAYOUT_CLOSURE
   );
 
   const newFace = hb.hb_subset_or_fail(face, input);
@@ -118,7 +118,7 @@ export function subsetFont(hb: HbExports, font: Uint8Array, keep: Set<number>): 
   release();
 
   const mapping = new Map<number, number>();
-  ordered.forEach((oldGid, index) => mapping.set(oldGid, index));
+  ordered.forEach((oldGid, index) => mapping.set(oldGid, retainIds ? oldGid : index));
 
   return { font: out, mapping };
 }
@@ -186,7 +186,7 @@ export function closeOverComposites(font: Uint8Array, seed: Set<number>): Set<nu
 
 // ── TrueType table reading, used to check our own work ───────────────────
 
-function tableOffset(font: Uint8Array, tag: string): { offset: number; length: number } | null {
+export function tableOffset(font: Uint8Array, tag: string): { offset: number; length: number } | null {
   const view = new DataView(font.buffer, font.byteOffset, font.byteLength);
   const count = view.getUint16(4);
 

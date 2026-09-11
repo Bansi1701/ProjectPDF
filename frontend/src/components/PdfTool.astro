@@ -445,11 +445,17 @@ const dropTitle = takesExcel
 
     {
       mode === 'compress' && (
-        <fieldset class="field field--turns">
-          <legend>Compression</legend>
-          <label><input type="radio" name="image-preset" value="lossless" checked /> Lossless</label>
-          <label><input type="radio" name="image-preset" value="balanced" /> Balanced images</label>
-          <label><input type="radio" name="image-preset" value="small" /> Smallest practical file</label>
+        <fieldset class="field field--turns field--compression">
+          <legend>Preserve document content</legend>
+          <p>Smart font compaction with page-by-page verification. No glyph remapping or image-quality loss.</p>
+          <label>Target size (optional)<input type="number" data-compression-target min="0.001" step="any" placeholder="e.g. 2" inputmode="decimal" aria-describedby="compression-limit-note" /></label>
+          <label>Size unit<select data-compression-unit aria-label="Target size unit"><option value="1000000">MB</option><option value="1000">KB</option></select></label>
+          <div class="compression-targets" role="group" aria-label="Set a reduction target">
+            <span>Try a size target:</span>
+            {[30, 50, 70].map(percent => <button type="button" class="button button--ghost" data-compression-percent={percent}>{percent}% smaller</button>)}
+            <small>Targets, not guaranteed reductions. Content preservation comes first.</small>
+          </div>
+          <small id="compression-limit-note">1 MB = 1,000,000 bytes. Leave blank for safe compression. Some PDFs cannot meet a smaller limit without quality loss; we will tell you instead of changing the content.</small>
         </fieldset>
       )
     }
@@ -620,6 +626,16 @@ const dropTitle = takesExcel
     const runLabel = runBtn.textContent ?? 'Run tool';
 
     let files: File[] = [];
+    root.querySelectorAll<HTMLButtonElement>('[data-compression-percent]').forEach(button => {
+      button.addEventListener('click', () => {
+        if (busy || !files[0]) return;
+        const target = root.querySelector<HTMLInputElement>('[data-compression-target]')!;
+        const unit = root.querySelector<HTMLSelectElement>('[data-compression-unit]')!;
+        unit.value = '1000';
+        target.value = String(Math.max(1, Math.floor(files[0].size * (1 - Number(button.dataset.compressionPercent) / 100))) / 1000);
+        target.focus();
+      });
+    });
     let worker: Worker | null = null;
     let jobId = 0;
     let nextRequestId = 0;
@@ -1417,6 +1433,13 @@ const dropTitle = takesExcel
       const picked = (name: string) =>
         root.querySelector<HTMLInputElement>(`input[name="${name}"]:checked`)?.value;
 
+      const compressionTarget = root.querySelector<HTMLInputElement>('[data-compression-target]')?.value.trim() ?? '';
+      const compressionTargetBytes = compressionTarget === '' ? undefined : Math.floor(Number(compressionTarget) * Number(root.querySelector<HTMLSelectElement>('[data-compression-unit]')?.value ?? 1000000));
+      if (mode === 'compress' && compressionTargetBytes !== undefined && (!Number.isSafeInteger(compressionTargetBytes) || compressionTargetBytes < 1)) {
+        fail('Enter a positive target size, or leave it blank for safe compression.');
+        return;
+      }
+
       const cropPages = readPageList('[data-crop-pages]');
       if (cropPages === null) {
         fail('Enter pages as numbers or ranges, for example 1-3, 7.');
@@ -1480,6 +1503,7 @@ const dropTitle = takesExcel
         cropBox: cropStage?.getBox(),
         cropPages,
         imagePreset: (picked('image-preset') ?? 'lossless') as WorkerRequest['imagePreset'],
+        compressionTargetBytes: mode === 'compress' ? compressionTargetBytes : undefined,
         flattenOptions: {
           fields: root.querySelector<HTMLInputElement>('[data-flatten-part="fields"]')?.checked ?? true,
           annotations: root.querySelector<HTMLInputElement>('[data-flatten-part="annotations"]')?.checked ?? true,
@@ -1607,6 +1631,12 @@ const dropTitle = takesExcel
   .drop__meta { font-size: var(--step--2); color: var(--muted); }
 
   .workspace { display: grid; gap: 1rem; }
+  .field--compression { min-width: 0; }
+  .field--compression > p, .field--compression > small { flex-basis: 100%; overflow-wrap: anywhere; }
+  .field--compression label { min-width: 0; max-width: 100%; flex-wrap: wrap; }
+  .field--compression input { min-width: 0; max-width: 100%; width: 8rem; }
+  .compression-targets { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: .5rem; min-width: 0; }
+  .compression-targets small { flex-basis: 100%; }
 
   .files {
     margin: 0; padding-left: 1.2rem; display: grid; gap: 0.3rem;

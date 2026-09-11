@@ -1,69 +1,47 @@
 ---
 title: "Shrink a PDF under a 2 MB, 5 MB or 10 MB upload limit"
-description: "What makes a PDF large, the lossless step to try first, when to lower image resolution and by how much, and how to split as a last resort — without uploading."
-summary: "A PDF's size is nearly always its images. Start lossless — rewrite the structure and drop unused objects — then reduce image resolution to 150 DPI for screen reading or 110 DPI for the smallest file, and split the document if the limit still cannot be met. Filozy reports the real byte change."
+description: "Set a PDF size target while preserving document content. Understand safe compression, realistic limits and alternatives when a file is still too large."
+summary: "Set an upload limit in KB or MB. Filozy combines safe repacking with verified font compaction and reports whether the limit was reached. Some files cannot shrink enough without a quality trade-off."
 tools: ["compress-pdf", "flatten-pdf", "split-by"]
 keywords: ["compress pdf under 2mb", "reduce pdf size for upload", "shrink pdf file size", "compress pdf without losing quality", "pdf too large to upload", "compress pdf offline"]
-updated: "2026-09-01"
+updated: "2026-09-10"
 faqs:
   - question: "Why did compression barely change the size?"
-    answer: "Because the file was already compressed. Images inside PDFs are usually JPEGs, and a JPEG cannot be squeezed further without lowering its quality. If the lossless step reports a small change, the remaining size is image data and only a lower resolution or quality will reduce it."
+    answer: "The file may already be efficiently stored. Safe repacking cannot guarantee a reduction: Filozy keeps fonts, images and document content rather than removing information to force a smaller file."
   - question: "Will compressing make the text blurry?"
-    answer: "Not if the text is text. Lowering image resolution affects pictures and scans; typed text in a born-digital PDF is stored as characters and stays perfectly sharp at any setting. A scanned page is one big picture, so there resolution does affect the text."
-  - question: "The portal says 2 MB but my 2.0 MB file is rejected. Why?"
-    answer: "Portals often measure in binary megabytes (2 MiB = 2,097,152 bytes) or in decimal ones (2,000,000 bytes), and rarely say which. Aim comfortably under the limit — 1.8 MB for a 2 MB rule — and you avoid the ambiguity."
+    answer: "This compressor does not rasterize pages or reduce image resolution. Supported fonts can be compacted only when glyph shapes and spacing match and every page passes a pixel and text-position comparison. Failed or unavailable verification falls back to safe repacking or the unchanged original."
+  - question: "Can I force a PDF below 2 MB?"
+    answer: "You can enter a 2 MB target, but it is a limit to check, not a promise. When safe compression cannot reach it, Filozy reports that clearly. Ask the recipient about a larger limit or separate parts."
 ---
 
-Every portal has a number. 2 MB for the visa application, 5 MB for the job board, 10 MB for the court e-filing system. And every scanned bundle is just over it. Shrinking the file is straightforward once you know what is taking up the room — and it is nearly always the same thing.
+An upload limit should not cost you missing words or unreadable pages. Start with a copy of the original and check the recipient's maximum size. This guide uses decimal units: 1 KB is 1,000 bytes and 1 MB is 1,000,000 bytes. Portals may use different units or apply their limits to an entire batch.
 
-## What makes a PDF big
+## Step one: set your size target
 
-In rough order of how often each is the culprit:
+Open [Compress PDF](/compress-pdf/), choose one PDF and enter a limit such as **2 MB** or **500 KB**. Leave the field blank if you only want safe compression without a particular ceiling. The original stays on your device.
 
-1. **Images.** Scans, photographs, logos placed at print resolution on a document that will only ever be read on a screen. A single full-page scan at 600 DPI can be several megabytes on its own.
-2. **Embedded fonts.** Necessary, but sometimes the whole font is embedded when a subset would do, and sometimes the same font is embedded once per page.
-3. **Leftovers.** Editors that save incrementally append new versions of objects without removing old ones; a file edited ten times can carry ten copies of a page.
-4. **Unused objects.** Resources that nothing references — an image deleted from the page but not from the file.
+## What safe compression changes
 
-Text itself is tiny. A hundred pages of plain typed text is a few hundred kilobytes.
+The compressor rewrites the storage structure using compressed object containers and checks original document objects and streams against the reopened result. It may also compact supported embedded TrueType fonts while preserving every glyph ID, outline and spacing. That stronger pass requires an all-page rendered-pixel and text-position comparison. It does not reduce image quality, flatten forms, remove attachments or strip metadata.
 
-## Step one: lossless
+Extractable text and a correct page count alone cannot prove that a PDF still looks right: damaged font data can leave text selectable while letters disappear. Filozy does not renumber glyphs or rewrite page text. Font optimization is skipped for interactive forms, unsupported fonts, documents over 80 pages, oversized rendering surfaces, or browsers without the required local renderer. It also falls back if any verification fails. Always check the downloaded copy in your usual viewer.
 
-[Compress PDF](/compress-pdf/) starts with the changes that cannot hurt anything: it rewrites the file's structure, removes unused and duplicated objects, and repacks the streams. Text, images and fonts come out exactly as they went in.
+## Step two: read the actual result
 
-The tool then reports the **real byte change** — the file was this big, it is now this big — instead of promising a percentage before it has looked. Sometimes the honest answer is that a file already compressed by its creator cannot be made smaller losslessly, and it says so rather than handing you a copy that is not smaller.
+- **Target met:** the result is at or below your chosen byte limit.
+- **Target not reached:** the safest available output is still larger than the limit. Its content was not sacrificed to force the size.
+- **Original preserved:** repacking did not save space, a preservation check failed, or the document requires protection from rewriting. The downloaded bytes are unchanged.
 
-If the lossless step gets you under the limit, stop. You have lost nothing.
+If the original already meets the target, no rewrite is needed. Signed documents, signature fields and XFA forms are returned unchanged because a rewrite may invalidate their integrity. Password-protected PDFs require an authorized unlocked copy.
 
-## Step two: lower the image resolution
+## Step three: review before sending
 
-If the file is still too large, what remains is image data, and the only way to reduce it is to store less of it. Compress PDF offers two presets for images beyond the lossless default:
+Open the result in your usual PDF viewer. Compare every page, including small print, tables, symbols, signatures and any form fields. Check the exact reported size rather than relying on a rounded filename or a promised percentage. Keep the original until the recipient accepts the file.
 
-- **Balanced — 150 DPI.** Comfortable for reading on any screen and acceptable for office printing. Text in a scan stays legible; photographs lose detail you would need to zoom to notice. For most portals this is the right choice.
-- **Smallest — 110 DPI.** For hard limits. Scanned text remains readable at normal size; fine print and small diagrams start to soften. Use it when the alternative is not being able to submit at all.
+## If the file is still too large
 
-Two things to know before you choose:
+Ask whether the recipient allows multiple parts. [Advanced Split](/split-by/) can separate a document, but splitting is a different operation and may not suit signed documents or interactive forms. Review its restrictions before proceeding.
 
-- **Typed text is never affected.** In a born-digital PDF the text is characters, not pixels; only the pictures are resampled. A report with three photographs and forty pages of text shrinks dramatically with no visible change to the words.
-- **A scan is one big picture.** There, resolution *is* the text. Check the result at normal reading size before you rely on it, especially signatures and stamps.
+If a final, non-editable form is specifically required, [Flatten PDF](/flatten-pdf/) is a separate, deliberate choice. Flattening changes interactivity and is not part of preservation-first compression; it is not guaranteed to save space.
 
-## Step three: flatten first
-
-A filled form or an annotated draft carries its fields and comments as separate objects, each with its own appearance and often its own fonts. [Flatten PDF](/flatten-pdf/) bakes them into the page, which removes the duplication and frequently makes the compression step more effective. The [Shrink a PDF under a portal's upload limit](/how-to/shrink-pdf-under-upload-limit/) workflow does exactly this sequence — flatten, then compress — handing the file from one tool to the next.
-
-## Step four: split
-
-Some limits cannot be met by one file: a 300-page scanned bundle will not become 2 MB at any legible resolution. [Split PDF by size or bookmark](/split-by/) divides the document into parts that each fit under a target size, measured from the actual output rather than estimated. Two caveats it will tell you about: a single page can never be made smaller than one page, and a size split can only be approximate because pages share fonts and images.
-
-## Step by step
-
-1. Note the limit, and aim 10% under it.
-2. Open [Compress PDF](/compress-pdf/), choose the file, run the lossless pass. Read the reported change.
-3. Still over? Run again with **Balanced**. Open the result and look at a photograph and a signature at normal size.
-4. Still over? **Smallest**. Check fine print.
-5. Still over? Flatten first if the document has forms or comments, then repeat; otherwise split by size.
-6. Keep the original. The compressed copy is for the portal; the original is for your records.
-
-## What not to do
-
-Do not "print to PDF" a PDF to shrink it — it rasterises the text and often makes the file larger. Do not convert pages to JPEG and back for the same reason. And do not upload a document to a website to compress it if it contains anything you would not email to a stranger; every step above runs in your browser.
+You can also return to the source document and export a smaller copy. Lower image resolution can reduce size, but changes quality and may damage small text in scans. Filozy's preservation-first compressor does not make that decision for you. Never repeatedly compress a damaged result in an attempt to recover missing content; return to the original.

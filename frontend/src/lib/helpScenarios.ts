@@ -76,9 +76,9 @@ export const HELP_SCENARIOS: Record<string, HelpScenario> = {
   'compress-pdf': scenario(
     'Reduce a scanned application for a portal with a strict upload limit.',
     'Keep the original scan and note its size and the portal limit before choosing the file.',
-    'Try lossless processing first. Consider a stronger image preset only after comparing the first result and its reported size.',
+    'Enter the portal limit in KB or MB, or leave the target blank. Compression combines safe repacking with verified font compaction, without reducing image quality.',
     'Expect a separate PDF with a measured size change, not a guaranteed percentage reduction. Open small text and signatures at reading size.',
-    'Already-compressed PDFs may not shrink. Stronger image compression can reduce detail that cannot be recovered from the compressed copy.',
+    'Already-compressed PDFs may not shrink. An unmet target is reported honestly: the tool does not sacrifice image quality or remove document content. Signed PDFs and XFA forms are returned unchanged.',
     'If the result is still above the limit, split into acceptable pieces if the portal allows it, or start from smaller source images. Avoid repeatedly compressing the same result.'),
   'jpg-to-pdf': scenario(
     'Turn three receipt photos into one expense attachment.',
