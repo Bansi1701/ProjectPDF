@@ -42,6 +42,13 @@ const sitemap = new Set(
 
 const problems = [];
 const canonicals = new Map();
+const iconBase = new URL(origin).pathname.replace(/\/$/, '');
+for (const [filename, size] of [['favicon.png', 96], ['apple-touch-icon.png', 180]]) {
+  const bytes = await readFile(join(dist, filename));
+  if (bytes.subarray(0, 8).toString('hex') !== '89504e470d0a1a0a' || bytes.readUInt32BE(16) !== size || bytes.readUInt32BE(20) !== size) problems.push(`${filename}: wrong format or non-square dimensions`);
+}
+const ico = await readFile(join(dist, 'favicon.ico'));
+if (ico.readUInt16LE(2) !== 1 || ico.readUInt16LE(4) !== 4) problems.push('favicon.ico: invalid multi-size fallback');
 
 const robots = await readFile(join(dist, 'robots.txt'), 'utf8');
 if (!robots.includes(`Sitemap: ${origin}/sitemap-index.xml`)) problems.push('robots.txt: sitemap does not match this deployment');
@@ -67,6 +74,9 @@ for (const file of files) {
     label === 'index.html' ? '/' : label.endsWith('/index.html') ? `/${label.slice(0, -'index.html'.length)}` : `/${label}`;
   const html = await readFile(file, 'utf8');
   const head = html.slice(0, html.indexOf('</head>'));
+  if (!head.includes(`href="${iconBase}/favicon.png" type="image/png" sizes="96x96"`)) problems.push(`${label}: missing branded search favicon`);
+  if (!head.includes(`href="${iconBase}/favicon.ico"`) || !head.includes(`href="${iconBase}/apple-touch-icon.png"`)) problems.push(`${label}: missing fallback or Apple icon`);
+  if (head.includes('href="/favicon.svg"') || head.includes('href="/ProjectPDF/favicon.svg"')) problems.push(`${label}: obsolete generic document icon`);
 
   const title = /<title>([^<]*)<\/title>/.exec(head)?.[1]?.trim();
   const description = /<meta name="description" content="([^"]*)"/.exec(head)?.[1];

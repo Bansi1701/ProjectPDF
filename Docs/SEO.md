@@ -88,3 +88,18 @@ curl -s https://filozy.com/robots.txt | grep -c Disallow    # must be 0
 
 Recheck after any change in the Cloudflare dashboard's bot or AI-crawler
 sections — toggles there can switch it back on.
+
+# Search result favicon
+
+The shared layout declares the approved Filozy mark as a square 96px PNG,
+with a multi-size ICO and 180px Apple icon. These stable public URLs work at
+the custom domain and under the GitHub Pages base path. Regenerate the
+checked-in assets with `node scripts/generate-favicons.mjs` from `frontend`
+if the approved source logo changes; do not substitute a generic PDF glyph.
+The SEO build audit checks dimensions and declarations on every HTML page.
+
+Google must recrawl the homepage and icon before its search result changes.
+Request homepage indexing in Search Console when available. This does not
+guarantee an icon or immediate refresh; allow days to weeks. Keep Googlebot
+and Googlebot-Image able to access the homepage and favicon.
+Reference: https://developers.google.com/search/docs/appearance/favicon-in-search
