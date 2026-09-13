@@ -35,7 +35,7 @@ jobs:
       - run: npm ci
 
       - name: Test delivered-page privacy checks
-        run: node --test scripts/privacy-delivery.test.mjs scripts/indexnow.test.mjs
+        run: node --test scripts/privacy-delivery.test.mjs scripts/indexnow.test.mjs scripts/search-discovery.test.mjs
 
       - name: Build production site
         # SITE_ORIGIN drives canonicals, sitemap, robots, llms.txt and the
@@ -87,6 +87,10 @@ jobs:
           SITE_ORIGIN: https://filozy.com
           PUBLIC_BUILD_ID: ${{ github.sha }}
         run: node scripts/audit-live-delivery.mjs
+
+      - name: Verify search discovery on every public production page
+        timeout-minutes: 10
+        run: node scripts/audit-live-search.mjs
 
       - name: Notify participating search engines of the verified production release
         if: ${{ vars.INDEXNOW_KEY != '' }}

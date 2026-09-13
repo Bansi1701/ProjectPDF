@@ -55,8 +55,45 @@ Cloudflare holds the DNS for filozy.com, so that record can be added directly
 to the zone.
 
 After verifying Google: submit `sitemap-index.xml`, then use **URL inspection →
-Request indexing** on the homepage and the five biggest tools. Bing needs no
-sitemap submission — IndexNow already notifies it on every deploy.
+Request indexing** on representative updated pages when needed. Submit the
+sitemap in Bing Webmaster Tools too: IndexNow complements sitemap discovery,
+not replaces it. Do not repeatedly resubmit unchanged URLs.
+
+## Broad search coverage and release guardrails
+
+The default `User-agent: *` rule welcomes all compliant search crawlers, not
+only the engines named explicitly. There is no universal registration service
+and no way to guarantee inclusion in every search engine.
+
+`node scripts/audit-live-search.mjs` checks every production sitemap URL after
+deployment, before IndexNow notification: HTTP 200 without redirects, matching
+canonical, HTML title and heading, no restrictive robots meta/header, and no
+unexpected restrictions in edge-delivered robots.txt. It spaces requests, honors
+rate-limit retry delays, and uses only public same-origin sitemap URLs. It does not upload documents
+or track visitors. Passing from one network does not prove that a firewall never
+challenges a particular crawler or region; investigate webmaster crawl reports.
+
+| Search service | Discovery / action |
+| --- | --- |
+| Google | Search Console ownership verified; sitemap status Success with 119 discovered pages observed during this audit. Discovery is not proof of indexing. Keep monitoring the Pages report. |
+| Bing | Existing deployment uses IndexNow; verify Webmaster Tools and submit the sitemap for reporting and ongoing discovery. |
+| Yandex, Naver, Seznam, Yep | IndexNow shares notifications with participating engines; optional regional webmaster registration provides additional diagnostics. |
+| DuckDuckGo | Much of its traditional search results come from Bing; Bing coverage helps discovery but does not guarantee placement. |
+| Brave and other independent crawlers | Public links, open crawler access and the sitemap support discovery. No unsupported bulk submission API is used. |
+| Baidu | Public crawl access and optional ownership-tag support exist; account verification and sitemap availability must be checked in its webmaster service. No registration is claimed. |
+
+The official IndexNow participant list also includes Internet Archive and
+Amazonbot; these are not promises of general web-search placement. Participants
+may change. A successful IndexNow response acknowledges notification, not indexing.
+Google does not participate in IndexNow. Additional account setup must use an
+authorized session or a public verification token; never invent tokens or accept
+new account terms on the owner's behalf.
+
+References: [Google sitemaps](https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap),
+[IndexNow FAQ](https://www.indexnow.org/faq),
+[current participants](https://www.indexnow.org/searchengines.json),
+[DuckDuckGo sources](https://duckduckgo.com/duckduckgo-help-pages/results/sources),
+[Brave crawler](https://search.brave.com/help/brave-search-crawler).
 
 ## Cloudflare can rewrite robots.txt at the edge
 
