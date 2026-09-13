@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { googleVerificationPath, isOwnershipVerification } from './ownership-verification.mjs';
 
 /**
  * The SEO contract every built page must keep.
@@ -32,7 +33,8 @@ async function htmlFiles(directory) {
   return files;
 }
 
-const files = (await htmlFiles(dist)).filter((file) => !file.includes(`${sep}og${sep}`));
+isOwnershipVerification(googleVerificationPath); // Fail the build if the proof is missing or changed.
+const files = (await htmlFiles(dist)).filter((file) => !file.includes(`${sep}og${sep}`) && !isOwnershipVerification(file));
 const sitemapPath = join(dist, 'sitemap-0.xml');
 const sitemap = new Set(
   existsSync(sitemapPath)

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
+import { isOwnershipVerification } from './ownership-verification.mjs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertNoOptionalRuntime } from './privacy-delivery.mjs';
@@ -11,7 +12,7 @@ function files(dir) {
     ? files(join(dir, entry.name)) : [join(dir, entry.name)]);
 }
 const builtFiles = files(root);
-const pages = builtFiles.filter((path) => path.endsWith('.html'));
+const pages = builtFiles.filter((path) => path.endsWith('.html') && !isOwnershipVerification(path));
 assert.ok(pages.length > 0, 'Build the site before auditing advertising readiness');
 for (const path of pages) {
   const html = readFileSync(path, 'utf8');

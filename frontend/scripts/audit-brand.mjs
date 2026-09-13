@@ -1,4 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
+import { isOwnershipVerification } from './ownership-verification.mjs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,7 +16,7 @@ async function htmlFiles(directory) {
   return files;
 }
 
-const files = await htmlFiles(dist);
+const files = (await htmlFiles(dist)).filter((file) => !isOwnershipVerification(file));
 const problems = [];
 
 for (const file of files) {
